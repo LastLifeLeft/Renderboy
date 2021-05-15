@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://www.purebasic.com/namespace" version="1.0" creator="PureBasic 5.73 LTS (Windows - x64)">
+  <section name="config">
+    <options closefiles="1" openmode="0" name="RenderBoy"/>
+  </section>
+  <section name="data">
+    <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
+    <log show="1"/>
+    <lastopen date="2021-05-15 14:22" user="Poshu" host="DESKTOP-OQ0F2A5"/>
+  </section>
+  <section name="files">
+    <file name="Main.pb">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
+      <fingerprint md5="b787ecdced99a6dccd178381bbcf83e9"/>
+    </file>
+    <file name="Libaries\CanvasButton.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="873382164e80e3070a6cf2cd7a18b7da"/>
+    </file>
+    <file name="Libaries\GadgetTimer.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="eb1dc57c3af9a8e41be33204ba7e23ad"/>
+    </file>
+    <file name="Libaries\MaterialVector.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="6c2645df4efeefcc40ab75ec4ac1a008"/>
+    </file>
+    <file name="Libaries\PureTimeline.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="2738ba0a7a1db93f148ce74adb24f0b5"/>
+    </file>
+    <file name="Libaries\ScrollBar.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="40aa8be2de5d7f7bbb9ceb1ba0f8d137"/>
+    </file>
+    <file name="Libaries\TaskList.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="9c14b706be8a1f7b36b71139b32d0186"/>
+    </file>
+    <file name="Libaries\Textbox.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="e9a3543fc499940ba9934209c884b7a1"/>
+    </file>
+    <file name="Libaries\ImagePlugin.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
+      <fingerprint md5="e07923e8e0d68e77b8854a8b9143ccbe"/>
+    </file>
+    <file name="Libaries\MemoryStreamModule.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
+      <fingerprint md5="755d335d17c1406d055722105c530364"/>
+    </file>
+    <file name="Includes\MainWindow.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
+      <fingerprint md5="718f67a18127753b034703b83398696b"/>
+    </file>
+  </section>
+  <section name="targets">
+    <target name="Default Target" enabled="1" default="1">
+      <inputfile value="Main.pb"/>
+      <outputfile value="Renderboy.exe"/>
+      <options xpskin="1" debug="1"/>
+    </target>
+  </section>
+</project>
