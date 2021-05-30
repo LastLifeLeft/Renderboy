@@ -181,6 +181,7 @@ Module ScrollBar
 		EndIf
 		ProcedureReturn a
 	EndProcedure
+	
 	Declare AddPathRoundedBox(x, y, Width, Height, Radius, Flag = #PB_Path_Default)
 	Declare Redraw(*This.PB_Gadget)
 	Declare Handler()
@@ -192,6 +193,7 @@ Module ScrollBar
 	Declare _SetGadgetAttribute(*this.PB_Gadget, Attribute, Value)
 	Declare _GetGadgetAttribute(*this.PB_Gadget, Attribute)
 	Declare _FreeGadget(*this.PB_Gadget)
+	
 	Macro CalculateSize
 		If \Vertical
 			\PageSize = Round(\PageLength / (\Maximum - \Minimum + 1) * (\Height - #Style_Margin * 2 ), #PB_Round_Nearest)
@@ -390,16 +392,22 @@ Module ScrollBar
 		EndIf
 	EndProcedure
 	
+	;TODO: Remove the Renderboy optimization
+	
 	Procedure _ResizeGadget(*this.PB_Gadget, x, y, Width, Height) ; Ok
 		Protected *GadgetData.GadgetData = *this\VT
-		
-		*this\VT = *GadgetData\OriginalVT
-		ResizeGadget(*GadgetData\Gadget, x, y, Width, Height)
-		*this\VT = *GadgetData
+; 		
+; 		*this\VT = *GadgetData\OriginalVT
+; 		ResizeGadget(*GadgetData\Gadget, x, y, Width, Height)
+; 		*this\VT = *GadgetData
 		
 		With *GadgetData
-			\Width = GadgetWidth(*GadgetData\Gadget)
-			\Height = GadgetHeight(*GadgetData\Gadget)
+			\Width = Width
+			\Height = Height
+			SetWindowPos_(GadgetID(\Gadget), 0, x, y, Width, Height, #SWP_NOREDRAW|#SWP_NOZORDER)
+			
+; 			\Width = GadgetWidth(\Gadget)
+; 			\Height = GadgetHeight(\Gadget) 
 			
 			CalculateSize
 		EndWith
@@ -537,7 +545,7 @@ CompilerIf #PB_Compiler_IsMainFile
 	Until WaitWindowEvent() = #PB_Event_CloseWindow
 CompilerEndIf
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 457
-; FirstLine = 37
-; Folding = CASE59
+; CursorPosition = 405
+; FirstLine = 18
+; Folding = CASEB9
 ; EnableXP

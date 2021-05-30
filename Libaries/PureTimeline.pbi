@@ -356,12 +356,15 @@ DeclareModule PureTL
 	Declare Gadget(Gadget, X, Y, Width, Height, Flags = #Default)
 	Declare Free(Gadget)
 	Declare Resize(Gadget, X, Y, Width, Height)
+	Declare ResizeEX(Gadget, X, Y, Width, Height, hWnd, Update)
+	Declare AssessDrop(Gadget, State, ObjectType, X, Y)
 	
 	; State
 	Declare GetActiveLine(Gadget)
 	Declare SetActiveLine(Gadget, LineID)
 	Declare Freeze(Gadget, State)
 	Declare SetTaskList(Gadget, TaskList)
+	
 	
 	; Line stuff
 	Declare AddLine(Gadget, Position, Text.s, Parent = 0, Flags = #Line_Default)
@@ -505,6 +508,9 @@ Module PureTL
 		State_HoverFoldButton.i
 		State_Duration.i
 		State_UserAction.i
+		State_AssetDragLine.i
+		State_AssetDragPosition.i
+		State_AssetDragDuration.i
 		
 		List *State_DataPoints.DataPoint()
 		List *State_MediaBlocks.MediaBlock()
@@ -536,6 +542,9 @@ Module PureTL
 		
 		Meas_VPosition.i
 		Meas_HPosition.i
+		
+		Meas_Height.i
+		Meas_Width.i
 		
 		; Colors
 		Color_List_Back_Alternate.l[3]
@@ -799,9 +808,13 @@ Module PureTL
 				\Comp_Body = CanvasBody
 				\Comp_List = CanvasList
 				
+				EnableGadgetDrop(CanvasBody, #PB_Drop_Private, #PB_Drag_Link, 1)
+				
 				;Measurement
 				\Meas_List_Width = #Size_List_MinimumWidth
 				\Meas_TL_ColumnWidth = #Size_TL_DefaultColumnWidth
+				\Meas_Width = Width
+				\Meas_Height = Height
 				
 				;Colors
 				\Color_List_Back_Alternate[#Cold] = FixColor(#Colors_List_Back_Alternate_Cold)
@@ -847,6 +860,7 @@ Module PureTL
 				\State_HoverLine = -1
 				\State_HoverFoldButton = -1
 				\State_Duration = #Default_Duration
+				\State_AssetDragLine = -1
 				
 				; Action
 				\Action_Drag_Position = -2
@@ -975,9 +989,72 @@ Module PureTL
 	EndProcedure
 	
 	Procedure Resize(Gadget, X, Y, Width, Height)
-		ResizeGadget(Gadget,  X, Y, Width, Height)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		
+		*GadgetData\Meas_Width = Width
+		*GadgetData\Meas_Height = Height
+		SetWindowPos_(GadgetID(Gadget), 0, X, Y, Width, Height, #SWP_NOZORDER)
 		Refit(Gadget)
 		Redraw(Gadget)
+	EndProcedure
+	
+	Procedure ResizeEX(Gadget, X, Y, Width, Height, hWnd, Update)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		
+		*GadgetData\Meas_Width = Width
+		*GadgetData\Meas_Height = Height
+		SendMessage_(GadgetID(*GadgetData\Comp_List), #WM_SETREDRAW, #False, 0)
+		SendMessage_(GadgetID(*GadgetData\Comp_Body), #WM_SETREDRAW, #False, 0)
+		Refit(Gadget)
+		Redraw(Gadget)
+		SetWindowPos_(GadgetID(Gadget), 0, X, Y, Width, Height, #SWP_NOZORDER)
+		SendMessage_(GadgetID(*GadgetData\Comp_List), #WM_SETREDRAW, #True, 0)
+		SendMessage_(GadgetID(*GadgetData\Comp_Body), #WM_SETREDRAW, #True, 0)
+		
+		RedrawWindow_(GadgetID(*GadgetData\Comp_List), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
+		RedrawWindow_(GadgetID(*GadgetData\Comp_Body), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
+		RedrawWindow_(GadgetID(*GadgetData\Comp_HScrollBar), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW)
+
+	EndProcedure
+	
+	Procedure AssessDrop(Gadget, State, ObjectType, X, Y)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), Line
+		
+		With *GadgetData
+			Select State
+				Case #PB_Drag_Update
+					If y > #Size_Header_Height
+						Y - #Size_Header_Height
+						Line = Y / #Size_TL_Height + \Meas_VPosition
+						If Line < \Cont_Displayed_Line
+							SelectElement(\Cont_Displayed_List(), Line)
+							\State_AssetDragLine = Line
+							\State_AssetDragPosition = X / \Meas_TL_ColumnWidth + \Meas_HPosition
+							Redraw(Gadget)
+							
+							ProcedureReturn #True
+						EndIf
+					EndIf
+				Case #PB_Drag_Finish
+					If \State_AssetDragLine > -1
+						SelectElement(\Cont_Displayed_List(), \State_AssetDragLine)
+; 						Line = \State_AssetDragLine
+						\State_AssetDragLine = -1
+						
+						PostEvent(#PB_Event_GadgetDrop, 0, Gadget, \Cont_Displayed_List(), \State_AssetDragPosition)
+						
+						ProcedureReturn #True
+					EndIf
+			EndSelect
+			
+			If \State_AssetDragLine > -1
+				\State_AssetDragLine = -1
+				Redraw(Gadget)
+			EndIf
+			
+		EndWith
+			
+		ProcedureReturn #False
 	EndProcedure
 	
 	; State
@@ -1124,8 +1201,6 @@ Module PureTL
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *result
 		Protected *Task.Task = AllocateStructure(Task), UUID.s = UUID(), MainNode, Item, Visible, BlockEnd = Position + Duration - 1, Loop
 		Protected BlockCenter = (Position + BlockEnd) / 2
-		
-		Color = FixColor(Color)
 		
 		With *GadgetData
 			;0) Task
@@ -2614,6 +2689,12 @@ Module PureTL
 					StrokePath(1)
 				EndIf
 				
+				If ListIndex = \State_AssetDragLine And \State_AssetDragPosition >= \Meas_HPosition And \State_AssetDragPosition <= MediaLoopMax
+					AddPathBox((\State_AssetDragPosition - \Meas_HPosition) * \Meas_TL_ColumnWidth, BodyYPos, 2, #Size_TL_Height)
+					VectorSourceColor($80FFFFFF)
+					FillPath()
+				EndIf
+				
 				ListIndex + 1
 				If Not NextElement(\Cont_Displayed_List())
 					Break
@@ -2623,7 +2704,7 @@ Module PureTL
 			;}
 			
 			Box(\Meas_List_Width - #Size_Line_Thin, 0, #Size_Line_Thin, \Meas_List_Height, \Color_General_Line)
-
+			
 			;{ Corners
 			DrawAlphaImage(ImageID(CornerDL), 0, \Meas_List_Height -3)
 			MovePathCursor(\Meas_Body_Width - 3, 0)
@@ -2684,12 +2765,12 @@ Module PureTL
 			FillPath(#PB_Path_Preserve)
 			
 			ClipPath()
-; 			If *Block\Duration 
+; 			If *Block\Duration ; Calculate the width of the text to see if we shoul display it)
 			XPos = Min(Max(XPos, -3), (*Block\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth - 37)
 			
 			VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Front[*Block\State]))
 			MovePathCursor( XPos + 10, YPos + 18)
-			VectorFont(MaterialIcon, 26)
+			VectorFont(Icon, 26)
 			DrawVectorText(*Block\Icon)
 			
 			VectorFont(FontTest)
@@ -2707,16 +2788,14 @@ Module PureTL
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 		
 		With *GadgetData
-			Protected Width = GadgetWidth(\Comp_Container), Height = GadgetHeight(\Comp_Container)
 			
-			\Meas_List_Height = Height - #Size_Header_Height
+			\Meas_List_Height = \Meas_Height - #Size_Header_Height
 			
-			ResizeGadget(\Comp_List, #PB_Ignore, #PB_Ignore, \Meas_List_Width, \Meas_List_Height)
+			SetWindowPos_(GadgetID(\Comp_List), 0, 0, #Size_Header_Height, \Meas_List_Width, \Meas_List_Height, #SWP_NOREDRAW|#SWP_NOZORDER)
+			\Meas_Body_Width = \Meas_Width - \Meas_List_Width
+			\Meas_Body_Height = \Meas_Height
 			
-			\Meas_Body_Width = Width - \Meas_List_Width
-			\Meas_Body_Height = Height
-			
-			ResizeGadget(\Comp_Body, \Meas_List_Width, #PB_Ignore, \Meas_Body_Width, \Meas_Body_Height)
+			SetWindowPos_(GadgetID(\Comp_Body), 0, \Meas_List_Width, 0, \Meas_Body_Width, \Meas_Body_Height, #SWP_NOREDRAW|#SWP_NOZORDER)
 			
 			\Meas_Displayed_Lines = Round(\Meas_List_Height / #Size_TL_Height, #PB_Round_Up)
 			
@@ -2728,8 +2807,9 @@ Module PureTL
 			
 			If \Meas_Displayed_Columns <= \State_Duration
 				Visible_HScrollbar = #True
-				ResizeGadget(\Comp_HScrollBar, #PB_Ignore, \Meas_Body_Height - #Size_Scrollbar_Thickness, \Meas_Body_Width - Visible_VScrollbar * #Size_Scrollbar_Thickness, #Size_Scrollbar_Thickness)
 				SetGadgetAttribute(\Comp_HScrollBar, #PB_ScrollBar_PageLength, \Meas_Displayed_Columns - 1)
+				ResizeGadget(\Comp_HScrollBar, 0, \Meas_Body_Height - #Size_Scrollbar_Thickness, \Meas_Body_Width - Visible_VScrollbar * #Size_Scrollbar_Thickness, #Size_Scrollbar_Thickness)
+				
 				HideGadget(\Comp_HScrollBar, #False)
 				\Meas_HPosition = GetGadgetState(\Comp_HScrollBar)
 			Else
@@ -2740,7 +2820,7 @@ Module PureTL
 			EndIf
 			
 			If Visible_VScrollbar
-				ResizeGadget(\Comp_VScrollBar, \Meas_Body_Width - #Size_Scrollbar_Thickness, #PB_Ignore, #Size_Scrollbar_Thickness, \Meas_List_Height - Visible_HScrollbar * #Size_Scrollbar_Thickness)
+				ResizeGadget(\Comp_VScrollBar, \Meas_Body_Width - #Size_Scrollbar_Thickness, #Size_Header_Height, #Size_Scrollbar_Thickness, \Meas_List_Height - Visible_HScrollbar * #Size_Scrollbar_Thickness)
 				SetGadgetAttribute(\Comp_VScrollBar, #PB_ScrollBar_PageLength, \Meas_Displayed_Lines - 1)
 				HideGadget(\Comp_VScrollBar, #False)
 				\Meas_VPosition = GetGadgetState(\Comp_VScrollBar)
@@ -2917,7 +2997,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 1349
-; FirstLine = 300
-; Folding = ABYgApACMICAUAAAEYgMA-
+; CursorPosition = 2767
+; FirstLine = 428
+; Folding = ABYgIhQAgAAYQBAAQgBiC9
 ; EnableXP

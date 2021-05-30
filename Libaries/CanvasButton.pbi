@@ -250,10 +250,10 @@ Module CanvasButton
 			If \MaterialVector
 				
 				If \Image > -1
-					If Width > Height
-						\ImageWidth = Height * 0.5
+					If \Width > \Height
+						\ImageWidth = \Height * 0.5
 					Else
-						\ImageWidth = Width * 0.5
+						\ImageWidth = \Width * 0.5
 					EndIf
 					
 					\ImageHeight = \ImageWidth
@@ -272,20 +272,18 @@ Module CanvasButton
 			EndIf	
 		CompilerEndIf
 		
-		\Font = DefaultFont
-		
 		If \Text <> ""
 			CompilerIf Defined(MaterialVector, #PB_Module)
 				If \MaterialVector
 					StartVectorDrawing(CanvasVectorOutput(\Gadget))
-					VectorFont(FontID(\Font))
+					VectorFont(\Font)
 					\TextWidth = VectorTextWidth(\Text)
 					\TextHeight = VectorTextHeight(\Text)
 					StopVectorDrawing()
 				Else
 			CompilerEndIf
 					StartDrawing(CanvasOutput(\Gadget))
-					DrawingFont(FontID(\Font))
+					DrawingFont(\Font)
 					\TextWidth = TextWidth(\Text)
 					\TextHeight = TextHeight(\Text)
 					StopDrawing()
@@ -325,6 +323,8 @@ Module CanvasButton
 	
 	Declare _SetGadgetState(*this.PB_Gadget, State.i)
 	Declare _SetGadgetColor(*this.PB_Gadget, ColorType, Color)
+	
+	Declare _SetGadgetFont(*this.PB_Gadget, Font)
 	;}
 	
 	;{ Public procedures
@@ -352,11 +352,15 @@ Module CanvasButton
 				\VT\SetGadgetState = @_SetGadgetState()
 				\VT\SetGadgetColor = @_SetGadgetColor()
 				
+				\VT\SetGadgetFont = @_SetGadgetFont()
+				
 				\Gadget = Gadget
 				\Inline = Bool(Flags & #Inline)
 				\Toggle = Bool(Flags & #Toggle)
 				\Outline = Bool(Flags & #Outline) 
 				\Rounded = Bool(Flags & #Rounded) * #All + Bool(Flags & #Rounded_Left) * #Left + Bool(Flags & #Rounded_Right) * #Right + Bool(Flags & #Rounded_Up) * #Up+ Bool(Flags & #Rounded_Down) * #Down
+				
+				\Font = FontID(DefaultFont)
 				
 				\State = #Cold
 				
@@ -461,7 +465,7 @@ Module CanvasButton
 			EndIf
 			
 			If \Text <> ""
-				DrawingFont(FontID(\Font))
+				DrawingFont(\Font)
 				DrawText(\TextX, \TextY, \Text, \FrontColor[\State], \BackColor[\State])
 			EndIf
 			
@@ -531,7 +535,7 @@ Module CanvasButton
 				EndIf
 				
 				If \Text <> ""
-					VectorFont(FontID(\Font))
+					VectorFont(\Font)
 					VectorSourceColor(\FrontColor[\State])
 					MovePathCursor(\TextX, \TextY)
 					DrawVectorText(\Text)
@@ -634,6 +638,16 @@ Module CanvasButton
 		EndWith
 	EndProcedure
 	
+	Procedure _SetGadgetFont(*this.PB_Gadget, Font)
+		Protected *GadgetData.GadgetData = *this\VT, Margin
+		
+		With *GadgetData
+			\Font = Font
+			CalculateSizes
+			\Redraw(*GadgetData)
+		EndWith
+	EndProcedure
+	
 	;}
 EndModule
 
@@ -668,7 +682,7 @@ CompilerIf #PB_Compiler_IsMainFile
 	
 CompilerEndIf
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 407
-; FirstLine = 42
-; Folding = MAAAND1
+; CursorPosition = 338
+; FirstLine = 84
+; Folding = MAEQPAo-
 ; EnableXP
