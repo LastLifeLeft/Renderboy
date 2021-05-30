@@ -39,7 +39,7 @@
 	;{ Public procedures
 	Procedure Gadget(Gadget, X, Y, Width, Height, Image, AssetType, Text.s, UUID.s)
 		Protected *GadgetData.GadgetData
-		Protected Result = CanvasGadget(Gadget, x, y, Width, Height, #PB_Canvas_Container), Margin
+		Protected Result = CanvasGadget(Gadget, x, y, Width, Height, #PB_Canvas_Container | #PB_Canvas_Keyboard), Margin
 		
 		If Result
 			If Gadget = #PB_Any
@@ -87,6 +87,19 @@
 		EndIf
 		
 		ProcedureReturn Result
+	EndProcedure
+	
+	Procedure Delete(Gadget)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		
+		If ActiveAssetButton = Gadget
+			ActiveAssetButton = 0
+		EndIf
+		
+		UnbindGadgetEvent(Gadget, @HandlerAssetButton())
+		FreeStructure(*GadgetData)
+		
+		FreeGadget(Gadget)
 	EndProcedure
 	
 	Procedure SetState(Gadget, State)
@@ -182,6 +195,11 @@
 				Case #PB_EventType_MouseWheel ;{
 					SetGadgetAttribute(MainWindow::#Asset_ScrollArea, #PB_ScrollArea_Y, GetGadgetAttribute(MainWindow::#Asset_ScrollArea, #PB_ScrollArea_Y) - GetGadgetAttribute(Gadget, #PB_Canvas_WheelDelta) * 45)
 					SetGadgetState(MainWindow::#Asset_ScrollBar, GetGadgetAttribute(MainWindow::#Asset_ScrollArea, #PB_ScrollArea_Y))
+					;}
+				Case #PB_EventType_KeyDown ;{
+					If GetGadgetAttribute(Gadget, #PB_Canvas_Key) = #PB_Shortcut_Delete
+						Project::DeleteAsset(\Type, \UUID)
+					EndIf
 					;}
 			EndSelect
 		EndWith
@@ -594,7 +612,7 @@
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 18
-; FirstLine = 3
-; Folding = -mz
+; CursorPosition = 55
+; FirstLine = 13
+; Folding = -MR-
 ; EnableXP

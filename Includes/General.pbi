@@ -39,6 +39,7 @@ DeclareModule MainWindow
 	                                
 	Declare Open()
 	Declare AddAssetButton(AssetType, Image, Text.s, UUID.s)
+	Declare DeleteAssetButton(AssetType, UUID.s)
 	
 	Enumeration ;Gadgets
 		#TimeLine
@@ -82,6 +83,8 @@ DeclareModule Project
 		#Asset_Type_Voice
 		#Asset_Type_Character
 		#Asset_Type_Model
+		
+		#__Asset_Type_Count
 	EndEnumeration
 	
 	Declare New()
@@ -90,6 +93,7 @@ DeclareModule Project
 	Declare Export()
 	Declare Archive()
 	Declare AddAsset(Asset.s)
+	Declare DeleteAsset(Type, UUID.s)
 	Declare Undo()
 	Declare Redo()
 	
@@ -102,6 +106,7 @@ DeclareModule AssetButton
 	Global DragUUID.s
 	
 	Declare Gadget(Gadget, X, Y, Width, Height, Image, AssetType, Text.s, UUID.s)
+	Declare Delete(Gadget)
 EndDeclareModule
 
 Module General
@@ -157,6 +162,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 96
+; CursorPosition = 86
+; FirstLine = 2
 ; Folding = +P9
 ; EnableXP

@@ -6,7 +6,8 @@
 	Structure Asset
 		Type.i
 		UUID.s
-		Name.s
+		Path.s
+		Image.i
 	EndStructure
 	
 	Structure Task
@@ -19,6 +20,14 @@
 		Map LibraryAsset.Asset(2048)
 	EndStructure
 	
+	Prototype Delete(UUID.s)
+	Prototype Add(Path.s, Image, UUID.s)
+	
+	Structure AssetProcedure
+		Add.Add
+		Delete.Delete
+	EndStructure
+		
 	Enumeration
 		#Asset_Media
 		#Asset_Sound
@@ -27,22 +36,44 @@
 		#Asset_Element
 	EndEnumeration
 	
+	#_Add = 0
+	#_Delete = 1
 	
 	Global Dim AssetLibrary.AssetLibrary(5)
+	Global Dim AssetProcedures.AssetProcedure(#__Asset_Type_Count)
 	
 	;Tasks
 	#AddAsset = "AddAsset"
 	#DeleteAsset = "DeleteAsset"
 	
+	
 	;}
 	
 	;{ Private procedures declaration
+	; Add Assets
 	Declare _AddImage(Path.s, PreviewImage, UUID.s)
-	Declare _AddVideo(Path.s, MainNode)
-	Declare _AddSound(Path.s, MainNode)
-	Declare _AddModel(Path.s, MainNode)
-	Declare _AddOverlay(Path.s, MainNode)
-	Declare _AddElement(Path.s, MainNode)
+	Declare _AddVideo(Path.s, PreviewImage, UUID.s)
+	Declare _AddSound(Path.s, PreviewImage, UUID.s)
+	Declare _AddModel(Path.s, PreviewImage, UUID.s)
+	Declare _AddOverlay(Path.s, PreviewImage, UUID.s)
+	Declare _AddElement(Path.s, PreviewImage, UUID.s)
+	
+	; Delete Assets
+	Declare _DeleteImage(UUID.s)
+	
+	AssetProcedures(#Asset_Type_Image)\Add = @_AddImage()
+	AssetProcedures(#Asset_Type_Video)\Add = @_AddVideo()
+	AssetProcedures(#Asset_Type_Sound)\Add = @_AddSound()
+	AssetProcedures(#Asset_Type_Music)\Add = @_AddSound()
+	AssetProcedures(#Asset_Type_Voice)\Add = @_AddSound()
+	AssetProcedures(#Asset_Type_Model)\Add = @_AddModel()
+	AssetProcedures(#Asset_Type_Character)\Add = @_AddModel()
+	
+	AssetProcedures(#Asset_Type_Image)\Delete = @_DeleteImage()
+	
+	
+	; Misc
+	Declare HandlerUndoRedo(*Task.Task, Redo)
 	;}
 	
 	;{ Public procedures
@@ -91,7 +122,6 @@
 						SetXMLAttribute(Item, "Path", Path)
 						
 						_AddImage(Path.s, Image, UUID.s)
-						
 					EndIf
 				Case "mp4", "mkv"
 					
@@ -101,21 +131,63 @@
 					
 			EndSelect
 		Next
+		
+		If XMLChildCount(MainNode)
+			
+			*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
+			FreeXML(*Task\XMLID)
+			TaskList::NewTask(TaskList, *Task, @HandlerUndoRedo())
+		Else
+			FreeStructure(*Task)
+		EndIf
+		
+	EndProcedure
+	
+	Procedure DeleteAsset(Type, UUID.s)
+		Protected *Task.Task = AllocateStructure(Task), MainNode, Item, SubItem
+		Protected Asset, *DeletionProcedure
+		
+		Select Type
+			Case #Asset_Type_Image, #Asset_Type_Video
+				Asset = #Asset_Media
+			Case #Asset_Type_Sound, #Asset_Type_Music, #Asset_Type_Voice
+				Asset = #Asset_Sound
+			Case #Asset_Type_Character, #Asset_Type_Model
+				Asset = #Asset_Model
+		EndSelect
+		
+		*Task\XMLID = CreateXML(#PB_Any)
+ 		MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks") 
+ 		Item = CreateXMLNode(MainNode, #DeleteAsset)
+ 		FindMapElement(AssetLibrary(Asset)\ProjectAssets(), UUID)
+ 		
+ 		; Delete any mediablock using this asset
+ 		
+ 		SetXMLAttribute(Item, "Asset", Str(Asset))
+ 		SetXMLAttribute(Item, "Type", Str(Type))
+ 		SetXMLAttribute(Item, "UUID", UUID)
+ 		SetXMLAttribute(Item, "Path", AssetLibrary(Asset)\ProjectAssets()\Path)
+ 		
+ 		*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
+ 		FreeXML(*Task\XMLID)
+ 		TaskList::NewTask(TaskList, *Task, @HandlerUndoRedo())
+ 		
+ 		AssetProcedures(Type)\Delete(UUID)
 	EndProcedure
 	
 	Procedure Undo()
-		Debug "undo"
+		TaskList::Undo(TaskList)
 	EndProcedure
 	
 	Procedure Redo()
-		Debug "redo"
+		TaskList::Redo(TaskList)
 	EndProcedure
 	
 	; Get
 	Procedure.s GetAssetName(UUID.s, Type)
 		Protected Result.s
 		If FindMapElement(AssetLibrary(Type)\ProjectAssets(), UUID)
-			Result = AssetLibrary(Type)\ProjectAssets()\Name
+			Result = GetFilePart(AssetLibrary(Type)\ProjectAssets()\Path)
 		EndIf
 		
 		ProcedureReturn Result
@@ -125,6 +197,7 @@
 	;}
 	
 	;{ Private procedures
+	; Add Assets
 	Procedure _AddImage(Path.s, Image, UUID.s)
 		Protected *Asset.Asset
 		If ImageWidth(Image) <> 160 Or ImageHeight(Image) <> 90
@@ -134,36 +207,81 @@
 		*Asset = AddMapElement(AssetLibrary(#Asset_Media)\ProjectAssets(), UUID)
 		*Asset\UUID = UUID
 		*Asset\Type = #Asset_Type_Image
-		*Asset\Name = GetFilePart(Path, #PB_FileSystem_NoExtension)
+		*Asset\Path = Path
+		*Asset\Image = Image
 		
-		MainWindow::AddAssetButton(#Asset_Type_Image, Image, *Asset\Name, *Asset\UUID)
+		MainWindow::AddAssetButton(#Asset_Type_Image, Image, GetFilePart(*Asset\Path, #PB_FileSystem_NoExtension), *Asset\UUID)
 	EndProcedure
 	
-	Procedure _AddVideo(Path.s, MainNode)
-		
-	EndProcedure
-	
-	Procedure _AddSound(Path.s, MainNode)
+	Procedure _AddVideo(Path.s, Image, UUID.s)
 		
 	EndProcedure
 	
-	Procedure _AddModel(Path.s, MainNode)
+	Procedure _AddSound(Path.s, Image, UUID.s)
 		
 	EndProcedure
 	
-	Procedure _AddOverlay(Path.s, MainNode)
+	Procedure _AddModel(Path.s, Image, UUID.s)
 		
 	EndProcedure
 	
-	Procedure _AddElement(Path.s, MainNode)
+	Procedure _AddOverlay(Path.s, Image, UUID.s)
 		
 	EndProcedure
 	
+	Procedure _AddElement(Path.s, Image, UUID.s)
+		
+	EndProcedure
+	
+	; Delete Assets
+	
+	Procedure _DeleteImage(UUID.s)
+		FindMapElement(AssetLibrary(#Asset_Media)\ProjectAssets(), UUID)
+		FreeImage(AssetLibrary(#Asset_Media)\ProjectAssets()\Image)
+		DeleteMapElement(AssetLibrary(#Asset_Media)\ProjectAssets())
+		MainWindow::DeleteAssetButton(#Asset_Media, UUID)
+	EndProcedure
+	
+	; Misc
+	Procedure HandlerUndoRedo(*Task.Task, Redo)
+		Protected XML = ParseXML(#PB_Any, *Task\XML), TaskNode = ChildXMLNode(RootXMLNode(XML)), TaskCount = XMLChildCount(TaskNode), Task
+		Protected Loop, SubTaskCount, SubLoop
+		
+		If Redo ;{ Redo
+			For Loop = 1 To TaskCount
+				Task = ChildXMLNode(TaskNode, Loop)
+				Select GetXMLNodeName(Task)
+					Case #AddAsset ;{
+						AssetProcedures(Val(GetXMLAttribute(Task, "Type")))\Add(GetXMLAttribute(Task, "Path"), LoadImage(#PB_Any, GetXMLAttribute(Task, "Path")), GetXMLAttribute(Task, "UUID"))
+						;}
+					Case #DeleteAsset ;{
+						AssetProcedures(Val(GetXMLAttribute(Task, "Type")))\Delete(GetXMLAttribute(Task, "UUID"))
+						;}
+				EndSelect
+			Next
+			;}
+		Else ;{ Undo
+			For Loop = TaskCount To 1 Step -1
+				Task = ChildXMLNode(TaskNode, Loop)
+				Select GetXMLNodeName(Task)
+					Case #AddAsset ;{
+						AssetProcedures(Val(GetXMLAttribute(Task, "Type")))\Delete(GetXMLAttribute(Task, "UUID"))
+						;}
+					Case #DeleteAsset ;{
+						AssetProcedures(Val(GetXMLAttribute(Task, "Type")))\Add(GetXMLAttribute(Task, "Path"), LoadImage(#PB_Any, GetXMLAttribute(Task, "Path")), GetXMLAttribute(Task, "UUID"))
+						;}
+				EndSelect
+			Next
+			;}
+		EndIf
+		
+		ProcedureReturn #True
+	EndProcedure
 	;}
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 120
-; FirstLine = 53
-; Folding = -B6-
+; CursorPosition = 269
+; FirstLine = 122
+; Folding = -HkB9-
 ; EnableXP

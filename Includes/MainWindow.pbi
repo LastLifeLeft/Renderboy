@@ -178,8 +178,14 @@
 	Global Timeline_Height = 304, AssetContainer_Width = #Size_AssetContainer_MinimumWidth
 	Global FileMenu, EditMenu, ProjectMenu, Renderer, AssetContainertID
 	Global MediaState.b
-	Global NewList AssetButtonList()
 	Global AssetButtonScrollBar, ScrollBarWidth = GetSystemMetrics_(#SM_CXVSCROLL) + 3
+	
+	Structure AssetButtonList
+		Gadget.i
+		UUID.s
+	EndStructure
+	
+	Global NewList AssetButtonList.AssetButtonList()
 	
 	;}
 	
@@ -425,9 +431,23 @@
 		AddElement(AssetButtonList())
 		
 		OpenGadgetList(#Asset_ScrollArea)
-		AssetButtonList() = AssetButton::Gadget(#PB_Any, 20, 20, 160, 110, Image, AssetType, Text, UUID)
+		AssetButtonList()\Gadget = AssetButton::Gadget(#PB_Any, 20, 20, 160, 110, Image, AssetType, Text, UUID)
+		AssetButtonList()\UUID = UUID
 		Refit()
 		CloseGadgetList()
+	EndProcedure
+	
+	Procedure DeleteAssetButton(AssetType, UUID.s)
+		If AssetType = MediaState
+			ForEach AssetButtonList()
+				If AssetButtonList()\UUID = UUID
+					AssetButton::Delete(AssetButtonList()\Gadget)
+					DeleteElement(AssetButtonList())
+					Refit()
+					Break
+				EndIf
+			Next
+		EndIf
 	EndProcedure
 	;}
 	
@@ -863,7 +883,7 @@
 		Protected Y = 20, ItemPerLine = (ContainerWidth - 30) / 170, Margin = ((ContainerWidth - 30) % 170) / (ItemPerLine - 1) + 170, Count
 		
 		ForEach AssetButtonList()
-			SetWindowPos_(GadgetID(AssetButtonList()), 0, 17 + Count * Margin, Y, 0, 0, #SWP_NOREDRAW | #SWP_NOSIZE | #SWP_NOZORDER)
+			SetWindowPos_(GadgetID(AssetButtonList()\Gadget), 0, 17 + Count * Margin, Y, 0, 0, #SWP_NOREDRAW | #SWP_NOSIZE | #SWP_NOZORDER)
 			Count + 1
 			If Count = ItemPerLine
 				Count = 0
@@ -939,7 +959,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 814
-; FirstLine = 358
-; Folding = hprAAAg9
+; CursorPosition = 885
+; FirstLine = 334
+; Folding = hp-AAAA5
 ; EnableXP

@@ -2765,7 +2765,7 @@ Module PureTL
 			FillPath(#PB_Path_Preserve)
 			
 			ClipPath()
-; 			If *Block\Duration ; Calculate the width of the text to see if we shoul display it)
+; 			If *Block\Duration ; Calculate the width of the text to see if we shoul display it
 			XPos = Min(Max(XPos, -3), (*Block\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth - 37)
 			
 			VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Front[*Block\State]))
@@ -2997,7 +2997,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 2767
-; FirstLine = 428
-; Folding = ABYgIhQAgAAYQBAAQgBiC9
+; CursorPosition = 2444
+; FirstLine = 374
+; Folding = ABYgIhAAwAAAAAAAYgBiC9
 ; EnableXP
