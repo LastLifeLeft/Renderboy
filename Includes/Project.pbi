@@ -46,7 +46,6 @@
 	#AddAsset = "AddAsset"
 	#DeleteAsset = "DeleteAsset"
 	
-	
 	;}
 	
 	;{ Private procedures declaration
@@ -70,7 +69,6 @@
 	AssetProcedures(#Asset_Type_Character)\Add = @_AddModel()
 	
 	AssetProcedures(#Asset_Type_Image)\Delete = @_DeleteImage()
-	
 	
 	; Misc
 	Declare HandlerUndoRedo(*Task.Task, Redo)
@@ -100,7 +98,7 @@
 	
 	Procedure AddAsset(Asset.s)
 		Protected Count = CountString(Asset, #LF$) + 1, Loop, Extension.s, Path.s, Image
-		Protected *Task.Task = AllocateStructure(Task), UUID.s = General::UUID(), MainNode, Item
+		Protected *Task.Task = AllocateStructure(Task), UUID.s, MainNode, Item
 		
 		*Task\XMLID = CreateXML(#PB_Any)
  		MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks") 
@@ -115,6 +113,7 @@
 					Image = LoadImage(#PB_Any, Path)
 					
 					If Image
+						UUID.s = General::UUID()
 						Item = CreateXMLNode(MainNode, #AddAsset)
 						SetXMLAttribute(Item, "Asset", Str(#Asset_Media))
 						SetXMLAttribute(Item, "Type", Str(#Asset_Type_Image))
@@ -186,9 +185,8 @@
 	; Get
 	Procedure.s GetAssetName(UUID.s, Type)
 		Protected Result.s
-		If FindMapElement(AssetLibrary(Type)\ProjectAssets(), UUID)
-			Result = GetFilePart(AssetLibrary(Type)\ProjectAssets()\Path)
-		EndIf
+		
+		Result = GetFilePart(AssetLibrary(Type)\ProjectAssets(UUID)\Path)
 		
 		ProcedureReturn Result
 	EndProcedure
@@ -281,7 +279,7 @@
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 269
-; FirstLine = 122
-; Folding = -HkB9-
+; CursorPosition = 100
+; FirstLine = 52
+; Folding = -HCB3+
 ; EnableXP

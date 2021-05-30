@@ -1200,26 +1200,48 @@ Module PureTL
 	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Icon.s, Text.s, Color)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *result
 		Protected *Task.Task = AllocateStructure(Task), UUID.s = UUID(), MainNode, Item, Visible, BlockEnd = Position + Duration - 1, Loop
-		Protected BlockCenter = (Position + BlockEnd) / 2
+		Protected BlockCenter = (Position + BlockEnd) / 2, Move, Target
 		
 		With *GadgetData
 			;0) Task
 			*Task\XMLID = CreateXML(#PB_Any)
 			MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks") 
+			Item = CreateXMLNode(MainNode, #CreateMediaBlock)
 			
 			;1) check if there is some stuff on those blocks and, if so, move it.
 			For Loop = Position To BlockEnd
 				If *Line\MediaBlocks(Loop)
-					If (*Line\MediaBlocks(Loop)\BlockStart + *Line\MediaBlocks(Loop)\BlockEnd) * 2 > BlockCenter
-						;move block by (blockend - position) (should be positive, so move to the right)
+					If (*Line\MediaBlocks(Loop)\BlockStart + *Line\MediaBlocks(Loop)\BlockEnd) / 2 > BlockCenter
+						Target = blockend - Loop + 1
+						Move = Batch_MoveMediaBlock(*GadgetData, *Line\MediaBlocks(Loop), Target, Item, #True)
+						
+						If Move < Target
+							Move = Move - Target
+							Position + Move
+							BlockEnd + Move
+							
+							If Loop > Position
+								Loop = Position
+							EndIf
+						EndIf
 					Else
-						;move block by (position - *Line\MediaBlocks(Loop)\BlockEnd) (should be negative, so move to the right)
+						Target = position - *Line\MediaBlocks(Loop)\BlockEnd - 1
+						Move = Batch_MoveMediaBlock(*GadgetData, *Line\MediaBlocks(Loop), Target, Item, #True)
+						
+						If Move > Target
+							Move = Move - Target
+							Position + Move
+							BlockEnd + Move
+							
+							If Loop < Position
+								Loop = Position
+							EndIf
+						EndIf
 					EndIf
 				EndIf
 			Next
 			
 			;2) create the object
-			Item = CreateXMLNode(MainNode, #CreateMediaBlock)
 			SetXMLAttribute(Item, "Gadget", Str(Gadget))
 			SetXMLAttribute(Item, "Line", *Line\UUID)
 			SetXMLAttribute(Item, "BlockStart", Str(Position))
@@ -2423,6 +2445,33 @@ Module PureTL
 						Redraw(*GadgetData\Comp_Container)
 						;}
 					Case #CreateMediaBlock ;{
+						SubTaskCount = XMLChildCount(Task)
+						
+						SubTaskCount = XMLChildCount(Task)
+						
+						For SubLoop = 1 To SubTaskCount
+							SubTask = ChildXMLNode(Task, SubLoop)
+							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
+							
+							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
+								*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
+							Next
+							
+							*MediaBlock\BlockStart = Val(GetXMLAttribute(SubTask, "NewStart"))
+							*MediaBlock\BlockEnd = Val(GetXMLAttribute(SubTask, "NewEnd"))
+							
+						Next
+						
+						For SubLoop = 1 To SubTaskCount
+							SubTask = ChildXMLNode(Task, SubLoop)
+							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
+							
+							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
+								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
+							Next
+							
+						Next
+						
 						_AddMediaBlock(*GadgetData,
 						               FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Line")),
 						               Val(GetXMLAttribute(Task, "BlockStart")),
@@ -2494,7 +2543,8 @@ Module PureTL
 							Data0 = ListIndex(*GadgetData\Cont_Line_List())
 						EndIf
 						
-						_RemoveLine(*GadgetData, Data0, *GadgetData\Lines()\Parent) ;}
+						_RemoveLine(*GadgetData, Data0, *GadgetData\Lines()\Parent)
+						;}
 					Case #DeleteLine ;{
 						_AddLine(*GadgetData,
 						         Val(GetXMLAttribute(Task, "Position")),
@@ -2522,7 +2572,34 @@ Module PureTL
 							*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
 						Next
 						DeleteMapElement(*GadgetData\MediaBlocks())
+						
+						SubTaskCount = XMLChildCount(Task)
+						
+						For SubLoop = 1 To SubTaskCount
+							SubTask = ChildXMLNode(Task, SubLoop)
+							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
+							
+							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
+								*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
+							Next
+							
+							*MediaBlock\BlockStart = Val(GetXMLAttribute(SubTask, "OriginalStart"))
+							*MediaBlock\BlockEnd = Val(GetXMLAttribute(SubTask, "OriginalEnd"))
+							
+						Next
+						
+						For SubLoop = 1 To SubTaskCount
+							SubTask = ChildXMLNode(Task, SubLoop)
+							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
+							
+							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
+								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
+							Next
+							
+						Next
+						
 						Redraw(*GadgetData\Comp_Container)
+						
 						;}
 					Case #DeleteMediaBlock ;{
 						_AddMediaBlock(*GadgetData,
@@ -2997,7 +3074,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 2444
-; FirstLine = 374
-; Folding = ABYgIhAAwAAAAAAAYgBiC9
+; CursorPosition = 2492
+; FirstLine = 452
+; Folding = ABYgIhAAkAAAAAAAYABgA9
 ; EnableXP
