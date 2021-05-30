@@ -96,6 +96,8 @@ DeclareModule Project
 	Declare DeleteAsset(Type, UUID.s)
 	Declare Undo()
 	Declare Redo()
+	Declare AssetUse(Type, UUID.s)
+	Declare AssetUnUse(Type, UUID.s)
 	
 	; Get
 	Declare.s GetAssetName(UUID.s, Type)
@@ -162,7 +164,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 86
-; FirstLine = 2
+; CursorPosition = 99
+; FirstLine = 5
 ; Folding = +P9
 ; EnableXP

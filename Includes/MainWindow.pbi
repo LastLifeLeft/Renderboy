@@ -206,6 +206,7 @@
 	Declare HandlerDrop(TargetHandle, State, Format, Action, x, y)
 	Declare HandlerDrag(Action)
 	Declare HandlerTimeLineDrop()
+	Declare HandlerTimeLine()
 	
 	; Misc
 	Declare Refit()
@@ -390,6 +391,7 @@
 		AddKeyboardShortcut(#Window, #PB_Shortcut_Control | #PB_Shortcut_Y, 18)
 		
 		BindEvent(#PB_Event_GadgetDrop, @HandlerTimeLineDrop(), #Window, #TimeLine)
+		BindGadgetEvent(#TimeLine,@HandlerTimeLine())
 		
 		; Misc
 		BindEvent(#PB_Event_Menu, Project::@Undo(), #Window, 17)
@@ -831,8 +833,20 @@
 				Type = #Asset_Model
 		EndSelect
 		
+  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID, Type), Color, Type, AssetButton::DragUUID)
+	EndProcedure
+	
+	Procedure HandlerTimeLine()
+		Protected *AssetUse.PureTL::AssetUse
 		
-  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID, Type), Color)
+		Select EventType()
+			Case PureTL::#EventType_AssetUnUse
+				*AssetUse = EventData()
+				Project::AssetUnUse(*AssetUse\AssetType, *AssetUse\UUID)
+			Case PureTL::#EventType_AssetUse
+				*AssetUse = EventData()
+				Project::AssetUse(*AssetUse\AssetType, *AssetUse\UUID)
+		EndSelect
 	EndProcedure
 	
 	; Misc
@@ -959,7 +973,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 885
-; FirstLine = 334
-; Folding = hp-AAAA5
+; CursorPosition = 835
+; FirstLine = 356
+; Folding = hp-AAAAm
 ; EnableXP

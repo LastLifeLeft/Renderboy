@@ -352,6 +352,16 @@ DeclareModule PureTL
 		#MB_FreeSize
 	EndEnumeration
 	
+	Enumeration #PB_EventType_FirstCustomValue
+		#EventType_AssetUse
+		#EventType_AssetUnUse
+	EndEnumeration
+	
+	Structure AssetUse
+		AssetType.i
+		UUID.s
+	EndStructure
+	
 	; Public procedures declaration
 	Declare Gadget(Gadget, X, Y, Width, Height, Flags = #Default)
 	Declare Free(Gadget)
@@ -376,12 +386,15 @@ DeclareModule PureTL
 	Declare SetLineText(Gadget, LineID, Text.s)
 	
 	; Media block
-	Declare AddMediaBlock(Gadget, LineID, Position, Duration, Icon.s, Text.s, Color)
+	Declare AddMediaBlock(Gadget, LineID, Position, Duration, Icon.s, Text.s, Color, AssetType, AssetUUID.s)
 	Declare DeleteMediaBlock(Gadget, MediaBlockID)
 	Declare MoveMediaBlock(Gadget, MediaBlockID, Offset)
+	Declare.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
 	
 	; Data point
 	
+	; Misc
+	Declare Handler_UndoRedo(*Task, Redo)
 	
 EndDeclareModule
 
@@ -452,6 +465,8 @@ Module PureTL
 		State.b
 		Drag.b
 		*StateListAdress
+		AssetType.i
+		AssetUUID.s
 	EndStructure
 	
 	Structure DataPoint
@@ -575,7 +590,7 @@ Module PureTL
 		XMLID.i
 		XML.s
 	EndStructure
-		
+	
 	;{ Default Setting
 	#Default_Duration = 300
 	;}
@@ -748,7 +763,7 @@ Module PureTL
 	Declare RenameLine(*GadgetData.GadgetData, *Line.Line, *Task.Task = 0)
 	Declare HandlerRenameString(hWnd, uMsg, wParam, lParam)
 	Declare _MoveLine(*GadgetData.GadgetData, *Line.Line, Position, *Parent.Line = 0)
-	Declare _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, Position, Duration, Icon.s, Text.s, Color, UUID.s)
+	Declare _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, Position, Duration, Icon.s, Text.s, Color, UUID.s, AssetType, AssetUUID.s)
 	
 	; Mediablock
 	Declare Batch_DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, MainNode)
@@ -1197,7 +1212,7 @@ Module PureTL
 	EndProcedure
 	
 	; Media block
-	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Icon.s, Text.s, Color)
+	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Icon.s, Text.s, Color, AssetType, AssetUUID.s)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *result
 		Protected *Task.Task = AllocateStructure(Task), UUID.s = UUID(), MainNode, Item, Visible, BlockEnd = Position + Duration - 1, Loop
 		Protected BlockCenter = (Position + BlockEnd) / 2, Move, Target
@@ -1250,11 +1265,14 @@ Module PureTL
 			SetXMLAttribute(Item, "Text", Text)
 			SetXMLAttribute(Item, "Color", Str(Color))
 			SetXMLAttribute(Item, "UUID", UUID)
+			SetXMLAttribute(Item, "AssetType", Str(AssetType))
+			SetXMLAttribute(Item, "AssetUUID", AssetUUID)
+			
 			*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
 			FreeXML(*Task\XMLID)
 			TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
 			
-			*result = _AddMediaBlock(*GadgetData, *Line.Line, Position, BlockEnd, Icon, Text, Color, UUID.s)
+			*result = _AddMediaBlock(*GadgetData, *Line.Line, Position, BlockEnd, Icon, Text, Color, UUID.s, AssetType, AssetUUID.s)
 			
 			Redraw(\Comp_Container)
 		EndWith
@@ -1279,6 +1297,24 @@ Module PureTL
 		
 	EndProcedure
 	
+	Procedure.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		Protected XML = CreateXML(#PB_Any), MainNode, Result.s
+		MainNode = CreateXMLNode(RootXMLNode(XML), "Tasks")
+		
+		With *GadgetData
+			ForEach \MediaBlocks()
+				If \MediaBlocks()\AssetUUID = AssetUUID
+					Batch_DeleteMediaBlock(*GadgetData, \MediaBlocks(), MainNode)
+				EndIf
+			Next
+		EndWith
+		
+		Result = ComposeXML(XML)
+		FreeXML(XML)
+		
+		ProcedureReturn Result
+	EndProcedure
 	; Data point
 	
 	;}
@@ -1666,8 +1702,8 @@ Module PureTL
 		ProcedureReturn RealOffset
 	EndProcedure
 	
-	Procedure _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, BlockStart, BlockEnd, Icon.s, Text.s, Color, UUID.s)
-		Protected *NewMediaBlock.MediaBlock = AddMapElement(*GadgetData\MediaBlocks(), UUID, #PB_Map_NoElementCheck), Loop
+	Procedure _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, BlockStart, BlockEnd, Icon.s, Text.s, Color, UUID.s, AssetType, AssetUUID.s)
+		Protected *NewMediaBlock.MediaBlock = AddMapElement(*GadgetData\MediaBlocks(), UUID, #PB_Map_NoElementCheck), Loop, *Data.AssetUse = AllocateStructure(AssetUse)
 		
 		*NewMediaBlock\BlockStart = BlockStart
 		*NewMediaBlock\BlockEnd = BlockEnd
@@ -1677,20 +1713,32 @@ Module PureTL
 		*NewMediaBlock\Color = Color
 		*NewMediaBlock\Icon = Icon
 		*NewMediaBlock\Text = Text
+		*NewMediaBlock\AssetType = AssetType
+		*NewMediaBlock\AssetUUID = AssetUUID
 		
 		For Loop = BlockStart To BlockEnd
 			*Line\MediaBlocks(Loop) = *NewMediaBlock
 		Next
 		
+		*Data\AssetType = AssetType
+		*Data\UUID = AssetUUID
+		
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_AssetUse, *Data)
+		
 		ProcedureReturn *NewMediaBlock
 	EndProcedure
 	
 	Procedure _DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock)
-		Protected Loop
+		Protected Loop, *Data.AssetUse = AllocateStructure(AssetUse)
 		
 		For Loop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
 			*MediaBlock\Line\MediaBlocks(Loop) = 0
 		Next
+		
+		*Data\AssetType = *MediaBlock\AssetType
+		*Data\UUID = *MediaBlock\AssetUUID
+		
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_AssetUnUse, *Data)
 		
 		DeleteMapElement(*GadgetData\MediaBlocks(), *MediaBlock\UUID)
 		
@@ -2479,7 +2527,9 @@ Module PureTL
 						               GetXMLAttribute(Task, "Icon"),
 						               GetXMLAttribute(Task, "Text"),
 						               Val(GetXMLAttribute(Task, "Color")),
-						               GetXMLAttribute(Task, "UUID"))
+						               GetXMLAttribute(Task, "UUID"),
+						               Val(GetXMLAttribute(Task, "AssetType")),
+						               GetXMLAttribute(Task, "AssetUUID"))
 						Redraw(*GadgetData\Comp_Container)
 						;}
 					Case #DeleteMediaBlock ;{
@@ -2609,7 +2659,9 @@ Module PureTL
 						               GetXMLAttribute(Task, "Icon"),
 						               GetXMLAttribute(Task, "Text"),
 						               Val(GetXMLAttribute(Task, "Color")),
-						               GetXMLAttribute(Task, "UUID"))
+						               GetXMLAttribute(Task, "UUID"),
+						               Val(GetXMLAttribute(Task, "AssetType")),
+						               GetXMLAttribute(Task, "AssetUUID"))
 						Redraw(*GadgetData\Comp_Container)
 						;}
 					Case #MoveMediaBlock ;{
@@ -3074,7 +3126,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 2492
-; FirstLine = 452
-; Folding = ABYgIhAAkAAAAAAAYABgA9
+; CursorPosition = 1302
+; FirstLine = 301
+; Folding = AB5ADSBAQDoEAAAAAhEECw
 ; EnableXP

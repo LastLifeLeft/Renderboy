@@ -8,6 +8,7 @@
 		UUID.s
 		Path.s
 		Image.i
+		UsageCount.i
 	EndStructure
 	
 	Structure Task
@@ -143,7 +144,7 @@
 	EndProcedure
 	
 	Procedure DeleteAsset(Type, UUID.s)
-		Protected *Task.Task = AllocateStructure(Task), MainNode, Item, SubItem
+		Protected *Task.Task = AllocateStructure(Task), MainNode, Item, MediaBlocks.s
 		Protected Asset, *DeletionProcedure
 		
 		Select Type
@@ -160,11 +161,15 @@
  		Item = CreateXMLNode(MainNode, #DeleteAsset)
  		FindMapElement(AssetLibrary(Asset)\ProjectAssets(), UUID)
  		
- 		; Delete any mediablock using this asset
+ 		If AssetLibrary(Asset)\ProjectAssets()\UsageCount
+ 			; Delete any mediablock using this asset
+ 			MediaBlocks = PureTL::DeleteMediaBlockByAsset(MainWindow::#TimeLine, UUID)
+ 		EndIf
  		
  		SetXMLAttribute(Item, "Asset", Str(Asset))
  		SetXMLAttribute(Item, "Type", Str(Type))
  		SetXMLAttribute(Item, "UUID", UUID)
+ 		SetXMLAttribute(Item, "MediaBlocks", MediaBlocks)
  		SetXMLAttribute(Item, "Path", AssetLibrary(Asset)\ProjectAssets()\Path)
  		
  		*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
@@ -180,6 +185,14 @@
 	
 	Procedure Redo()
 		TaskList::Redo(TaskList)
+	EndProcedure
+	
+	Procedure AssetUse(Type, UUID.s)
+		AssetLibrary(Type)\ProjectAssets(UUID)\UsageCount + 1
+	EndProcedure
+	
+	Procedure AssetUnUse(Type, UUID.s)
+		AssetLibrary(Type)\ProjectAssets(UUID)\UsageCount - 1
 	EndProcedure
 	
 	; Get
@@ -243,7 +256,7 @@
 	; Misc
 	Procedure HandlerUndoRedo(*Task.Task, Redo)
 		Protected XML = ParseXML(#PB_Any, *Task\XML), TaskNode = ChildXMLNode(RootXMLNode(XML)), TaskCount = XMLChildCount(TaskNode), Task
-		Protected Loop, SubTaskCount, SubLoop
+		Protected Loop, SubTaskCount, SubLoop, MediaBlocks.s, *MediaBLock.Task
 		
 		If Redo ;{ Redo
 			For Loop = 1 To TaskCount
@@ -254,6 +267,14 @@
 						;}
 					Case #DeleteAsset ;{
 						AssetProcedures(Val(GetXMLAttribute(Task, "Type")))\Delete(GetXMLAttribute(Task, "UUID"))
+						MediaBlocks = GetXMLAttribute(Task, "MediaBlocks")
+						
+						If MediaBlocks
+							*MediaBLock = AllocateStructure(Task)
+							*MediaBLock\XML = MediaBlocks
+							
+							PureTL::Handler_UndoRedo(*MediaBLock, #True)
+						EndIf
 						;}
 				EndSelect
 			Next
@@ -266,7 +287,16 @@
 						AssetProcedures(Val(GetXMLAttribute(Task, "Type")))\Delete(GetXMLAttribute(Task, "UUID"))
 						;}
 					Case #DeleteAsset ;{
+						MediaBlocks = GetXMLAttribute(Task, "MediaBlocks")
+						
+						If MediaBlocks
+							*MediaBLock = AllocateStructure(Task)
+							*MediaBLock\XML = MediaBlocks
+							
+							PureTL::Handler_UndoRedo(*MediaBLock, #False)
+						EndIf
 						AssetProcedures(Val(GetXMLAttribute(Task, "Type")))\Add(GetXMLAttribute(Task, "Path"), LoadImage(#PB_Any, GetXMLAttribute(Task, "Path")), GetXMLAttribute(Task, "UUID"))
+						
 						;}
 				EndSelect
 			Next
@@ -279,7 +309,7 @@
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 100
-; FirstLine = 52
-; Folding = -HCB3+
+; CursorPosition = 282
+; FirstLine = 151
+; Folding = -DkH5-
 ; EnableXP
