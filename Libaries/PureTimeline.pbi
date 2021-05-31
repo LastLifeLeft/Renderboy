@@ -355,6 +355,7 @@ DeclareModule PureTL
 	Enumeration #PB_EventType_FirstCustomValue
 		#EventType_AssetUse
 		#EventType_AssetUnUse
+		#EventType_PlayerMove
 	EndEnumeration
 	
 	Structure AssetUse
@@ -2006,6 +2007,7 @@ Module PureTL
 								If Column <> \State_PlayerPosition
 									\State_PlayerPosition = Column
 									Redraw(\Comp_Container)
+									PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove, Column)
 								EndIf
 								
 								\State_UserAction = #Action_Player_Drag
@@ -2153,6 +2155,7 @@ Module PureTL
 						Case #PB_EventType_MouseMove ;{
 							Column = (MouseX - \Action_Drag_OriginX) / \Meas_TL_ColumnWidth
 							If \Action_Drag_Offset <> Column
+								PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove, Column)
 								\Action_Drag_Offset = Column
 								Redraw(\Comp_Container)
 							EndIf
@@ -2173,7 +2176,7 @@ Module PureTL
 							\State_UserAction = #Action_Hover
 							Redraw(\Comp_Container)
 							;}
-					EndSelect		
+					EndSelect
 					;}
 				Case #Action_Player_Drag ;{
 					Select EventType()
@@ -3405,7 +3408,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 2779
-; FirstLine = 472
-; Folding = AB5ATQBAIKAAAIGAAADYARA9
+; CursorPosition = 1939
+; FirstLine = 252
+; Folding = AB5ABQBAIIAAGYGAAAAIARA9
 ; EnableXP
