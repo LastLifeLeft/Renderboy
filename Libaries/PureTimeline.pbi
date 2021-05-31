@@ -374,7 +374,7 @@ DeclareModule PureTL
 	Declare SetActiveLine(Gadget, LineID)
 	Declare Freeze(Gadget, State)
 	Declare SetTaskList(Gadget, TaskList)
-	
+	Declare GetPlayerPosition(Gadget)
 	
 	; Line stuff
 	Declare AddLine(Gadget, Position, Text.s, Parent = 0, Flags = #Line_Default)
@@ -442,6 +442,8 @@ Module PureTL
 		
 		#Action_Body_InitDrag
 		#Action_Body_Drag
+		
+		#Action_Player_Drag
 	EndEnumeration
 	
 	;Tasks
@@ -526,6 +528,7 @@ Module PureTL
 		State_AssetDragLine.i
 		State_AssetDragPosition.i
 		State_AssetDragDuration.i
+		State_PlayerPosition.i
 		
 		List *State_DataPoints.DataPoint()
 		List *State_MediaBlocks.MediaBlock()
@@ -621,6 +624,12 @@ Module PureTL
 	
 	#Size_MediaBlock_Height = 44
 	#Size_MediaBlock_VerticalMargin = (#Size_TL_Height - #Size_MediaBlock_Height) / 2
+	
+	#Size_Player_Width = 1
+	#Size_Player_TopHeight = 24
+	#Size_Player_TopWidth = 18
+	#Size_Player_TopOffset = (#Size_Player_TopWidth - #Size_Player_Width) / 2
+	#Size_Player_TopSquare = #Size_Player_TopHeight - #Size_Player_TopOffset - 1
 	
 	; Colors
 	#Colors_List_Back_Alternate_Cold = $232941
@@ -1073,7 +1082,7 @@ Module PureTL
 	EndProcedure
 	
 	; State
-	Procedure GetActiveLine(Gadget)
+	Procedure GetActiveLine(Gadget) ; Ok
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Result
 		
 		If *GadgetData\State_ActiveLine > -1
@@ -1084,7 +1093,7 @@ Module PureTL
 		ProcedureReturn *Result
 	EndProcedure
 	
-	Procedure SetActiveLine(Gadget, *Line.Line)
+	Procedure SetActiveLine(Gadget, *Line.Line) ; Ok
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 		
 		If *Line\DisplayListAdress
@@ -1110,6 +1119,12 @@ Module PureTL
 	Procedure SetTaskList(Gadget, TaskList) ; Ok
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
  		*GadgetData\State_TaskList = TaskList
+	EndProcedure
+	
+	Procedure GetPlayerPosition(Gadget) ; Ok
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		
+		ProcedureReturn *GadgetData\State_PlayerPosition
 	EndProcedure
 	
 	; Line stuff
@@ -1837,9 +1852,7 @@ Module PureTL
 				Case #Action_Hover ;{
 					Select EventType()
 						Case #PB_EventType_MouseMove ;{
-							If MouseY <= #Size_Header_Height
-								
-							Else
+							If MouseY > #Size_Header_Height
 								MouseY - #Size_Header_Height
 								Line = MouseY / #Size_TL_Height + \Meas_VPosition
 								MouseY % #Size_TL_Height
@@ -1874,42 +1887,53 @@ Module PureTL
 							EndIf
 							;}
 						Case #PB_EventType_LeftButtonDown ;{
-							If GetGadgetAttribute(\Comp_Body, #PB_Canvas_Modifiers) & #PB_Canvas_Control
-								If \State_HoverMB
-									\Action_Drag_OriginX = MouseX
-									\Action_Drag_OriginY = MouseY
-									\State_UserAction = #Action_Body_InitDrag
-									\Action_InitDrag_Modifier = #PB_Canvas_Control
-									If \State_HoverMB\State = #warm
-										\State_HoverMB\StateListAdress = AddElement(\State_MediaBlocks())
-										\State_MediaBlocks() = \State_HoverMB
-										\State_HoverMB\State = #Hot
-										Redraw(\Comp_Container)
-										\State_HoverMB = 0
-									EndIf
+							If MouseY < #Size_Header_Height
+								Column = Min(Max(Round(MouseX / \Meas_TL_ColumnWidth, #PB_Round_Nearest) + \Meas_HPosition, 0), \Meas_Displayed_Columns)
+								If Column <> \State_PlayerPosition
+									\State_PlayerPosition = Column
+									Redraw(\Comp_Container)
 								EndIf
+								
+								\State_UserAction = #Action_Player_Drag
+								
 							Else
-								If \State_HoverMB
-									\Action_Drag_OriginX = MouseX
-									\Action_Drag_OriginY = MouseY
-									\State_UserAction = #Action_Body_InitDrag
-									\Action_InitDrag_Modifier = 0
-									If \State_HoverMB\State = #warm
+								If GetGadgetAttribute(\Comp_Body, #PB_Canvas_Modifiers) & #PB_Canvas_Control
+									If \State_HoverMB
+										\Action_Drag_OriginX = MouseX
+										\Action_Drag_OriginY = MouseY
+										\State_UserAction = #Action_Body_InitDrag
+										\Action_InitDrag_Modifier = #PB_Canvas_Control
+										If \State_HoverMB\State = #warm
+											\State_HoverMB\StateListAdress = AddElement(\State_MediaBlocks())
+											\State_MediaBlocks() = \State_HoverMB
+											\State_HoverMB\State = #Hot
+											Redraw(\Comp_Container)
+											\State_HoverMB = 0
+										EndIf
+									EndIf
+								Else
+									If \State_HoverMB
+										\Action_Drag_OriginX = MouseX
+										\Action_Drag_OriginY = MouseY
+										\State_UserAction = #Action_Body_InitDrag
+										\Action_InitDrag_Modifier = 0
+										If \State_HoverMB\State = #warm
+											ForEach \State_MediaBlocks()
+												\State_MediaBlocks()\State = #Cold
+												DeleteElement(\State_MediaBlocks())
+											Next
+											\State_HoverMB\StateListAdress = AddElement(\State_MediaBlocks())
+											\State_MediaBlocks() = \State_HoverMB
+											\State_HoverMB\State = #Hot
+											Redraw(\Comp_Container)
+										EndIf
+									Else
 										ForEach \State_MediaBlocks()
 											\State_MediaBlocks()\State = #Cold
 											DeleteElement(\State_MediaBlocks())
 										Next
-										\State_HoverMB\StateListAdress = AddElement(\State_MediaBlocks())
-										\State_MediaBlocks() = \State_HoverMB
-										\State_HoverMB\State = #Hot
 										Redraw(\Comp_Container)
 									EndIf
-								Else
-									ForEach \State_MediaBlocks()
-										\State_MediaBlocks()\State = #Cold
-										DeleteElement(\State_MediaBlocks())
-									Next
-									Redraw(\Comp_Container)
 								EndIf
 							EndIf
 							;}
@@ -2016,6 +2040,20 @@ Module PureTL
 							;}
 					EndSelect		
 					;}
+				Case #Action_Player_Drag ;{
+					Select EventType()
+						Case #PB_EventType_MouseMove ;{
+							Column = Min(Max(Round(MouseX / \Meas_TL_ColumnWidth, #PB_Round_Nearest) + \Meas_HPosition, 0), \Meas_Displayed_Columns)
+							If Column <> \State_PlayerPosition
+								\State_PlayerPosition = Column
+								Redraw(\Comp_Container)
+							EndIf
+							;}
+						Case #PB_EventType_LeftButtonUp;{
+							\State_UserAction = #Action_Hover
+							;}
+					EndSelect
+					;}	
 			EndSelect
 		EndWith
 		
@@ -2834,6 +2872,22 @@ Module PureTL
 			
 			Box(\Meas_List_Width - #Size_Line_Thin, 0, #Size_Line_Thin, \Meas_List_Height, \Color_General_Line)
 			
+			;{ Player
+			If \State_PlayerPosition >= \Meas_HPosition - 5 And \State_PlayerPosition <= MediaLoopMax + 5
+				MovePathCursor((\State_PlayerPosition - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5 - #Size_Player_TopOffset, 0)
+				AddPathLine(0, #Size_Player_TopSquare, #PB_Path_Relative)
+				AddPathLine(#Size_Player_TopOffset - 0.5, #Size_Player_TopHeight - #Size_Player_TopSquare, #PB_Path_Relative)
+				AddPathLine(#Size_Player_Width, 0, #PB_Path_Relative)
+				AddPathLine(#Size_Player_TopOffset - 0.5, - (#Size_Player_TopHeight - #Size_Player_TopSquare), #PB_Path_Relative)
+				AddPathLine(0, - #Size_Player_TopSquare, #PB_Path_Relative)
+				ClosePath()
+				MovePathCursor(#Size_Player_TopOffset - 0.5, #Size_Player_TopHeight, #PB_Path_Relative)
+				AddPathBox(0,0, #Size_Player_Width, \Meas_Body_Height, #PB_Path_Relative)
+				VectorSourceColor($FF5466FF)
+				FillPath()
+			EndIf
+			;}
+			
 			;{ Corners
 			DrawAlphaImage(ImageID(CornerDL), 0, \Meas_List_Height -3)
 			MovePathCursor(\Meas_Body_Width - 3, 0)
@@ -2894,18 +2948,18 @@ Module PureTL
 			FillPath(#PB_Path_Preserve)
 			
 			ClipPath()
-; 			If *Block\Duration ; Calculate the width of the text to see if we shoul display it
-			XPos = Min(Max(XPos, -3), (*Block\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth - 37)
-			
-			VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Front[*Block\State]))
-			MovePathCursor( XPos + 10, YPos + 18)
-			VectorFont(Icon, 26)
-			DrawVectorText(*Block\Icon)
-			
-			VectorFont(FontTest)
-			MovePathCursor( XPos + 47, YPos + 22)
-			DrawVectorText(*Block\Text)
-			
+ 			If *Block\Duration * \Meas_TL_ColumnWidth >= 37 ; Calculate the width of the text to see if we shoul display it
+				XPos = Min(Max(XPos, -3), (*Block\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth - 37)
+				
+				VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Front[*Block\State]))
+				MovePathCursor( XPos + 10, YPos + 18)
+				VectorFont(Icon, 26)
+				DrawVectorText(*Block\Icon)
+				
+				VectorFont(FontTest)
+				MovePathCursor( XPos + 47, YPos + 22)
+				DrawVectorText(*Block\Text)
+			EndIf
 			RestoreVectorState()
 		EndWith
 		ProcedureReturn *Block\BlockEnd
@@ -3126,7 +3180,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 1302
-; FirstLine = 301
-; Folding = AB5ADSBAQDoEAAAAAhEECw
+; CursorPosition = 2961
+; FirstLine = 197
+; Folding = AB5ACiBAAEAAFwAAAQIBBF5
 ; EnableXP

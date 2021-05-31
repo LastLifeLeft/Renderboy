@@ -119,7 +119,7 @@
 	;{ Private procedures
 	Procedure HandlerAssetButton()
 		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget)
-		Protected MouseX, MouseY
+		Protected MouseX, MouseY, Line
 		
 		With *GadgetData
 			Select EventType()
@@ -170,21 +170,27 @@
 					EndIf
 					;}
 				Case #PB_EventType_LeftButtonDown ;{
+					If ActiveAssetButton
+						SetState(ActiveAssetButton, #False)
+					EndIf
+					
+					If Not ActiveAssetButton = Gadget
+						ActiveAssetButton = Gadget
+						\State = 1
+						Redraw(Gadget)
+					EndIf
+					
 					If \Cursor = 0
-						If ActiveAssetButton
-							SetState(ActiveAssetButton, #False)
-						EndIf
-						
-						If Not ActiveAssetButton = Gadget
-							ActiveAssetButton = Gadget
-							\State = 1
-							Redraw(Gadget)
-						EndIf
-						
 						\OriginX = GetGadgetAttribute(Gadget, #PB_Canvas_MouseX)
 						\OriginY = GetGadgetAttribute(Gadget, #PB_Canvas_MouseY)
 					Else
-						
+						\State = 2
+						Line = PureTL::GetActiveLine(MainWindow::#TimeLine)
+						If Line
+							DragType = \Type
+ 							DragUUID = \UUID
+							PostEvent(#PB_Event_GadgetDrop, MainWindow::#Window, MainWindow::#TimeLine, Line, PureTL::GetPlayerPosition(MainWindow::#TimeLine))
+						EndIf
 					EndIf
 					;}
 				Case #PB_EventType_LeftButtonUp ;{
@@ -612,7 +618,7 @@
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 55
-; FirstLine = 13
-; Folding = -MR-
+; CursorPosition = 182
+; FirstLine = 25
+; Folding = fMS-
 ; EnableXP

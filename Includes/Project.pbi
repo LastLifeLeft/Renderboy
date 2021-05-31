@@ -199,7 +199,7 @@
 	Procedure.s GetAssetName(UUID.s, Type)
 		Protected Result.s
 		
-		Result = GetFilePart(AssetLibrary(Type)\ProjectAssets(UUID)\Path)
+		Result = GetFilePart(AssetLibrary(Type)\ProjectAssets(UUID)\Path, #PB_FileSystem_NoExtension)
 		
 		ProcedureReturn Result
 	EndProcedure
@@ -309,7 +309,7 @@
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 282
-; FirstLine = 151
-; Folding = -DkH5-
+; CursorPosition = 76
+; FirstLine = 13
+; Folding = DCAGA8
 ; EnableXP
