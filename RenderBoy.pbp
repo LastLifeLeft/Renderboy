@@ -7,24 +7,24 @@
   <section name="data">
     <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2021-05-31 14:22" user="Poshu" host="DESKTOP-OQ0F2A5"/>
+    <lastopen date="2021-06-01 15:00" user="Poshu" host="DESKTOP-OQ0F2A5"/>
   </section>
   <section name="files">
     <file name="Includes\AssetButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="5a8643b49f114c54fd6ae1d90caa4c65"/>
+      <fingerprint md5="21e4bbc65b143555f4c6f54875f4bea4"/>
     </file>
     <file name="Includes\General.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="4d4b739f0a3327b1f76fe27895c654f4"/>
+      <fingerprint md5="81ad496d5b3397682886eee801edcc99"/>
     </file>
     <file name="Includes\MainWindow.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="848bdd67422321673c23b226d3048135"/>
+      <fingerprint md5="1de4fa938941312bfef0e3d6fa7895cd"/>
     </file>
     <file name="Includes\Project.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="65640239c0c1aa5392c0cf945f230e04"/>
+      <fingerprint md5="5f1cf35bc3e14c72e1cc5d718db25d89"/>
     </file>
     <file name="Libaries\CanvasButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -52,7 +52,7 @@
     </file>
     <file name="Libaries\PureTimeline.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="42e838d15bdbbc43f8eacb8fa3dd7137"/>
+      <fingerprint md5="d4775f9a7fa2f1d4ba4e7a4b09e65122"/>
     </file>
     <file name="Libaries\ScrollBar.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -67,8 +67,8 @@
       <fingerprint md5="e9a3543fc499940ba9934209c884b7a1"/>
     </file>
     <file name="Main.pb">
-      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="+"/>
-      <fingerprint md5="3adfbf9db05fb91d0130dc5da8b3906e"/>
+      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
+      <fingerprint md5="9d462d4d95791df7ed4c09ed7f789541"/>
     </file>
   </section>
   <section name="targets">
@@ -76,6 +76,14 @@
       <inputfile value="Main.pb"/>
       <outputfile value="Renderboy.exe"/>
       <options xpskin="1" debug="1"/>
+    </target>
+    <target name="DLL" enabled="1" default="0">
+      <inputfile value="Main.pb"/>
+      <outputfile value="GMS\RenderBoy\extensions\NativeUI\UI.dll"/>
+      <compiler version="PureBasic 5.73 LTS (Windows - x86)"/>
+      <executable value="GMS\RenderBoy\extensions\NativeUI\UI.dll"/>
+      <options xpskin="1"/>
+      <format exe="dll" cpu="0"/>
     </target>
   </section>
 </project>

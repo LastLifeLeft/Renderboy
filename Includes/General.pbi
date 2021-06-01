@@ -5,6 +5,16 @@
 	#PB_Image_KeepAspectRatio = 2
 	#PB_Image_LetterBox = 6
 	
+	Enumeration ;Events
+		#Event_None
+		#Event_End
+		#Event_Resize
+		#Event_ReRender
+	EndEnumeration
+	
+	Global WindowName.s
+	Global NewList EventList()
+	
 	CompilerIf #PB_Compiler_OS = #PB_OS_Windows ; Fix color
 		Macro FixColor(Color)
 			RGB(Blue(Color), Green(Color), Red(Color))
@@ -20,7 +30,7 @@
 			Alpha << 24 + Color
 		EndMacro
 	CompilerElse
-		Macro SetAlpha(Alpha, Color) ; You might want to check that...
+		Macro SetAlpha(Alpha, Color) ; Not tested...
 			Color << 8 + Alpha
 		EndMacro
 	CompilerEndIf
@@ -36,7 +46,8 @@ DeclareModule MainWindow
 	Global MaterialIcon = FontID(LoadFont(#PB_Any, "Material Design Icons Desktop", 16, #PB_Font_HighQuality))
 	Global MaterialIconBig = FontID(LoadFont(#PB_Any, "Material Design Icons Desktop", 20, #PB_Font_HighQuality))
 	Global DragPreview, ImagePreview, DragPreviewVisible
-	                                
+	Global RendererWidth, RendererHeight
+	
 	Declare Open()
 	Declare AddAssetButton(AssetType, Image, Text.s, UUID.s)
 	Declare DeleteAssetButton(AssetType, UUID.s)
@@ -93,19 +104,18 @@ DeclareModule Project
 	Declare Export()
 	Declare Archive()
 	Declare AddAsset(Asset.s)
-	Declare DeleteAsset(Type, UUID.s)
+	Declare DeleteAsset(UUID.s)
 	Declare Undo()
 	Declare Redo()
-	Declare AssetUse(Type, UUID.s)
-	Declare AssetUnUse(Type, UUID.s)
+	Declare AssetUse(UUID.s)
+	Declare AssetUnUse(UUID.s)
 	
 	; Get
-	Declare.s GetAssetName(UUID.s, Type)
+	Declare.s GetAssetName(UUID.s)
 EndDeclareModule
 
 DeclareModule AssetButton
-	Global DragType.i
-	Global DragUUID.s
+	Global DragType.i, DragUUID.s, PlusImage, Color
 	
 	Declare Gadget(Gadget, X, Y, Width, Height, Image, AssetType, Text.s, UUID.s)
 	Declare Delete(Gadget)
@@ -164,7 +174,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 99
-; FirstLine = 5
-; Folding = +P9
+; CursorPosition = 60
+; FirstLine = 28
+; Folding = tP9
 ; EnableXP

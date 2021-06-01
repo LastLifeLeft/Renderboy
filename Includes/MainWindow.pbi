@@ -377,13 +377,6 @@
 		SetGadgetColor(#Asset_ScrollBar, ScrollBar::#Color_FrontWarm,	General::SetAlpha($FF, General::FixColor(#Color_Scrollbar_FrontWarm)))
 		SetGadgetColor(#Asset_ScrollBar, ScrollBar::#Color_FrontHot,	General::SetAlpha($FF, General::FixColor(#Color_Scrollbar_FrontHot)))
 		
-		; Renderer
-		Renderer = ContainerGadget(#PB_Any, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, 1920 - AssetContainer_Width - 30, 1080 - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height, #PB_Container_BorderLess)
-		
-		SetGadgetColor(Renderer, #PB_Gadget_BackColor, 0)
-		Renderer = GadgetID(Renderer)
-		CloseGadgetList()
-		
 		; Timeline
 		PureTL::Gadget(#TimeLine, 10, 1080 - Timeline_Height - 10, 1900, Timeline_Height)
 		
@@ -409,6 +402,28 @@
 		SetLayeredWindowAttributes_(WindowID(DragPreview),0,140,#LWA_ALPHA)
 		ImagePreview = ImageGadget(#PB_Any, 0, 0, 0, 0, 0)
 		
+		; Renderer
+		CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+			Renderer=FindWindow_(#Null, General::WindowName)
+			While Renderer = 0
+				Delay(10)
+				Renderer=FindWindow_(#Null, General::WindowName)
+			Wend
+			
+			SetWindowLong_(Renderer, #GWL_STYLE, GetWindowLong_(Renderer, #GWL_STYLE)| #WS_CHILD  !#WS_POPUP)
+			SetWindowLong_(Renderer, #GWL_EXSTYLE, GetWindowLong_(Renderer, #GWL_EXSTYLE) ! #WS_EX_APPWINDOW)
+			
+			SetParent_(Renderer, WindowID)
+		CompilerElse
+			
+			UseGadgetList(WindowID)
+			Renderer = ContainerGadget(#PB_Any, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, 1920 - AssetContainer_Width - 30, 1080 - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height, #PB_Container_BorderLess)
+			
+			SetGadgetColor(Renderer, #PB_Gadget_BackColor, 0)
+			Renderer = GadgetID(Renderer)
+			CloseGadgetList()
+		CompilerEndIf
+		Refit()
 		HideWindow(#Window, #False)
 	EndProcedure
 	
@@ -420,7 +435,9 @@
 					ProcedureReturn
 				EndIf
 			Case #Asset_Sound
-				
+				If Not ( AssetType = Project::#Asset_Type_Sound Or AssetType = Project::#Asset_Type_Music Or AssetType = Project::#Asset_Type_Voice)
+					ProcedureReturn
+				EndIf
 			Case #Asset_Model
 				
 			Case #Asset_Overlay
@@ -590,6 +607,14 @@
 						SetWindowPos_(MediaContainerBorder(3), 0, 0, PosY - 3, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
 						SetWindowPos_(AssetContainertID, 0, 0, 0, AssetContainer_Width, PosY, #SWP_NOMOVE | #SWP_NOZORDER)
 						
+						RendererWidth = Width - AssetContainer_Width - 30
+						RendererHeight = PosY + #Size_Media_Icon
+						
+						CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+							AddElement(General::EventList())
+							General::EventList() = General::#Event_Resize
+						CompilerEndIf
+						
 						SetWindowPos_(Renderer, 0, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, Width - AssetContainer_Width - 30, PosY + #Size_Media_Icon, #SWP_NOZORDER)
 					EndIf
 				EndIf
@@ -676,10 +701,15 @@
 	EndProcedure
 	
 	Procedure HandlerCloseButton()
-		End
+		CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+			AddElement(General::EventList())
+			General::EventList() = General::#Event_End
+		CompilerElse
+			End
+		CompilerEndIf
 	EndProcedure
 	
-	Procedure HandlerMaximizeButton() 
+	Procedure HandlerMaximizeButton()
 		If IsZoomed_(WindowID(#Window))
 			ShowWindow_(WindowID(#Window), #SW_RESTORE)
 		Else
@@ -806,46 +836,50 @@
 	EndProcedure
 	
 	Procedure HandlerTimeLineDrop()
-		Protected Color, Icon.s, Type
+		Protected Color, Icon.s
 		
 		Select AssetButton::DragType
 			Case Project::#Asset_Type_Image
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Media))
-				Type = #Asset_Media
 				Icon = ""
 			Case Project::#Asset_Type_Video
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Media))
-				Type = #Asset_Media
 			Case Project::#Asset_Type_Sound
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
-				Type = #Asset_Sound
 			Case Project::#Asset_Type_Music
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
-				Type = #Asset_Sound
 			Case Project::#Asset_Type_Voice
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
-				Type = #Asset_Sound
 			Case Project::#Asset_Type_Character
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
-				Type = #Asset_Model
 			Case Project::#Asset_Type_Model
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
-				Type = #Asset_Model
 		EndSelect
 		
-  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID, Type), Color, Type, AssetButton::DragUUID)
+  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID)
 	EndProcedure
 	
 	Procedure HandlerTimeLine()
-		Protected *AssetUse.PureTL::AssetUse
 		
 		Select EventType()
 			Case PureTL::#EventType_AssetUnUse
-				*AssetUse = EventData()
-				Project::AssetUnUse(*AssetUse\AssetType, *AssetUse\UUID)
+				Project::AssetUnUse(PeekS(EventData()))
+				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+					AddElement(General::EventList())
+					General::EventList() = General::#Event_ReRender
+				CompilerEndIf
 			Case PureTL::#EventType_AssetUse
-				*AssetUse = EventData()
-				Project::AssetUse(*AssetUse\AssetType, *AssetUse\UUID)
+				Project::AssetUse(PeekS(EventData()))
+				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+					AddElement(General::EventList())
+					General::EventList() = General::#Event_ReRender
+				CompilerEndIf
+			Case PureTL::#EventType_PlayerMove, PureTL::#EventType_Change
+				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+					AddElement(General::EventList())
+					General::EventList() = General::#Event_ReRender
+				CompilerEndIf
+				PureTL::UpdateCurrentAssetList(#TimeLine)
 		EndSelect
 	EndProcedure
 	
@@ -871,7 +905,9 @@
 			AssetContainerHeight = Height - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height - #Size_Media_Icon
 			AssetContainer_Width = General::Min(AssetContainer_Width, width - 600)
 			AssetButtonScrollBar = RefitAssets(AssetContainer_Width, AssetContainerHeight)
-			SetWindowPos_(Renderer, 0, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, Width - AssetContainer_Width - 30, AssetContainerHeight + #Size_Media_Icon, #SWP_NOZORDER)
+			RendererWidth = Width - AssetContainer_Width - 30
+			RendererHeight = AssetContainerHeight + #Size_Media_Icon
+			SetWindowPos_(Renderer, 0, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, RendererWidth, AssetContainerHeight + #Size_Media_Icon, #SWP_NOZORDER)
 			
 			SetWindowPos_(MediaContainerBorder(1), 0, AssetContainer_Width - 3, 0, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			SetWindowPos_(MediaContainerBorder(2), 0, AssetContainer_Width - 3, AssetContainerHeight - 3, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
@@ -881,6 +917,11 @@
 			
 			ResizeGadget(#Asset_ScrollArea, 3, 0, AssetContainer_Width + AssetButtonScrollBar * ScrollBarWidth - 6, AssetContainerHeight + ScrollBarWidth)
 			SetGadgetAttribute(#Asset_ScrollArea, #PB_ScrollArea3D_InnerWidth, AssetContainer_Width - 6)
+			
+			CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+				AddElement(General::EventList())
+				General::EventList() = General::#Event_Resize
+			CompilerEndIf
 			
 			If AssetButtonScrollBar
 				ResizeGadget(#Asset_ScrollBar, AssetContainer_Width + 10, #Size_Media_Icon + #Size_TitleBar_ButtonHeight + 2, 12, AssetContainerHeight)
@@ -973,7 +1014,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 835
-; FirstLine = 356
-; Folding = hp-AAAAm
+; CursorPosition = 437
+; FirstLine = 21
+; Folding = BpTBIQAAX-
 ; EnableXP

@@ -356,6 +356,7 @@ DeclareModule PureTL
 		#EventType_AssetUse
 		#EventType_AssetUnUse
 		#EventType_PlayerMove
+		#EventType_Change
 	EndEnumeration
 	
 	Structure AssetUse
@@ -369,6 +370,8 @@ DeclareModule PureTL
 	Declare Resize(Gadget, X, Y, Width, Height)
 	Declare ResizeEX(Gadget, X, Y, Width, Height, hWnd, Update)
 	Declare AssessDrop(Gadget, State, ObjectType, X, Y)
+	Declare UpdateCurrentAssetList(Gadget) ; create a list of all the assets used at the current frame ordered by depth, it's the simplest solution I found given the limited commuication with the renderer
+	
 	
 	; State
 	Declare GetActiveLine(Gadget)
@@ -385,9 +388,10 @@ DeclareModule PureTL
 	Declare GetLineText(Gadget, LineID)
 	
 	Declare SetLineText(Gadget, LineID, Text.s)
+	Declare CountLine(Gadget)
 	
 	; Media block
-	Declare AddMediaBlock(Gadget, LineID, Position, Duration, Icon.s, Text.s, Color, AssetType, AssetUUID.s)
+	Declare AddMediaBlock(Gadget, LineID, Position, Duration, Icon.s, Text.s, Color, AssetUUID.s)
 	Declare DeleteMediaBlock(Gadget, MediaBlockID)
 	Declare MoveMediaBlock(Gadget, MediaBlockID, Offset)
 	Declare.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
@@ -471,7 +475,6 @@ Module PureTL
 		State.b
 		Drag.b
 		*StateListAdress
-		AssetType.i
 		AssetUUID.s
 	EndStructure
 	
@@ -534,6 +537,7 @@ Module PureTL
 		State_AssetDragPosition.i
 		State_AssetDragDuration.i
 		State_PlayerPosition.i
+		List CurrentAsset.s()
 		
 		List *State_DataPoints.DataPoint()
 		List *State_MediaBlocks.MediaBlock()
@@ -777,7 +781,6 @@ Module PureTL
 	Declare RenameLine(*GadgetData.GadgetData, *Line.Line, *Task.Task = 0)
 	Declare HandlerRenameString(hWnd, uMsg, wParam, lParam)
 	Declare _MoveLine(*GadgetData.GadgetData, *Line.Line, Position, *Parent.Line = 0)
-	Declare _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, Position, Duration, Icon.s, Text.s, Color, UUID.s, AssetType, AssetUUID.s)
 	
 	; Mediablock
 	Declare Batch_DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, MainNode)
@@ -785,6 +788,7 @@ Module PureTL
 	Declare _DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock)
 	Declare _MoveMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, Offset, MainNode = 0, fixed = #False)
 	Declare _ResizeMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, NewStart, NewEnd)
+	Declare _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, Position, Duration, Icon.s, Text.s, Color, UUID.s, AssetUUID.s)
 	
 	; Handler
 	Declare Handler_Body()
@@ -807,6 +811,7 @@ Module PureTL
 	Declare ToggleFold(Gadget)
 	Declare VerticalFocus(*GadgetData.GadgetData)
 	Declare HorizontalFocus(*GadgetData.GadgetData)
+	Declare _UpdateCurrentAssetList(*GadgetData.GadgetData, *Line.Line)
 	;}
 	
 	Macro DeleteParent(Parent)
@@ -1087,6 +1092,19 @@ Module PureTL
 		ProcedureReturn #False
 	EndProcedure
 	
+	Procedure UpdateCurrentAssetList(Gadget)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		
+		With *GadgetData
+		ClearList(\CurrentAsset())
+		
+		ForEach \Cont_Line_List()
+			_UpdateCurrentAssetList(*GadgetData, \Cont_Line_List())
+		Next
+		
+		EndWith
+	EndProcedure
+	
 	; State
 	Procedure GetActiveLine(Gadget) ; Ok
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Result
@@ -1232,8 +1250,14 @@ Module PureTL
 		
 	EndProcedure
 	
+	Procedure CountLine(Gadget)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		
+		ProcedureReturn MapSize(*GadgetData\Lines())
+	EndProcedure
+	
 	; Media block
-	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Icon.s, Text.s, Color, AssetType, AssetUUID.s)
+	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Icon.s, Text.s, Color, AssetUUID.s)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *result
 		Protected *Task.Task = AllocateStructure(Task), UUID.s = UUID(), MainNode, Item, Visible, BlockEnd = Position + Duration - 1, Loop
 		Protected BlockCenter = (Position + BlockEnd) * 0.5, Move, Target
@@ -1290,16 +1314,17 @@ Module PureTL
 			SetXMLAttribute(Item, "Text", Text)
 			SetXMLAttribute(Item, "Color", Str(Color))
 			SetXMLAttribute(Item, "UUID", UUID)
-			SetXMLAttribute(Item, "AssetType", Str(AssetType))
 			SetXMLAttribute(Item, "AssetUUID", AssetUUID)
 			
 			*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
 			FreeXML(*Task\XMLID)
 			TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
 			
-			*result = _AddMediaBlock(*GadgetData, *Line.Line, Position, BlockEnd, Icon, Text, Color, UUID.s, AssetType, AssetUUID.s)
+			*result = _AddMediaBlock(*GadgetData, *Line.Line, Position, BlockEnd, Icon, Text, Color, UUID.s, AssetUUID.s)
 			
 			Redraw(\Comp_Container)
+			
+			PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
 		EndWith
 		ProcedureReturn *result
 	EndProcedure
@@ -1382,6 +1407,8 @@ Module PureTL
 			*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
 			FreeXML(*Task\XMLID)
 			TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
+			
+			PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
 			
 		EndWith
 	EndProcedure
@@ -1647,6 +1674,9 @@ Module PureTL
 		TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
 		
 		_MoveLine(*GadgetData.GadgetData, *Line.Line, NewPosition, *Parent)
+		
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
+		
 	EndProcedure
 	
 	Procedure _MoveLine(*GadgetData.GadgetData, *Line.Line, Position, *Parent.Line = 0)
@@ -1746,9 +1776,7 @@ Module PureTL
 			SetGadgetAttribute(*GadgetData\Comp_VScrollBar, #PB_ScrollBar_Maximum, *GadgetData\Cont_Displayed_Line - 1)
 		EndIf
 	EndProcedure
-	
-; 	Procedure 
-	
+		
 	; Media Block
 	Procedure Batch_DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, MainNode)
 		Protected Item
@@ -1763,6 +1791,8 @@ Module PureTL
 		SetXMLAttribute(Item, "Text", *MediaBlock\Text)
 		SetXMLAttribute(Item, "Color", Str(*MediaBlock\Color))
 		SetXMLAttribute(Item, "UUID", *MediaBlock\UUID)
+		
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
 		
 		_DeleteMediaBlock(*GadgetData, *MediaBlock)
 	EndProcedure
@@ -1791,11 +1821,14 @@ Module PureTL
 		SetXMLAttribute(Item, "NewStart", Str(*MediaBlock\BlockStart))
 		SetXMLAttribute(Item, "NewEnd", Str(*MediaBlock\BlockEnd))
 		
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
+		
+		
 		ProcedureReturn RealOffset
 	EndProcedure
 	
-	Procedure _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, BlockStart, BlockEnd, Icon.s, Text.s, Color, UUID.s, AssetType, AssetUUID.s)
-		Protected *NewMediaBlock.MediaBlock = AddMapElement(*GadgetData\MediaBlocks(), UUID, #PB_Map_NoElementCheck), Loop, *Data.AssetUse = AllocateStructure(AssetUse)
+	Procedure _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, BlockStart, BlockEnd, Icon.s, Text.s, Color, UUID.s, AssetUUID.s)
+		Protected *NewMediaBlock.MediaBlock = AddMapElement(*GadgetData\MediaBlocks(), UUID, #PB_Map_NoElementCheck), Loop
 		
 		*NewMediaBlock\BlockStart = BlockStart
 		*NewMediaBlock\BlockEnd = BlockEnd
@@ -1805,17 +1838,13 @@ Module PureTL
 		*NewMediaBlock\Color = Color
 		*NewMediaBlock\Icon = Icon
 		*NewMediaBlock\Text = Text
-		*NewMediaBlock\AssetType = AssetType
 		*NewMediaBlock\AssetUUID = AssetUUID
 		
 		For Loop = BlockStart To BlockEnd
 			*Line\MediaBlocks(Loop) = *NewMediaBlock
 		Next
 		
-		*Data\AssetType = AssetType
-		*Data\UUID = AssetUUID
-		
-		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_AssetUse, *Data)
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_AssetUse, @*NewMediaBlock\AssetUUID)
 		
 		ProcedureReturn *NewMediaBlock
 	EndProcedure
@@ -1827,10 +1856,7 @@ Module PureTL
 			*MediaBlock\Line\MediaBlocks(Loop) = 0
 		Next
 		
-		*Data\AssetType = *MediaBlock\AssetType
-		*Data\UUID = *MediaBlock\AssetUUID
-		
-		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_AssetUnUse, *Data)
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_AssetUnUse, @*MediaBlock\AssetUUID)
 		
 		DeleteMapElement(*GadgetData\MediaBlocks(), *MediaBlock\UUID)
 		
@@ -2155,7 +2181,6 @@ Module PureTL
 						Case #PB_EventType_MouseMove ;{
 							Column = (MouseX - \Action_Drag_OriginX) / \Meas_TL_ColumnWidth
 							If \Action_Drag_Offset <> Column
-								PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove, Column)
 								\Action_Drag_Offset = Column
 								Redraw(\Comp_Container)
 							EndIf
@@ -2183,6 +2208,7 @@ Module PureTL
 						Case #PB_EventType_MouseMove ;{
 							Column = Min(Max(Round(MouseX / \Meas_TL_ColumnWidth, #PB_Round_Nearest) + \Meas_HPosition, 0), \Meas_Displayed_Columns)
 							If Column <> \State_PlayerPosition
+								PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove, Column)
 								\State_PlayerPosition = Column
 								Redraw(\Comp_Container)
 							EndIf
@@ -2634,7 +2660,7 @@ Module PureTL
 	
 	Procedure Handler_UndoRedo(*Task.Task, Redo)
 		Protected *GadgetData.GadgetData, XML = ParseXML(#PB_Any, *Task\XML), Loop, TaskCount, TaskNode, Task, *Line.Line, *MediaBlock.MediaBlock, SubLoop, SubTaskCount, BlockLoop, SubTask
-		Protected Data0
+		Protected Data0, ChangeEvent
 		
 		TaskNode = ChildXMLNode(RootXMLNode(XML))
 		TaskCount = XMLChildCount(TaskNode)
@@ -2674,6 +2700,9 @@ Module PureTL
 						EndIf
 						
 						_RemoveLine(*GadgetData, Data0, *GadgetData\Lines()\Parent)
+						
+						ChangeEvent = #True
+		
 						;}
 					Case #RenameLine ;{
 						*Line = FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID"))
@@ -2689,6 +2718,8 @@ Module PureTL
 						_MoveLine(*GadgetData, FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "NewPosition")), FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "NewParent")))
 						Refit(*GadgetData\Comp_Container)
 						Redraw(*GadgetData\Comp_Container)
+						
+						ChangeEvent = #True
 						;}
 					Case #CreateMediaBlock ;{
 						SubTaskCount = XMLChildCount(Task)
@@ -2726,9 +2757,10 @@ Module PureTL
 						               GetXMLAttribute(Task, "Text"),
 						               Val(GetXMLAttribute(Task, "Color")),
 						               GetXMLAttribute(Task, "UUID"),
-						               Val(GetXMLAttribute(Task, "AssetType")),
 						               GetXMLAttribute(Task, "AssetUUID"))
 						Redraw(*GadgetData\Comp_Container)
+						
+						ChangeEvent = #True
 						;}
 					Case #DeleteMediaBlock ;{
 						*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(Task, "UUID"))
@@ -2737,6 +2769,8 @@ Module PureTL
 						Next
 						DeleteMapElement(*GadgetData\MediaBlocks())
 						Redraw(*GadgetData\Comp_Container)
+						
+						ChangeEvent = #True
 						;}
 					Case #MoveMediaBlock ;{
 						SubTaskCount = XMLChildCount(Task)
@@ -2764,6 +2798,8 @@ Module PureTL
 						Next
 						
 						Redraw(*GadgetData\Comp_Container)
+						
+						ChangeEvent = #True
 						;}
 					Case #ResizeMediaBlock ;{
 						SubTaskCount = XMLChildCount(Task)
@@ -2793,6 +2829,7 @@ Module PureTL
 						Next
 						
 						Redraw(*GadgetData\Comp_Container)
+						ChangeEvent = #True
 						;}
 				EndSelect
 			Next
@@ -2828,7 +2865,9 @@ Module PureTL
 						         GetXMLAttribute(Task, "Text"),
 						         FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Parent")),
 						         Val(GetXMLAttribute(Task, "Flags")),
-						         GetXMLAttribute(Task, "UUID")) ;}
+						         GetXMLAttribute(Task, "UUID"))
+						ChangeEvent = #True
+						;}
 					Case #RenameLine ;{
 						*Line = FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID"))
 						*Line\Name = GetXMLAttribute(Task, "OldName")
@@ -2842,6 +2881,7 @@ Module PureTL
 						_MoveLine(*GadgetData, FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "OriginalPosition")), FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "OriginalParent")))
 						Refit(*GadgetData\Comp_Container)
 						Redraw(*GadgetData\Comp_Container)
+						ChangeEvent = #True
 						;}
 					Case #CreateMediaBlock ;{
 						*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(Task, "UUID"))
@@ -2876,7 +2916,7 @@ Module PureTL
 						Next
 						
 						Redraw(*GadgetData\Comp_Container)
-						
+						ChangeEvent = #True
 						;}
 					Case #DeleteMediaBlock ;{
 						_AddMediaBlock(*GadgetData,
@@ -2887,9 +2927,9 @@ Module PureTL
 						               GetXMLAttribute(Task, "Text"),
 						               Val(GetXMLAttribute(Task, "Color")),
 						               GetXMLAttribute(Task, "UUID"),
-						               Val(GetXMLAttribute(Task, "AssetType")),
 						               GetXMLAttribute(Task, "AssetUUID"))
 						Redraw(*GadgetData\Comp_Container)
+						ChangeEvent = #True
 						;}
 					Case #MoveMediaBlock ;{
 						SubTaskCount = XMLChildCount(Task)
@@ -2916,6 +2956,8 @@ Module PureTL
 						Next
 						
 						Redraw(*GadgetData\Comp_Container)
+						
+						ChangeEvent = #True
 						;}
 					Case #ResizeMediaBlock ;{
 						SubTaskCount = XMLChildCount(Task)
@@ -2945,11 +2987,16 @@ Module PureTL
 						
 						Redraw(*GadgetData\Comp_Container)
 						
+						ChangeEvent = #True
 						;}
 				EndSelect
 			Next
 		EndIf ;}
 		FreeXML(XML)
+		
+		If ChangeEvent
+			PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
+		EndIf
 		
 		ProcedureReturn #True
 	EndProcedure
@@ -3349,6 +3396,17 @@ Module PureTL
 	Procedure HorizontalFocus(*GadgetData.GadgetData)
 		
 	EndProcedure
+	
+	Procedure _UpdateCurrentAssetList(*GadgetData.GadgetData, *Line.Line)
+		AddElement(*GadgetData\CurrentAsset())
+		If *Line\MediaBlocks(*GadgetData\State_PlayerPosition)
+			*GadgetData\CurrentAsset() = *Line\MediaBlocks(*GadgetData\State_PlayerPosition)\AssetUUID
+		EndIf
+		
+		ForEach *Line\Childrens()
+			_UpdateCurrentAssetList(*GadgetData, *Line\Childrens())
+		Next
+	EndProcedure
 	;}
 	
 	DataSection
@@ -3408,7 +3466,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 1939
-; FirstLine = 252
-; Folding = AB5ABQBAIIAAGYGAAAAIARA9
+; CursorPosition = 2928
+; FirstLine = 585
+; Folding = AAoATQBBAhAgAAMAAAMEBBAw
 ; EnableXP

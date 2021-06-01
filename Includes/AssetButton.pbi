@@ -4,7 +4,6 @@
 	Structure GadgetData
 		Text.s
 		Image.i
-		Color.l
 		TextGadget.i
 		Icon.i
 		State.b
@@ -18,12 +17,15 @@
 		UUID.s
 	EndStructure
 	
-	Global ActiveAssetButton, PlusImage
+	Global ActiveAssetButton
 	Global AssetButtonMedia = ImageID(CatchImage(#PB_Any, ?IconPlus1))
 	Global AssetButtonSound = ImageID(CatchImage(#PB_Any, ?IconPlus2))
 	Global AssetButtonModel = ImageID(CatchImage(#PB_Any, ?IconPlus3))
 	Global AssetButtonOverlay = ImageID(CatchImage(#PB_Any, ?IconPlus4))
 	Global AssetButtonElement = ImageID(CatchImage(#PB_Any, ?IconPlus5))
+	
+	PlusImage = AssetButtonMedia
+	Color = General::FixColor(MainWindow::#Color_Asset_Media)
 	
 	Global Dim AssetIcon(10)
 	
@@ -49,18 +51,6 @@
 			*GadgetData = AllocateStructure(GadgetData)
 			
 			With *GadgetData
-				
-				Select AssetType
-					Case Project::#Asset_Type_Image, Project::#Asset_Type_Video
-						\Color = General::FixColor(MainWindow::#Color_Asset_Media)
-						PlusImage = AssetButtonMedia
-					Case Project::#Asset_Type_Sound, Project::#Asset_Type_Music, Project::#Asset_Type_Voice
-						\Color = General::FixColor(MainWindow::#Color_Asset_Audio)
-						PlusImage = AssetButtonSound
-					Case Project::#Asset_Type_Character, Project::#Asset_Type_Model
-						\Color = General::FixColor(MainWindow::#Color_Asset_Model)
-						PlusImage = AssetButtonModel
-				EndSelect
 				
 				\Type = AssetType
 				\Image = ImageID(Image)
@@ -204,7 +194,7 @@
 					;}
 				Case #PB_EventType_KeyDown ;{
 					If GetGadgetAttribute(Gadget, #PB_Canvas_Key) = #PB_Shortcut_Delete
-						Project::DeleteAsset(\Type, \UUID)
+						Project::DeleteAsset(\UUID)
 					EndIf
 					;}
 			EndSelect
@@ -229,9 +219,9 @@
 			
 			If \State
 				DrawingMode(#PB_2DDrawing_Outlined)
-				Box(0, 0, Width, Height - 20, \Color)
-				Box(1, 1, Width - 2, Height - 22, \Color)
-				Box(2, 2, Width - 4, Height - 24, \Color)
+				Box(0, 0, Width, Height - 20, Color)
+				Box(1, 1, Width - 2, Height - 22, Color)
+				Box(2, 2, Width - 4, Height - 24, Color)
 			EndIf
 			
 			StopDrawing()
@@ -618,7 +608,6 @@
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 182
-; FirstLine = 25
-; Folding = fMS-
+; CursorPosition = 27
+; Folding = -Mg-
 ; EnableXP
