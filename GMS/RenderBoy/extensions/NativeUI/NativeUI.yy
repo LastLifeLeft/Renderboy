@@ -24,12 +24,44 @@
         {"externalName":"GetWidth","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[],"resourceVersion":"1.0","name":"UI_get_width","tags":[],"resourceType":"GMExtensionFunction",},
         {"externalName":"GetHeight","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[],"resourceVersion":"1.0","name":"UI_get_height","tags":[],"resourceType":"GMExtensionFunction",},
         {"externalName":"CountLayer","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[],"resourceVersion":"1.0","name":"UI_count_layer","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetCurrentAsset","kind":1,"help":"","hidden":false,"returnType":1,"argCount":0,"args":[
+            2,
+          ],"resourceVersion":"1.0","name":"UI_get_asset","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetAssetType","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_get_asset_type","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetImageWidth","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_get_asset_width","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetImageHeigt","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_get_asset_height","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetAssetPath","kind":1,"help":"","hidden":false,"returnType":1,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_get_asset_path","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetEditLine","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[],"resourceVersion":"1.0","name":"UI_get_edit_line","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetAssetState","kind":1,"help":"","hidden":false,"returnType":1,"argCount":0,"args":[
+            2,
+          ],"resourceVersion":"1.0","name":"UI_get_asset_state","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"UpdateAssetState","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            2,
+            1,
+          ],"resourceVersion":"1.0","name":"UI_set_asset_state","tags":[],"resourceType":"GMExtensionFunction",},
       ],"constants":[],"ProxyFiles":[],"copyToTargets":-1,"order":[
         {"name":"UI_init","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_tick","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_width","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_height","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_count_layer","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_asset","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_asset_type","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_asset_image","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_asset_width","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_asset_height","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_asset_path","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_edit_line","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_asset_state","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_set_asset_state","path":"extensions/NativeUI/NativeUI.yy",},
       ],"resourceVersion":"1.0","name":"","tags":[],"resourceType":"GMExtensionFile",},
   ],
   "classname": "",

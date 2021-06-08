@@ -9,6 +9,8 @@
 		Path.s
 		PreviewImage.i
 		UsageCount.i
+		Width.i
+		Height.i
 	EndStructure
 	
 	Structure Task
@@ -186,6 +188,51 @@
 		
 		ProcedureReturn Result
 	EndProcedure
+	
+	Procedure GetAssetType(UUID.s)
+		ProcedureReturn AssetLibrary(UUID)\Type
+	EndProcedure
+	
+	Procedure.s GetAssetPath(UUID.s)
+		ProcedureReturn AssetLibrary(UUID)\Path
+	EndProcedure
+	
+	Procedure GetAssetWidth(UUID.s)
+		ProcedureReturn AssetLibrary(UUID)\Width
+	EndProcedure
+	
+	Procedure GetAssetHeight(UUID.s)
+		ProcedureReturn AssetLibrary(UUID)\Height
+	EndProcedure
+	
+	Procedure.s GetAssetDefaultState(UUID.s)
+		Protected Result.s, State.PureTL::DataPoint, Json
+		FindMapElement(AssetLibrary(), UUID)
+		
+		Select AssetLibrary()\Type
+			Case #Asset_Type_Image
+				State\x = Round(AssetLibrary()\Width * 0.5, #PB_Round_Down)
+				State\y = Round(AssetLibrary()\Height * 0.5, #PB_Round_Down)
+				State\width = AssetLibrary()\Width
+				State\height = AssetLibrary()\height
+			Case #Asset_Type_Video
+			Case #Asset_Type_Sound
+			Case #Asset_Type_Music
+			Case #Asset_Type_Voice
+			Case #Asset_Type_Character
+			Case #Asset_Type_Model
+				
+		EndSelect
+		
+		Json = CreateJSON(#PB_Any)
+		InsertJSONStructure(JSONValue(Json), @State, PureTL::DataPoint)
+		Result = ComposeJSON(Json)
+		FreeJSON(Json)
+		
+		Debug Result
+		
+		ProcedureReturn Result
+	EndProcedure
 	; Set
 	
 	;}
@@ -198,11 +245,14 @@
 			Image = LoadImage(#PB_Any, Path)
 		EndIf
 		
-		If ImageWidth(Image) <> 160 Or ImageHeight(Image) <> 90
+		*Asset = AddMapElement(AssetLibrary(), UUID)
+		*Asset\Width = ImageWidth(Image)
+		*Asset\Height = ImageHeight(Image)
+		
+		If *Asset\Width <> 160 Or *Asset\Height <> 90
 			General::ResizeImageEx(Image, 160, 90, General::#PB_Image_KeepAspectRatio)
 		EndIf
 		
-		*Asset = AddMapElement(AssetLibrary(), UUID)
 		*Asset\UUID = UUID
 		*Asset\Type = #Asset_Type_Image
 		*Asset\Path = Path
@@ -236,7 +286,7 @@
 	Procedure _DeleteAsset(UUID.s)
 		FindMapElement(AssetLibrary(), UUID)
 		FreeImage(AssetLibrary()\PreviewImage)
-		MainWindow::DeleteAssetButton(AssetLibrary()\Type, UUID)
+		MainWindow::DeleteAssetButton(UUID)
 		DeleteMapElement(AssetLibrary())
 	EndProcedure
 	
@@ -296,7 +346,7 @@
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 108
-; FirstLine = 68
-; Folding = nDCMo8
+; CursorPosition = 166
+; FirstLine = 36
+; Folding = nDIACQ3
 ; EnableXP

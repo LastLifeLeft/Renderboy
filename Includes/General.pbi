@@ -10,6 +10,7 @@
 		#Event_End
 		#Event_Resize
 		#Event_ReRender
+		#Event_Edit
 	EndEnumeration
 	
 	Global WindowName.s
@@ -39,6 +40,7 @@
 	Declare Max(a, b)
 	Declare.s UUID()
 	Declare ResizeImageEx(Image.i, Width.i, Height.i, Mode.i = #PB_Image_Smooth)
+	Declare CeilPow(Number)
 	
 EndDeclareModule
 
@@ -50,7 +52,7 @@ DeclareModule MainWindow
 	
 	Declare Open()
 	Declare AddAssetButton(AssetType, Image, Text.s, UUID.s)
-	Declare DeleteAssetButton(AssetType, UUID.s)
+	Declare DeleteAssetButton(UUID.s)
 	
 	Enumeration ;Gadgets
 		#TimeLine
@@ -87,7 +89,7 @@ EndDeclareModule
 
 DeclareModule Project
 	Enumeration
-		#Asset_Type_Image
+		#Asset_Type_Image = 1
 		#Asset_Type_Video
 		#Asset_Type_Sound
 		#Asset_Type_Music
@@ -112,6 +114,11 @@ DeclareModule Project
 	
 	; Get
 	Declare.s GetAssetName(UUID.s)
+	Declare GetAssetType(UUID.s)
+	Declare.s GetAssetPath(UUID.s)
+	Declare GetAssetWidth(UUID.s)
+	Declare GetAssetHeight(UUID.s)
+	Declare.s GetAssetDefaultState(UUID.s)
 EndDeclareModule
 
 DeclareModule AssetButton
@@ -170,11 +177,26 @@ Module General
 		EndIf
 	EndProcedure
 	
+	Procedure CeilPow(Number)
+		Number - 1
+		Number = (Number | Number >> 1)
+		Number = (Number | Number >> 2)
+		Number = (Number | Number >> 4)
+		Number = (Number | Number >> 8)
+		Number = (Number | Number >> 16)
+		
+		CompilerIf #PB_Compiler_Processor = #PB_Processor_x64
+			Number = (Number | Number >> 32)
+		CompilerEndIf
+		
+		ProcedureReturn Number + 1
+	EndProcedure
+
 EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 60
-; FirstLine = 28
-; Folding = tP9
+; CursorPosition = 120
+; FirstLine = 51
+; Folding = tfw
 ; EnableXP

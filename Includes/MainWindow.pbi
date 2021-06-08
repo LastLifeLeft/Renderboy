@@ -456,17 +456,15 @@
 		CloseGadgetList()
 	EndProcedure
 	
-	Procedure DeleteAssetButton(AssetType, UUID.s)
-		If AssetType = MediaState
-			ForEach AssetButtonList()
-				If AssetButtonList()\UUID = UUID
-					AssetButton::Delete(AssetButtonList()\Gadget)
-					DeleteElement(AssetButtonList())
-					Refit()
-					Break
-				EndIf
-			Next
-		EndIf
+	Procedure DeleteAssetButton(UUID.s)
+		ForEach AssetButtonList()
+			If AssetButtonList()\UUID = UUID
+				AssetButton::Delete(AssetButtonList()\Gadget)
+				DeleteElement(AssetButtonList())
+				Refit()
+				Break
+			EndIf
+		Next
 	EndProcedure
 	;}
 	
@@ -856,7 +854,7 @@
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
 		EndSelect
 		
-  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID)
+  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState())
 	EndProcedure
 	
 	Procedure HandlerTimeLine()
@@ -864,22 +862,20 @@
 		Select EventType()
 			Case PureTL::#EventType_AssetUnUse
 				Project::AssetUnUse(PeekS(EventData()))
-				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
-					AddElement(General::EventList())
-					General::EventList() = General::#Event_ReRender
-				CompilerEndIf
 			Case PureTL::#EventType_AssetUse
 				Project::AssetUse(PeekS(EventData()))
-				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
-					AddElement(General::EventList())
-					General::EventList() = General::#Event_ReRender
-				CompilerEndIf
 			Case PureTL::#EventType_PlayerMove, PureTL::#EventType_Change
 				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 					AddElement(General::EventList())
 					General::EventList() = General::#Event_ReRender
 				CompilerEndIf
 				PureTL::UpdateCurrentAssetList(#TimeLine)
+			Case PureTL::#EventType_Edit
+				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+					AddElement(General::EventList())
+					General::EventList() = General::#Event_Edit
+				CompilerEndIf
+				
 		EndSelect
 	EndProcedure
 	
@@ -1014,7 +1010,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 437
-; FirstLine = 21
-; Folding = BpTBIQAAX-
+; CursorPosition = 856
+; FirstLine = 221
+; Folding = BpnBIQAQr
 ; EnableXP

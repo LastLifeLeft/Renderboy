@@ -357,11 +357,25 @@ DeclareModule PureTL
 		#EventType_AssetUnUse
 		#EventType_PlayerMove
 		#EventType_Change
+		#EventType_Edit
 	EndEnumeration
 	
-	Structure AssetUse
-		AssetType.i
-		UUID.s
+	Structure DataPoint
+		point.b
+		x.d
+		y.d
+		z.d
+		width.f
+		height.f
+		depth.f
+		yaw.f
+		roll.f
+		pitch.f
+		data0.d
+		data1.d
+		data2.d
+		data3.d
+		data4.d
 	EndStructure
 	
 	; Public procedures declaration
@@ -372,13 +386,15 @@ DeclareModule PureTL
 	Declare AssessDrop(Gadget, State, ObjectType, X, Y)
 	Declare UpdateCurrentAssetList(Gadget) ; create a list of all the assets used at the current frame ordered by depth, it's the simplest solution I found given the limited commuication with the renderer
 	
-	
 	; State
 	Declare GetActiveLine(Gadget)
 	Declare SetActiveLine(Gadget, LineID)
 	Declare Freeze(Gadget, State)
 	Declare SetTaskList(Gadget, TaskList)
 	Declare GetPlayerPosition(Gadget)
+	Declare.s GetAsset(Gadget, Line)
+	Declare GetEditLine(Gadget)
+	Declare.s GetMediaBlockState(Gadget, Line)
 	
 	; Line stuff
 	Declare AddLine(Gadget, Position, Text.s, Parent = 0, Flags = #Line_Default)
@@ -391,12 +407,12 @@ DeclareModule PureTL
 	Declare CountLine(Gadget)
 	
 	; Media block
-	Declare AddMediaBlock(Gadget, LineID, Position, Duration, Icon.s, Text.s, Color, AssetUUID.s)
+	Declare AddMediaBlock(Gadget, LineID, Position, Duration, Icon.s, Text.s, Color, AssetUUID.s, DefaultState.s)
 	Declare DeleteMediaBlock(Gadget, MediaBlockID)
 	Declare MoveMediaBlock(Gadget, MediaBlockID, Offset)
 	Declare.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
 	Declare ResizeMediaBlock(Gadget, *MediaBlock, NewStart, NewEnd)
-	
+	Declare UpdatetMediaBlockState(Gadget, Line, Json.s)
 	; Data point
 	
 	; Misc
@@ -462,7 +478,7 @@ Module PureTL
 	#DeleteMediaBlock = "DeleteMediaBlock"
 	#MoveMediaBlock = "MoveMediaBlock"
 	#ResizeMediaBlock = "ResizeMediaBlock"
-	
+		
 	Structure MediaBlock
 		UUID.s
 		BlockStart.i
@@ -476,14 +492,8 @@ Module PureTL
 		Drag.b
 		*StateListAdress
 		AssetUUID.s
-	EndStructure
-	
-	Structure DataPoint
-		UUID.s
-		*Line.Line
-		State.b
-		Drag.b
-		*StateListAdress
+		Animated.b
+		Array DataPoints.DataPoint(1)
 	EndStructure
 	
 	Structure Line
@@ -505,7 +515,6 @@ Module PureTL
 		*ParentListAdress
 		
 		Array *MediaBlocks.MediaBlock(1)
-		Array *DataPoints.DataPoint(1)
 	EndStructure
 	
 	Structure GadgetData
@@ -537,7 +546,8 @@ Module PureTL
 		State_AssetDragPosition.i
 		State_AssetDragDuration.i
 		State_PlayerPosition.i
-		List CurrentAsset.s()
+		List *CurrentAsset.MediaBlock()
+		State_EditLine.i
 		
 		List *State_DataPoints.DataPoint()
 		List *State_MediaBlocks.MediaBlock()
@@ -812,6 +822,8 @@ Module PureTL
 	Declare VerticalFocus(*GadgetData.GadgetData)
 	Declare HorizontalFocus(*GadgetData.GadgetData)
 	Declare _UpdateCurrentAssetList(*GadgetData.GadgetData, *Line.Line)
+	Declare.s SerializeDataPoint(*DataPoint.DataPoint)
+	Declare UnserializeDataPoint(*DataPoint.DataPoint, JsonString.s)
 	;}
 	
 	Macro DeleteParent(Parent)
@@ -1151,6 +1163,29 @@ Module PureTL
 		ProcedureReturn *GadgetData\State_PlayerPosition
 	EndProcedure
 	
+	Procedure.s GetAsset(Gadget, Line) ; Ok
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		SelectElement(*GadgetData\CurrentAsset(), Line)
+		
+		If *GadgetData\CurrentAsset()
+			ProcedureReturn *GadgetData\CurrentAsset()\AssetUUID
+		EndIf
+	EndProcedure
+	
+	Procedure.s GetMediaBlockState(Gadget, Line) ; Returns the state of the mediablock at the current point
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		
+		SelectElement(*GadgetData\CurrentAsset(), Line)
+		
+ 		ProcedureReturn SerializeDataPoint(@*GadgetData\CurrentAsset()\DataPoints(*GadgetData\State_PlayerPosition - *GadgetData\CurrentAsset()\BlockStart))
+	EndProcedure
+	
+	Procedure GetEditLine(Gadget) ; returns the line of the currently edited mediablock
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		
+		ProcedureReturn *GadgetData\State_EditLine
+	EndProcedure
+	
 	; Line stuff
 	Procedure RemoveLine(Gadget, Position, *Parent.Line = 0)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Line.Line
@@ -1257,13 +1292,14 @@ Module PureTL
 	EndProcedure
 	
 	; Media block
-	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Icon.s, Text.s, Color, AssetUUID.s)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *result
-		Protected *Task.Task = AllocateStructure(Task), UUID.s = UUID(), MainNode, Item, Visible, BlockEnd = Position + Duration - 1, Loop
+	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Icon.s, Text.s, Color, AssetUUID.s, DefaultState.s)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *result.MediaBlock
+		Duration - 1
+		Protected *Task.Task = AllocateStructure(Task), UUID.s = UUID(), MainNode, Item, Visible, BlockEnd = Position + Duration, Loop
 		Protected BlockCenter = (Position + BlockEnd) * 0.5, Move, Target
 		
 		With *GadgetData
-			;0) Task
+			;0) Create Task
 			*Task\XMLID = CreateXML(#PB_Any)
 			MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks") 
 			Item = CreateXMLNode(MainNode, #CreateMediaBlock)
@@ -1306,6 +1342,15 @@ Module PureTL
 			Next
 			
 			;2) create the object
+			*result = _AddMediaBlock(*GadgetData, *Line.Line, Position, BlockEnd, Icon, Text, Color, UUID.s, AssetUUID.s)
+			For Loop = 0 To Duration
+				UnserializeDataPoint(@*result\DataPoints(Loop), DefaultState)
+			Next
+			*result\DataPoints(0)\point = #True
+			
+			Debug "Au pif : " + *result\DataPoints(7)\x
+			
+			;4) Finish the task
 			SetXMLAttribute(Item, "Gadget", Str(Gadget))
 			SetXMLAttribute(Item, "Line", *Line\UUID)
 			SetXMLAttribute(Item, "BlockStart", Str(Position))
@@ -1315,12 +1360,11 @@ Module PureTL
 			SetXMLAttribute(Item, "Color", Str(Color))
 			SetXMLAttribute(Item, "UUID", UUID)
 			SetXMLAttribute(Item, "AssetUUID", AssetUUID)
+			SetXMLAttribute(Item, "DefaultState", DefaultState)
 			
 			*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
 			FreeXML(*Task\XMLID)
 			TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-			
-			*result = _AddMediaBlock(*GadgetData, *Line.Line, Position, BlockEnd, Icon, Text, Color, UUID.s, AssetUUID.s)
 			
 			Redraw(\Comp_Container)
 			
@@ -1432,6 +1476,21 @@ Module PureTL
 		ProcedureReturn Result
 	EndProcedure
 	
+	Procedure UpdatetMediaBlockState(Gadget, Line, Json.s)
+		Protected Loop, *MediaBlock.Mediablock
+		
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		SelectElement(*GadgetData\CurrentAsset(), Line)
+		
+		*MediaBlock.Mediablock = *GadgetData\CurrentAsset()
+		If *MediaBlock\Animated
+			
+		Else
+			For Loop = 0 To *MediaBlock\Duration
+				UnserializeDataPoint(@*MediaBlock\DataPoints(Loop), Json)
+			Next
+		EndIf
+	EndProcedure
 	; Data point
 	
 	;}
@@ -1532,7 +1591,6 @@ Module PureTL
 			*NewLine\Flags = Flags
 			
 			ReDim *NewLine\MediaBlocks(*GadgetData\State_Duration)
-			ReDim *NewLine\DataPoints(*GadgetData\State_Duration)
 			
 			If *NewLine\DisplayListAdress
 				\Cont_Displayed_Line + 1
@@ -1839,6 +1897,7 @@ Module PureTL
 		*NewMediaBlock\Icon = Icon
 		*NewMediaBlock\Text = Text
 		*NewMediaBlock\AssetUUID = AssetUUID
+		ReDim *NewMediaBlock\DataPoints(*NewMediaBlock\Duration)
 		
 		For Loop = BlockStart To BlockEnd
 			*Line\MediaBlocks(Loop) = *NewMediaBlock
@@ -1850,7 +1909,7 @@ Module PureTL
 	EndProcedure
 	
 	Procedure _DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock)
-		Protected Loop, *Data.AssetUse = AllocateStructure(AssetUse)
+		Protected Loop
 		
 		For Loop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
 			*MediaBlock\Line\MediaBlocks(Loop) = 0
@@ -1961,7 +2020,7 @@ Module PureTL
 	
 	; Handler
 	Procedure Handler_Body()
-		Protected *GadgetData.GadgetData = GetGadgetData(EventGadget()), *Task.Task = AllocateStructure(Task), MainNode
+		Protected *GadgetData.GadgetData = GetGadgetData(EventGadget()), *Task.Task = AllocateStructure(Task), MainNode, Loop
 		
 		With *GadgetData
 			Protected MouseX = GetGadgetAttribute(\Comp_Body, #PB_Canvas_MouseX), MouseY = GetGadgetAttribute(\Comp_Body, #PB_Canvas_MouseY)
@@ -1985,8 +2044,7 @@ Module PureTL
 									If \Cont_Displayed_List()\MediaBlocks(Column)
 										If Mousey > #Size_MediaBlock_VerticalMargin And MouseY < #Size_TL_Height - #Size_MediaBlock_VerticalMargin
 											*HoverMB = \Cont_Displayed_List()\MediaBlocks(Column)
-											
-											If *HoverMB\State = #Hot
+											If *HoverMB\State = #Hot And MouseY > #Size_MediaBlock_VerticalMargin And MouseY < #Size_TL_Height - #Size_MediaBlock_VerticalMargin
 												If (MouseX >= (*HoverMB\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth And MouseX <= (*HoverMB\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth + 5) 
 													HoverResize = 1
 												ElseIf MouseX >= (*HoverMB\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth - 5 And MouseX <= (*HoverMB\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth + 2
@@ -1995,8 +2053,6 @@ Module PureTL
 											EndIf
 											
 										EndIf
-									ElseIf \Cont_Displayed_List()\DataPoints(Column)
-										
 									EndIf
 								EndIf
 							EndIf
@@ -2141,7 +2197,7 @@ Module PureTL
 					;}
 				Case #Action_Body_InitDrag ;{
 					Select EventType()
-						Case #PB_EventType_MouseMove
+						Case #PB_EventType_MouseMove ;{
 							If Abs(MouseX - \Action_Drag_OriginX) > 15 Or Abs(MouseY - \Action_Drag_OriginY) > 15
 								\State_UserAction = #Action_Body_Drag
 								\Action_Drag_Offset = 0
@@ -2149,7 +2205,7 @@ Module PureTL
 									\State_MediaBlocks()\Drag = #True
 								Next
 								Redraw(\Comp_Container)
-							EndIf
+							EndIf ;}
 						Case #PB_EventType_LeftButtonUp ;{
 							If \Action_InitDrag_Modifier = #PB_Canvas_Control
 								If \State_HoverMB And \State_HoverMB\State = #Hot
@@ -2173,6 +2229,19 @@ Module PureTL
 								
 							EndIf
 							\State_UserAction = #Action_Hover
+							;}
+						Case #PB_EventType_LeftDoubleClick ;{
+							If \State_HoverMB
+								If \State_HoverMB\BlockStart <= \State_PlayerPosition And \State_HoverMB\BlockEnd >= \State_PlayerPosition
+									ForEach \CurrentAsset()
+										If \CurrentAsset() = \State_HoverMB
+											\State_EditLine = ListIndex(\CurrentAsset())
+											PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_Edit)
+											Break
+										EndIf
+									Next
+								EndIf
+							EndIf
 							;}
 					EndSelect
 					;}
@@ -2746,18 +2815,18 @@ Module PureTL
 							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
 								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
 							Next
-							
 						Next
 						
-						_AddMediaBlock(*GadgetData,
-						               FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Line")),
-						               Val(GetXMLAttribute(Task, "BlockStart")),
-						               Val(GetXMLAttribute(Task, "BlockEnd")),
-						               GetXMLAttribute(Task, "Icon"),
-						               GetXMLAttribute(Task, "Text"),
-						               Val(GetXMLAttribute(Task, "Color")),
-						               GetXMLAttribute(Task, "UUID"),
-						               GetXMLAttribute(Task, "AssetUUID"))
+						*MediaBlock = _AddMediaBlock(*GadgetData,
+						                             FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Line")),
+						                             Val(GetXMLAttribute(Task, "BlockStart")),
+						                             Val(GetXMLAttribute(Task, "BlockEnd")),
+						                             GetXMLAttribute(Task, "Icon"),
+						                             GetXMLAttribute(Task, "Text"),
+						                             Val(GetXMLAttribute(Task, "Color")),
+						                             GetXMLAttribute(Task, "UUID"),
+						                             GetXMLAttribute(Task, "AssetUUID"))
+						
 						Redraw(*GadgetData\Comp_Container)
 						
 						ChangeEvent = #True
@@ -2919,15 +2988,16 @@ Module PureTL
 						ChangeEvent = #True
 						;}
 					Case #DeleteMediaBlock ;{
-						_AddMediaBlock(*GadgetData,
-						               FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Line")),
-						               Val(GetXMLAttribute(Task, "BlockStart")),
-						               Val(GetXMLAttribute(Task, "BlockEnd")),
-						               GetXMLAttribute(Task, "Icon"),
-						               GetXMLAttribute(Task, "Text"),
-						               Val(GetXMLAttribute(Task, "Color")),
-						               GetXMLAttribute(Task, "UUID"),
-						               GetXMLAttribute(Task, "AssetUUID"))
+						*MediaBlock = _AddMediaBlock(*GadgetData,
+						                             FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Line")),
+						                             Val(GetXMLAttribute(Task, "BlockStart")),
+						                             Val(GetXMLAttribute(Task, "BlockEnd")),
+						                             GetXMLAttribute(Task, "Icon"),
+						                             GetXMLAttribute(Task, "Text"),
+						                             Val(GetXMLAttribute(Task, "Color")),
+						                             GetXMLAttribute(Task, "UUID"),
+						                             GetXMLAttribute(Task, "AssetUUID"))
+						
 						Redraw(*GadgetData\Comp_Container)
 						ChangeEvent = #True
 						;}
@@ -3028,7 +3098,7 @@ Module PureTL
 			
 			;{ Content
 			ListLoopMax = Min(\Meas_Displayed_Lines, \Cont_Displayed_Line) - 1
-			MediaLoopMax = \Meas_HPosition + \Meas_Displayed_Columns
+			MediaLoopMax = min(\Meas_HPosition + \Meas_Displayed_Columns, \State_Duration)
 			SelectElement(\Cont_Displayed_List(), \Meas_VPosition)
 			
 			ListIndex = Max(ListIndex(\Cont_Displayed_List()), 0)
@@ -3400,12 +3470,30 @@ Module PureTL
 	Procedure _UpdateCurrentAssetList(*GadgetData.GadgetData, *Line.Line)
 		AddElement(*GadgetData\CurrentAsset())
 		If *Line\MediaBlocks(*GadgetData\State_PlayerPosition)
-			*GadgetData\CurrentAsset() = *Line\MediaBlocks(*GadgetData\State_PlayerPosition)\AssetUUID
+			*GadgetData\CurrentAsset() = *Line\MediaBlocks(*GadgetData\State_PlayerPosition)
 		EndIf
 		
 		ForEach *Line\Childrens()
 			_UpdateCurrentAssetList(*GadgetData, *Line\Childrens())
 		Next
+	EndProcedure
+	
+	Procedure.s SerializeDataPoint(*DataPoint.DataPoint)
+		Protected json = CreateJSON(#PB_Any), Result.s
+		
+		InsertJSONStructure(JSONValue(json), *DataPoint, DataPoint)
+		Result = ComposeJSON(json)
+		FreeJSON(json)
+		
+		ProcedureReturn Result
+	EndProcedure
+	
+	Procedure UnserializeDataPoint(*DataPoint.DataPoint, JsonString.s)
+		Protected json = ParseJSON(#PB_Any, JsonString)
+		
+		ExtractJSONStructure(JSONValue(json), *DataPoint, DataPoint)
+		FreeJSON(json)
+		
 	EndProcedure
 	;}
 	
@@ -3466,7 +3554,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 2928
-; FirstLine = 585
-; Folding = AAoATQBBAhAgAAMAAAMEBBAw
+; CursorPosition = 414
+; FirstLine = 42
+; Folding = AA5ALoAgBAGAAABEAAAEiggAw-
 ; EnableXP

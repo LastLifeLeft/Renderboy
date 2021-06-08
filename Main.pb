@@ -5,6 +5,7 @@ IncludeFile "ImagePlugin.pbi"
 ImagePlugin::UseSystemImageDecoder()
 ImagePlugin::UseSystemImageEncoder()
 
+IncludeFile "Ease.pbi"
 IncludeFile "TaskList.pbi"
 IncludeFile "GadgetTimer.pbi"
 IncludeFile "Textbox.pbi"
@@ -22,14 +23,18 @@ IncludeFile "AssetButton.pbi"
 
 EnableExplicit
 
+Global *UUIDData = AllocateMemory(33)
+Global *Result = AllocateMemory(1)
+
 CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+	
 	; Communication API
 	ProcedureCDLL.d CountLayer()
 		ProcedureReturn PureTL::CountLine(MainWindow::#TimeLine)
 	EndProcedure
 	
-	ProcedureCDLL.d Init(*Data)
-		General::WindowName = PeekS(*Data, -1, #PB_UTF8)
+	ProcedureCDLL.d Init(*WindowName)
+		General::WindowName = PeekS(*WindowName, -1, #PB_UTF8)
 		ImagePlugin::UseSystemImageDecoder()
 		ImagePlugin::UseSystemImageEncoder()
 		
@@ -38,9 +43,22 @@ CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 		ProcedureReturn #True
 	EndProcedure
 	
-; 	Procedure GetCurrentAsset(Line.d)
-; 		
-; 	EndProcedure
+	ProcedureCDLL GetCurrentAsset(Line.d)
+		PokeS(*UUIDData, PureTL::GetAsset(MainWindow::#TimeLine, Line), 32, #PB_UTF8)
+		
+		ProcedureReturn *UUIDData
+	EndProcedure
+	
+	ProcedureCDLL GetAssetState(Line.d)
+		Protected State.s = PureTL::GetMediaBlockState(MainWindow::#TimeLine, Line), Len = StringByteLength(State, #PB_UTF8) + 1
+		*Result = ReAllocateMemory(*Result, Len, #PB_Memory_NoClear)
+		PokeS(*Result, State, Len, #PB_UTF8)
+		ProcedureReturn *Result
+	EndProcedure
+	
+	ProcedureCDLL.d GetAssetType(*Object)
+		ProcedureReturn Project::GetAssetType(PeekS(*Object, -1, #PB_UTF8))
+	EndProcedure
 	
 	ProcedureCDLL.d Tick()
 		Protected Result
@@ -65,6 +83,28 @@ CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 		ProcedureReturn MainWindow::RendererWidth
 	EndProcedure
 	
+	ProcedureCDLL.d GetImageWidth(*Object)
+		ProcedureReturn Project::GetAssetWidth(PeekS(*Object, -1, #PB_UTF8))
+	EndProcedure
+	
+	ProcedureCDLL.d GetImageHeigt(*Object)
+		ProcedureReturn Project::GetAssetHeight(PeekS(*Object, -1, #PB_UTF8))
+	EndProcedure
+	
+	ProcedureCDLL GetAssetPath(*Object)
+		Protected path.s = Project::GetAssetPath(PeekS(*Object, -1, #PB_UTF8)), Len = StringByteLength(path, #PB_UTF8) + 1
+		*Result = ReAllocateMemory(*Result, Len, #PB_Memory_NoClear)
+		PokeS(*Result, path, Len, #PB_UTF8)
+		ProcedureReturn *Result
+	EndProcedure
+	
+	ProcedureCDLL.d UpdateAssetState(Line.d, *Json)
+		PureTL::UpdatetMediaBlockState(MainWindow::#TimeLine, Line, PeekS(*Json, -1, #PB_UTF8))
+	EndProcedure
+	
+	ProcedureCDLL.d GetEditLine()
+		ProcedureReturn PureTL::GetEditLine(MainWindow::#TimeLine)
+	EndProcedure
 CompilerElse
 	MainWindow::Open()
 	Project::New()
@@ -74,6 +114,6 @@ CompilerElse
 	ForEver
 CompilerEndIf
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 42
-; Folding = P-
+; CursorPosition = 101
+; Folding = RQ-
 ; EnableXP
