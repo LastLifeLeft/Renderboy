@@ -90,6 +90,7 @@
 		FreeStructure(*GadgetData)
 		
 		FreeGadget(Gadget)
+		SetActiveGadget(MainWindow::#Asset_ScrollArea)
 	EndProcedure
 	
 	Procedure SetState(Gadget, State)
@@ -193,9 +194,18 @@
 					SetGadgetState(MainWindow::#Asset_ScrollBar, GetGadgetAttribute(MainWindow::#Asset_ScrollArea, #PB_ScrollArea_Y))
 					;}
 				Case #PB_EventType_KeyDown ;{
-					If GetGadgetAttribute(Gadget, #PB_Canvas_Key) = #PB_Shortcut_Delete
-						Project::DeleteAsset(\UUID)
-					EndIf
+					Select GetGadgetAttribute(Gadget, #PB_Canvas_Key) 
+						Case #PB_Shortcut_Delete
+							Project::DeleteAsset(\UUID)
+						Case #PB_Shortcut_Y
+							If GetGadgetAttribute(Gadget, #PB_Canvas_Modifiers) & #PB_Canvas_Control
+								SendMessage_(WindowID(0), #WM_KEYDOWN, 90, 0)
+							EndIf
+						Case #PB_Shortcut_Z
+							If GetGadgetAttribute(Gadget, #PB_Canvas_Modifiers) & #PB_Canvas_Control
+								SendMessage_(WindowID(0), #WM_KEYDOWN, 90, 0)
+							EndIf
+					EndSelect
 					;}
 			EndSelect
 		EndWith
@@ -608,6 +618,6 @@
 	
 EndModule
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 27
-; Folding = -Mg-
+; CursorPosition = 92
+; Folding = fFA-
 ; EnableXP

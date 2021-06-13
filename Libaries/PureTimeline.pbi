@@ -418,6 +418,22 @@ DeclareModule PureTL
 	; Misc
 	Declare Handler_UndoRedo(*Task, Redo)
 	
+	; Macro
+	Macro PassKeyboardInput(gadget)
+		If EventType() = #PB_EventType_KeyDown
+			Select GetGadgetAttribute(gadget, #PB_Canvas_Key)
+				Case #PB_Shortcut_Z
+					If GetGadgetAttribute(gadget, #PB_Canvas_Modifiers) & #PB_Canvas_Control
+						SendMessage_(WindowID(0), #WM_KEYDOWN, 90, 0)
+					EndIf
+				Case #PB_Shortcut_Y
+					If GetGadgetAttribute(gadget, #PB_Canvas_Modifiers) & #PB_Canvas_Control
+						SendMessage_(WindowID(0), #WM_KEYDOWN, 89, 0)
+					EndIf
+			EndSelect
+		EndIf
+	EndMacro
+	
 EndDeclareModule
 
 Module PureTL
@@ -2310,6 +2326,8 @@ Module PureTL
 					EndSelect
 					;}
 			EndSelect
+			
+			PassKeyboardInput(\Comp_Body)
 		EndWith
 		
 	EndProcedure
@@ -2574,6 +2592,8 @@ Module PureTL
 					
 					;}
 			EndSelect
+			
+			PassKeyboardInput(\Comp_List)
 		EndWith
 	EndProcedure
 	
@@ -3554,7 +3574,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 414
-; FirstLine = 42
-; Folding = AA5ALoAgBAGAAABEAAAEiggAw-
+; CursorPosition = 420
+; FirstLine = 50
+; Folding = AA5BCQBAAAIAACAIBAAIEBBBA+
 ; EnableXP

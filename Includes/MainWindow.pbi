@@ -55,6 +55,10 @@
 		BindGadgetEvent(ButtonName, @HandlerAssetBarButton())
 	EndMacro
 	
+	Macro MAKEWORD(iLo, iHi)
+		((iHi<<8)| (iLo& $FF))
+	EndMacro
+	
 	;{ Private variables, structures, constants...
 	
 	Enumeration
@@ -191,6 +195,8 @@
 	
 	;{ Private procedures declaration
 	; Handler
+	Declare HandlerGMS2Window(hWnd, Msg, wParam, lParam)
+	Declare HandlerShortcutWorkAround(hWnd, Msg, wParam, lParam)
 	Declare HandlerScrollArea(hWnd, Msg, wParam, lParam)
 	Declare HandlerWindow(hWnd, Msg, wParam, lParam)
 	Declare HandlerCloseButton()
@@ -330,6 +336,7 @@
 		PostEvent(#PB_Event_Gadget, #Window, #Asset_VideoButton, #PB_EventType_LeftButtonDown)
 		
 		AssetContainertID = ContainerGadget(#Asset_Container, 10, #Size_Media_Icon + #Size_TitleBar_ButtonHeight + 2, AssetContainer_Width, 1080 - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height - #Size_Media_Icon, #PB_Container_BorderLess)
+		SetProp_(AssetContainertID, "oldproc", SetWindowLongPtr_(AssetContainertID, #GWL_WNDPROC, @HandlerShortcutWorkAround()))
 		BindEvent(#PB_Event_GadgetDrop, @HandlerAssetDrop(), #Window, #Asset_Container)
 		
 		EnableGadgetDrop(#Asset_Container, #PB_Drop_Files, #PB_Drag_Copy | #PB_Drag_Link | #PB_Drag_Move)
@@ -379,9 +386,7 @@
 		
 		; Timeline
 		PureTL::Gadget(#TimeLine, 10, 1080 - Timeline_Height - 10, 1900, Timeline_Height)
-		
-		AddKeyboardShortcut(#Window, #PB_Shortcut_Control | #PB_Shortcut_Z, 17)
-		AddKeyboardShortcut(#Window, #PB_Shortcut_Control | #PB_Shortcut_Y, 18)
+		SetProp_(GadgetID(#TimeLine), "oldproc", SetWindowLongPtr_(GadgetID(#TimeLine), #GWL_WNDPROC, @HandlerShortcutWorkAround()))
 		
 		BindEvent(#PB_Event_GadgetDrop, @HandlerTimeLineDrop(), #Window, #TimeLine)
 		BindGadgetEvent(#TimeLine,@HandlerTimeLine())
@@ -414,14 +419,17 @@
 			SetWindowLong_(Renderer, #GWL_EXSTYLE, GetWindowLong_(Renderer, #GWL_EXSTYLE) ! #WS_EX_APPWINDOW)
 			
 			SetParent_(Renderer, WindowID)
-		CompilerElse
+ 			SetProp_(Renderer, "oldproc", SetWindowLongPtr_(Renderer, #GWL_WNDPROC, @HandlerGMS2Window()))
+			; 			SendMessage_(Renderer, #HKM_SETHOTKEY, #VK_DELETE, 0)
 			
+		CompilerElse
 			UseGadgetList(WindowID)
 			Renderer = ContainerGadget(#PB_Any, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, 1920 - AssetContainer_Width - 30, 1080 - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height, #PB_Container_BorderLess)
 			
 			SetGadgetColor(Renderer, #PB_Gadget_BackColor, 0)
 			Renderer = GadgetID(Renderer)
 			CloseGadgetList()
+
 		CompilerEndIf
 		Refit()
 		HideWindow(#Window, #False)
@@ -470,10 +478,57 @@
 	
 	;{ Private procedures
 	; Handler
+	Procedure HandlerGMS2Window(hWnd, Msg, wParam, lParam)
+		
+		If msg = #WM_KEYDOWN
+			Select wParam 
+				Case 89 ; Y
+					If GetAsyncKeyState_(#VK_CONTROL)
+						Project::Redo()
+					EndIf
+				Case 90 ; Z
+					If GetAsyncKeyState_(#VK_CONTROL)
+						Project::Undo()
+					EndIf
+			EndSelect
+		EndIf
+		
+		ProcedureReturn CallWindowProc_(GetProp_(hWnd, "oldproc"), hWnd, Msg, wParam, lParam)
+	EndProcedure
+	
+	Procedure HandlerShortcutWorkAround(hWnd, Msg, wParam, lParam)
+		Protected oldproc = GetProp_(hWnd, "oldproc")
+		If msg = #WM_KEYDOWN
+			Select wParam 
+				Case 89 ; Y
+					If GetAsyncKeyState_(#VK_CONTROL)
+						Project::Redo()
+					EndIf
+				Case 90 ; Z
+					If GetAsyncKeyState_(#VK_CONTROL)
+						Project::Undo()
+					EndIf
+			EndSelect
+		EndIf
+		
+		ProcedureReturn CallWindowProc_(oldproc, hWnd, Msg, wParam, lParam)
+	EndProcedure
+		
 	Procedure HandlerScrollArea(hWnd, Msg, wParam, lParam)
 		Protected oldproc = GetProp_(hWnd, "oldproc")
 		
-		If Msg = #WM_VSCROLL
+		If msg = #WM_KEYDOWN
+			Select wParam 
+				Case 89 ; Y
+					If GetAsyncKeyState_(#VK_CONTROL)
+						Project::Redo()
+					EndIf
+				Case 90 ; Z
+					If GetAsyncKeyState_(#VK_CONTROL)
+						Project::Undo()
+					EndIf
+			EndSelect
+		ElseIf Msg = #WM_VSCROLL
 			SetGadgetState(#Asset_ScrollBar, (wParam >> 16) & $FFFF)
 		EndIf
 		
@@ -694,6 +749,18 @@
 					DragPreviewVisible = #False
 				EndIf
 				;}
+			Case #WM_KEYDOWN ;{
+				Select wParam 
+					Case 89 ; Y
+						If GetAsyncKeyState_(#VK_CONTROL)
+							Project::Redo()
+						EndIf
+					Case 90 ; Z
+						If GetAsyncKeyState_(#VK_CONTROL)
+							Project::Undo()
+						EndIf
+				EndSelect
+				;}
 		EndSelect
 		ProcedureReturn CallWindowProc_(oldproc, hWnd, Msg, wParam, lParam)
 	EndProcedure
@@ -854,7 +921,7 @@
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
 		EndSelect
 		
-  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState())
+  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID))
 	EndProcedure
 	
 	Procedure HandlerTimeLine()
@@ -1010,7 +1077,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 856
-; FirstLine = 221
-; Folding = BpnBIQAQr
+; CursorPosition = 493
+; FirstLine = 323
+; Folding = hTf-ABEgw7
 ; EnableXP

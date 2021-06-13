@@ -287,6 +287,4 @@ function AssetImage(_UUID) constructor
 		}
 	}
 	
-	
-	
 }
