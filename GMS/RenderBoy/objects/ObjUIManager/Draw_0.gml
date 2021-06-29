@@ -17,5 +17,3 @@ if _edit > -1
 {
 	layer_list[| _edit][0].edit(layer_list[| _edit][2]);
 }
-
-//surface_reset_target()

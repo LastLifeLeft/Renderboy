@@ -361,7 +361,6 @@ DeclareModule PureTL
 	EndEnumeration
 	
 	Structure DataPoint
-		point.b
 		x.d
 		y.d
 		z.d
@@ -377,7 +376,7 @@ DeclareModule PureTL
 		data3.d
 		data4.d
 	EndStructure
-	
+		
 	; Public procedures declaration
 	Declare Gadget(Gadget, X, Y, Width, Height, Flags = #Default)
 	Declare Free(Gadget)
@@ -494,7 +493,24 @@ Module PureTL
 	#DeleteMediaBlock = "DeleteMediaBlock"
 	#MoveMediaBlock = "MoveMediaBlock"
 	#ResizeMediaBlock = "ResizeMediaBlock"
-		
+	
+	Structure DataState
+		x.d
+		y.b
+		z.b
+		width.b
+		height.b
+		depth.b
+		yaw.b
+		roll.b
+		pitch.b
+		data0.b
+		data1.b
+		data2.b
+		data3.b
+		data4.b
+	EndStructure
+	
 	Structure MediaBlock
 		UUID.s
 		BlockStart.i
@@ -510,6 +526,7 @@ Module PureTL
 		AssetUUID.s
 		Animated.b
 		Array DataPoints.DataPoint(1)
+		Array DataState.DataState(1)
 	EndStructure
 	
 	Structure Line
@@ -579,7 +596,8 @@ Module PureTL
 		Action_Drag_OriginalPosition.i
 		Action_Drag_OriginalParent.i
 		Action_InitDrag_Modifier.i
-		Action_Drag_Offset.i
+		Action_Drag_HorizontalOffset.i
+		Action_Drag_VerticalOffset.i
 		
 		; Measurement
 		Meas_List_Height.i
@@ -621,13 +639,15 @@ Module PureTL
 		
 		Map Lines.Line(2048)
 		Map MediaBlocks.MediaBlock(2048)
-		Map DataPoints.DataPoint(2048)
+		Map DataState.DataPoint(2048)
 	EndStructure
 	
 	Structure Task
 		XMLID.i
 		XML.s
 	EndStructure
+	
+
 	
 	;{ Default Setting
 	#Default_Duration = 300
@@ -1362,9 +1382,22 @@ Module PureTL
 			For Loop = 0 To Duration
 				UnserializeDataPoint(@*result\DataPoints(Loop), DefaultState)
 			Next
-			*result\DataPoints(0)\point = #True
 			
-			Debug "Au pif : " + *result\DataPoints(7)\x
+			*result\DataState(0)\x = #True
+			*result\DataState(0)\y = #True
+			*result\DataState(0)\z = #True
+			*result\DataState(0)\width = #True
+			*result\DataState(0)\height = #True
+			*result\DataState(0)\depth = #True
+			*result\DataState(0)\yaw = #True
+			*result\DataState(0)\roll = #True
+			*result\DataState(0)\pitch = #True
+			
+			*result\DataState(0)\data0 = #True
+			*result\DataState(0)\data1 = #True
+			*result\DataState(0)\data2 = #True
+			*result\DataState(0)\data3 = #True
+			*result\DataState(0)\data4 = #True
 			
 			;4) Finish the task
 			SetXMLAttribute(Item, "Gadget", Str(Gadget))
@@ -1850,7 +1883,7 @@ Module PureTL
 			SetGadgetAttribute(*GadgetData\Comp_VScrollBar, #PB_ScrollBar_Maximum, *GadgetData\Cont_Displayed_Line - 1)
 		EndIf
 	EndProcedure
-		
+	
 	; Media Block
 	Procedure Batch_DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, MainNode)
 		Protected Item
@@ -1914,6 +1947,7 @@ Module PureTL
 		*NewMediaBlock\Text = Text
 		*NewMediaBlock\AssetUUID = AssetUUID
 		ReDim *NewMediaBlock\DataPoints(*NewMediaBlock\Duration)
+		ReDim *NewMediaBlock\DataState(*NewMediaBlock\Duration)
 		
 		For Loop = BlockStart To BlockEnd
 			*Line\MediaBlocks(Loop) = *NewMediaBlock
@@ -2032,6 +2066,8 @@ Module PureTL
 			*MediaBlock\Line\MediaBlocks(Loop) = *MediaBlock
 		Next
 		
+		ReDim *MediaBlock\DataPoints(*MediaBlock\Duration)
+		ReDim *MediaBlock\DataState(*MediaBlock\Duration)
 	EndProcedure
 	
 	; Handler
@@ -2123,9 +2159,9 @@ Module PureTL
 									
 									\State_UserAction = #Action_Body_Resize
 									If \State_HoverResize = 1
-										\Action_Drag_Offset = \State_MediaBlocks()\BlockStart
+										\Action_Drag_HorizontalOffset = \State_MediaBlocks()\BlockStart
 									Else
-										\Action_Drag_Offset = \State_MediaBlocks()\BlockEnd
+										\Action_Drag_HorizontalOffset = \State_MediaBlocks()\BlockEnd
 									EndIf
 									
 									Redraw(\Comp_Container)
@@ -2216,7 +2252,9 @@ Module PureTL
 						Case #PB_EventType_MouseMove ;{
 							If Abs(MouseX - \Action_Drag_OriginX) > 15 Or Abs(MouseY - \Action_Drag_OriginY) > 15
 								\State_UserAction = #Action_Body_Drag
-								\Action_Drag_Offset = 0
+								\Action_Drag_HorizontalOffset = 0
+								\Action_Drag_VerticalOffset = 0
+								\Action_Drag_OriginY = Round( (\Action_Drag_OriginY - #Size_Header_Height) / #Size_TL_Height, #PB_Round_Down) * #Size_TL_Height + #Size_Header_Height
 								ForEach \State_MediaBlocks()
 									\State_MediaBlocks()\Drag = #True
 								Next
@@ -2265,8 +2303,15 @@ Module PureTL
 					Select EventType()
 						Case #PB_EventType_MouseMove ;{
 							Column = (MouseX - \Action_Drag_OriginX) / \Meas_TL_ColumnWidth
-							If \Action_Drag_Offset <> Column
-								\Action_Drag_Offset = Column
+							Line = (MouseY - \Action_Drag_OriginY) / #Size_TL_Height
+							If \Action_Drag_VerticalOffset <> Line
+								\Action_Drag_VerticalOffset = Line
+								If \Action_Drag_HorizontalOffset <> Column
+									\Action_Drag_HorizontalOffset = Column
+								EndIf
+								Redraw(\Comp_Container)
+							ElseIf \Action_Drag_HorizontalOffset <> Column
+								\Action_Drag_HorizontalOffset = Column
 								Redraw(\Comp_Container)
 							EndIf
 							;}
@@ -2276,7 +2321,7 @@ Module PureTL
 							MainNode = CreateXMLNode(MainNode, #MoveMediaBlock)
 							
 							ForEach \State_MediaBlocks()
-								Batch_MoveMediaBlock(*GadgetData, \State_MediaBlocks(), \Action_Drag_Offset, MainNode)
+								Batch_MoveMediaBlock(*GadgetData, \State_MediaBlocks(), \Action_Drag_HorizontalOffset, MainNode)
 								\State_MediaBlocks()\Drag = #False
 							Next
 							
@@ -2307,9 +2352,9 @@ Module PureTL
 					Select EventType() 
 						Case #PB_EventType_MouseMove
 							If \State_HoverResize = 1
-								\Action_Drag_Offset = Min(Max(MouseX / \Meas_TL_ColumnWidth + \Meas_HPosition, 0), \State_HoverMB\BlockEnd - 1)
+								\Action_Drag_HorizontalOffset = Min(Max(MouseX / \Meas_TL_ColumnWidth + \Meas_HPosition, 0), \State_HoverMB\BlockEnd - 1)
 							Else
-								\Action_Drag_Offset = Min(Max(MouseX / \Meas_TL_ColumnWidth + \Meas_HPosition, \State_HoverMB\BlockStart + 1), \State_Duration)
+								\Action_Drag_HorizontalOffset = Min(Max(MouseX / \Meas_TL_ColumnWidth + \Meas_HPosition, \State_HoverMB\BlockStart + 1), \State_Duration)
 							EndIf
 							Redraw(\Comp_Container)
 						Case #PB_EventType_LeftButtonUp
@@ -2317,9 +2362,9 @@ Module PureTL
 							\State_UserAction = #Action_Hover
 							
 							If \State_HoverResize = 1
-								ResizeMediaBlock(\Comp_Container, \State_HoverMB, \Action_Drag_Offset, \State_HoverMB\BlockEnd)
+								ResizeMediaBlock(\Comp_Container, \State_HoverMB, \Action_Drag_HorizontalOffset, \State_HoverMB\BlockEnd)
 							Else
-								ResizeMediaBlock(\Comp_Container, \State_HoverMB, \State_HoverMB\BlockStart, \Action_Drag_Offset)
+								ResizeMediaBlock(\Comp_Container, \State_HoverMB, \State_HoverMB\BlockStart, \Action_Drag_HorizontalOffset)
 							EndIf
 							
 							Redraw(\Comp_Container)
@@ -3199,11 +3244,11 @@ Module PureTL
 						MediaLoop = Redraw_MediaBlock(*GadgetData, BodyYPos + #Size_MediaBlock_VerticalMargin, \Cont_Displayed_List()\MediaBlocks(MediaLoop))
 					EndIf
 				Next
-					
-				If \State_UserAction = #Action_Body_Drag
+				
+				If \State_UserAction = #Action_Body_Drag 
 					ForEach \State_MediaBlocks()
 						If \State_MediaBlocks()\Line = \Cont_Displayed_List()
-							MaterialVector::AddPathRoundedBox((Min(Max((\State_MediaBlocks()\BlockStart + \Action_Drag_Offset), 0), \State_Duration - \State_MediaBlocks()\Duration) - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5, \State_MediaBlocks()\Duration * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
+							MaterialVector::AddPathRoundedBox((Min(Max((\State_MediaBlocks()\BlockStart + \Action_Drag_HorizontalOffset), 0), \State_Duration - \State_MediaBlocks()\Duration) - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, (BodyYPos + \Action_Drag_VerticalOffset * #Size_TL_Height )  + #Size_MediaBlock_VerticalMargin + 0.5, \State_MediaBlocks()\Duration * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
 						EndIf
 					Next
 					VectorSourceColor($FFFFFFFF)
@@ -3211,9 +3256,9 @@ Module PureTL
 				ElseIf \State_UserAction = #Action_Body_Resize
 					If \State_HoverMB\Line = \Cont_Displayed_List()
 						If \State_HoverResize = 1
-							MaterialVector::AddPathRoundedBox((\Action_Drag_Offset - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5, (\State_HoverMB\BlockEnd - \Action_Drag_Offset + 1) * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
+							MaterialVector::AddPathRoundedBox((\Action_Drag_HorizontalOffset - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5, (\State_HoverMB\BlockEnd - \Action_Drag_HorizontalOffset + 1) * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
 						Else
-							MaterialVector::AddPathRoundedBox((\State_HoverMB\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5, (\Action_Drag_Offset - \State_HoverMB\BlockStart + 1) * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
+							MaterialVector::AddPathRoundedBox((\State_HoverMB\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5, (\Action_Drag_HorizontalOffset - \State_HoverMB\BlockStart + 1) * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
 						EndIf
 						VectorSourceColor($FFFFFFFF)
 						StrokePath(1)
@@ -3574,7 +3619,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 420
-; FirstLine = 50
-; Folding = AA5BCQBAAAIAACAIBAAIEBBBA+
+; CursorPosition = 3249
+; FirstLine = 585
+; Folding = AAYBigCAAAQAAcMXAAAQICSCA9
 ; EnableXP

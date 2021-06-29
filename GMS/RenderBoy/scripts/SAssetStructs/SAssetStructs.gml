@@ -91,13 +91,12 @@ function AssetImage(_UUID) constructor
 		}
 		else if (state_scale)
 		{
+			var _width = state_original_mouse_x - mouse_x;
+			var _height =  state_original_mouse_y - mouse_y;
 			
 			switch state_scale
 			{
 				case 1: #region Top Left
-					var _width = state_original_mouse_x - mouse_x;
-					var _height =  state_original_mouse_y - mouse_y;
-					
 					_state.height = State_origial_height + _height;
 					_state.y = state_original_y - floor(_height * 0.5);
 					_state.width = State_origial_width + _width
@@ -106,9 +105,6 @@ function AssetImage(_UUID) constructor
 					break;
 					#endregion
 				case 2: #region bottom right
-					var _width = state_original_mouse_x - mouse_x;
-					var _height =  state_original_mouse_y - mouse_y;
-					
 					_state.height = State_origial_height - _height;
 					_state.y = state_original_y - floor(_height * 0.5);
 					_state.width = State_origial_width - _width;
@@ -117,9 +113,6 @@ function AssetImage(_UUID) constructor
 					break;
 					#endregion
 				case 3: #region Top right
-					var _width = state_original_mouse_x - mouse_x;
-					var _height =  state_original_mouse_y - mouse_y;
-					
 					_state.height = State_origial_height + _height;
 					_state.y = state_original_y - floor(_height * 0.5);
 					_state.width = State_origial_width - _width;
@@ -128,9 +121,6 @@ function AssetImage(_UUID) constructor
 					break;
 					#endregion
 				case 4: #region bottom left
-					var _width = state_original_mouse_x - mouse_x;
-					var _height =  state_original_mouse_y - mouse_y;
-					
 					_state.height = State_origial_height - _height;
 					_state.y = state_original_y - floor(_height * 0.5);
 					_state.width = State_origial_width + _width;
@@ -139,31 +129,23 @@ function AssetImage(_UUID) constructor
 					break;
 					#endregion
 				case 5: #region right
-					var _width = state_original_mouse_x - mouse_x;
-					
 					_state.width = State_origial_width - _width;
 					_state.x = state_original_x - floor(_width * 0.5);
 					
 					break;
 					#endregion
 				case 6: #region top
-					var _height =  state_original_mouse_y - mouse_y;
-					
 					_state.height = State_origial_height + _height;
 					_state.y = state_original_y - floor(_height * 0.5);
 					
 					break;
 					#endregion
 				case 7: #region Left
-					var _width = state_original_mouse_x - mouse_x;
-					
 					_state.width = State_origial_width + _width;
 					_state.x = state_original_x - floor(_width * 0.5);
 					break;
 					#endregion
 				case 8: #region bottom
-					var _height =  state_original_mouse_y - mouse_y;
-					
 					_state.height = State_origial_height - _height;
 					_state.y = state_original_y - floor(_height * 0.5);
 					
@@ -189,20 +171,20 @@ function AssetImage(_UUID) constructor
 					state_scale = 1;
 				}
 			}
-			else if ((mouse_x >= x3 - 8) && (mouse_x <= x3 + 8) && (mouse_y >= y3 - 8) && (mouse_y <= y3 + 8))
-			{
-				_cursor = cr_size_nwse;
-				if mouse_check_button_pressed(mb_left)
-				{
-					state_scale = 2;
-				}
-			}
 			else if ((mouse_x >= x2 - 8) && (mouse_x <= x2 + 8) && (mouse_y >= y2 - 8) && (mouse_y <= y2 + 8))
 			{
 				_cursor = cr_size_nesw;
 				if mouse_check_button_pressed(mb_left)
 				{
 					state_scale = 3;
+				}
+			}
+			else if ((mouse_x >= x3 - 8) && (mouse_x <= x3 + 8) && (mouse_y >= y3 - 8) && (mouse_y <= y3 + 8))
+			{
+				_cursor = cr_size_nwse;
+				if mouse_check_button_pressed(mb_left)
+				{
+					state_scale = 2;
 				}
 			}
 			else if ((mouse_x >= x4 - 8) && (mouse_x <= x4 + 8) && (mouse_y >= y4 - 8) && (mouse_y <= y4 + 8))
