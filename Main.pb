@@ -99,11 +99,11 @@ CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 	EndProcedure
 	
 	ProcedureCDLL.d UpdateAssetState(Line.d, *Json)
-		PureTL::UpdatetMediaBlockState(MainWindow::#TimeLine, Line, PeekS(*Json, -1, #PB_UTF8))
+		PureTL::UpdateMediaBlockState(MainWindow::#TimeLine, Line, PeekS(*Json, -1, #PB_UTF8))
 	EndProcedure
 	
-	ProcedureCDLL.d GetEditLine()
-		ProcedureReturn PureTL::GetEditLine(MainWindow::#TimeLine)
+	ProcedureCDLL.d GetEditedLine()
+		ProcedureReturn PureTL::GetEditedLine(MainWindow::#TimeLine)
 	EndProcedure
 CompilerElse
 	MainWindow::Open()
@@ -114,6 +114,6 @@ CompilerElse
 	ForEver
 CompilerEndIf
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 101
+; CursorPosition = 61
 ; Folding = RQ-
 ; EnableXP

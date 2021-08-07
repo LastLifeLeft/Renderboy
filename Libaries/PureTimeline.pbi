@@ -342,8 +342,9 @@ DeclareModule PureTL
 	EndEnumeration
 	
 	Enumeration ; Line Flags
-		#Line_Default = 0
+		#Line_Asset = 0
 		#Line_Folder
+		#Line_Data
 	EndEnumeration
 	
 	Enumeration ; Media block flags
@@ -361,27 +362,25 @@ DeclareModule PureTL
 	EndEnumeration
 	
 	Structure DataPoint
-		x.d
-		y.d
-		z.d
-		width.f
-		height.f
-		depth.f
-		yaw.f
-		roll.f
-		pitch.f
-		data0.d
-		data1.d
-		data2.d
-		data3.d
-		data4.d
-	EndStructure
+		X.d
+		Y.d
+		Z.d
+		Width.d
+		Height.d
+		Depth.d
 		
+		*Data0
+		*Data1
+		*Data2
+		*Data3
+		*Data4
+	EndStructure
+	
 	; Public procedures declaration
 	Declare Gadget(Gadget, X, Y, Width, Height, Flags = #Default)
 	Declare Free(Gadget)
 	Declare Resize(Gadget, X, Y, Width, Height)
-	Declare ResizeEX(Gadget, X, Y, Width, Height, hWnd, Update)
+	Declare ResizeEX(Gadget, X, Y, Width, Height)
 	Declare AssessDrop(Gadget, State, ObjectType, X, Y)
 	Declare UpdateCurrentAssetList(Gadget) ; create a list of all the assets used at the current frame ordered by depth, it's the simplest solution I found given the limited commuication with the renderer
 	
@@ -392,12 +391,12 @@ DeclareModule PureTL
 	Declare SetTaskList(Gadget, TaskList)
 	Declare GetPlayerPosition(Gadget)
 	Declare.s GetAsset(Gadget, Line)
-	Declare GetEditLine(Gadget)
+	Declare GetEditedLine(Gadget)
 	Declare.s GetMediaBlockState(Gadget, Line)
 	
 	; Line stuff
-	Declare AddLine(Gadget, Position, Text.s, Parent = 0, Flags = #Line_Default)
-	Declare RemoveLine(Gadget, Position, Parent = 0)
+	Declare AddLine(Gadget, Position, Text.s, Parent = 0, Flags = #Line_Asset)
+	Declare RemoveLine(Gadget, *Line)
 	
 	Declare GetLineID(Gadget, Position, Parent = 0)
 	Declare GetLineText(Gadget, LineID)
@@ -411,8 +410,10 @@ DeclareModule PureTL
 	Declare MoveMediaBlock(Gadget, MediaBlockID, Offset)
 	Declare.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
 	Declare ResizeMediaBlock(Gadget, *MediaBlock, NewStart, NewEnd)
-	Declare UpdatetMediaBlockState(Gadget, Line, Json.s)
+	Declare UpdateMediaBlockState(Gadget, Line, Json.s)
+	
 	; Data point
+	
 	
 	; Misc
 	Declare Handler_UndoRedo(*Task, Redo)
@@ -438,7 +439,7 @@ EndDeclareModule
 Module PureTL
 	EnableExplicit
 	
-	; Macro
+	;{ Macro
 	CompilerIf #PB_Compiler_OS = #PB_OS_Windows ; Fix color
 		Macro FixColor(Color)
 			RGB(Blue(Color), Green(Color), Red(Color))
@@ -457,12 +458,15 @@ Module PureTL
 			Color << 8 + Alpha
 		EndMacro
 	CompilerEndIf
+	;}
 	
 	;{ Private variables, structures, constants...
 	Enumeration ; State
 		#Cold
 		#Warm
 		#Hot
+		
+		#Draged
 	EndEnumeration
 	
 	Enumeration ;Fold
@@ -476,6 +480,7 @@ Module PureTL
 		#Action_List_InitDrag
 		#Action_List_Drag
 		#Action_List_Rename
+		#Action_List_HoverFold
 		
 		#Action_Body_InitDrag
 		#Action_Body_Drag
@@ -494,51 +499,20 @@ Module PureTL
 	#MoveMediaBlock = "MoveMediaBlock"
 	#ResizeMediaBlock = "ResizeMediaBlock"
 	
-	Structure DataState
-		x.d
-		y.b
-		z.b
-		width.b
-		height.b
-		depth.b
-		yaw.b
-		roll.b
-		pitch.b
-		data0.b
-		data1.b
-		data2.b
-		data3.b
-		data4.b
-	EndStructure
-	
 	Structure MediaBlock
+		Type.i
 		UUID.s
-		BlockStart.i
-		BlockEnd.i
-		Duration.i
-		*Line.Line
-		Color.l
-		Icon.s
-		Text.s
-		State.b
-		Drag.b
-		*StateListAdress
-		AssetUUID.s
-		Animated.b
-		Array DataPoints.DataPoint(1)
-		Array DataState.DataState(1)
+		
+		Array *DataPoints.DataPoint(1)
 	EndStructure
 	
 	Structure Line
-		UUID.s
-		Type.b
+		Type.i	; MUST STAY IN FIRST POSITION!
 		Name.s
-		Folded.i
-		VerticalOffset.i
-		HorizontalOfsset.i
-		Flags.i
-		State.i
-		Icon.s
+		UUID.s
+		State.b
+		
+		HorizontalOffset.i
 		
 		*Parent.Line
 		
@@ -565,51 +539,19 @@ Module PureTL
 		Comp_Button_Up.i
 		Comp_Button_Down.i
 		
-		; State
-		State_TaskList.i
-		State_ActiveLine.i
-		State_HoverLine.i
-		*State_HoverMB.MediaBlock
-		*State_HoverDP.DataPoint
-		State_HoverResize.b
-		State_HoverFoldButton.i
-		State_Duration.i
-		State_UserAction.i
-		State_AssetDragLine.i
-		State_AssetDragPosition.i
-		State_AssetDragDuration.i
-		State_PlayerPosition.i
-		List *CurrentAsset.MediaBlock()
-		State_EditLine.i
-		
-		List *State_DataPoints.DataPoint()
-		List *State_MediaBlocks.MediaBlock()
-		
-		; Action
-		Action_Drag_OriginX.i
-		Action_Drag_OriginY.i
-		Action_Drag_Image.i
-		Action_Drag_Window.i
-		*Action_Drag_Line.Line
-		Action_Drag_Position.i
-		Action_Drag_SubPosition.i
-		Action_Drag_OriginalPosition.i
-		Action_Drag_OriginalParent.i
-		Action_InitDrag_Modifier.i
-		Action_Drag_HorizontalOffset.i
-		Action_Drag_VerticalOffset.i
-		
 		; Measurement
 		Meas_List_Height.i
 		Meas_List_Width.i
 		
-		Meas_Body_Height.i
 		Meas_Body_Width.i
 		
-		Meas_Displayed_Lines.i
-		Meas_Displayed_Columns.i
+		Meas_Displayed_Line_Count.i
+		Meas_Displayed_Column_Count.i
 		
 		Meas_TL_ColumnWidth.i
+		Meas_TL_LineHeight.i
+		Meas_TL_TextVericalOffset.i
+		Meas_TL_TextHorizontaOffset.i
 		
 		Meas_VPosition.i
 		Meas_HPosition.i
@@ -632,39 +574,50 @@ Module PureTL
 		Color_MediaBlock_Back.l[3]
 		Color_MediaBlock_Front.l[3]
 		
+		; State
+		*State_SelectedLine.Line
+		State_TaskList.i
+		
+		State_Drag_X.i
+		State_Drag_Y.i
+		
+		State_List.i
+		State_List_Item.i
+		
+		State_Action.i
+		
 		; Content
 		List *Cont_Line_List.Line()
 		List *Cont_Displayed_List.Line()
-		Cont_Displayed_Line.i
+		Cont_Displayed_List_Size.i
 		
-		Map Lines.Line(2048)
-		Map MediaBlocks.MediaBlock(2048)
-		Map DataState.DataPoint(2048)
+		Map Cont_Lines.Line(2048)
+		Map Cont_MediaBlocks.MediaBlock(2048)
 	EndStructure
 	
 	Structure Task
-		XMLID.i
 		XML.s
 	EndStructure
 	
-
+	Global DragWindow
 	
 	;{ Default Setting
 	#Default_Duration = 300
+	#Size_DragInit_Distance = 15
 	;}
 	
 	;{ Style
 	
 	; Size
-	#Size_TL_Height = 58
+	#Size_TL_DefaultLineHeight = 58
 	#Size_TL_DefaultColumnWidth = 6
 	#Size_TL_MaxColumnWidth = 15
 	#Size_TL_MinColumnWidth = 1
 	
 	#Size_List_MinimumWidth = 230
-	#Size_List_Text_VerticalMargin = (#Size_TL_Height - 16) / 2
-	#Size_List_Text_HorizontalMargin = 30
-	#Size_List_Icon_VerticalMargin = (#Size_TL_Height - 20) / 2
+	#Size_List_Text_VerticalOffset = (#Size_TL_DefaultLineHeight - 16) / 2
+	#Size_List_Text_HorizontalOffset = 30
+	#Size_List_Icon_VerticalMargin = (#Size_TL_DefaultLineHeight - 20) / 2
 	#Size_List_Icon_Offset = 34
 	#Size_SubItemOffset = 11 + #Size_List_Icon_Offset
 	
@@ -678,13 +631,15 @@ Module PureTL
 	#Size_Scrollbar_Thickness = 12
 	
 	#Size_MediaBlock_Height = 44
-	#Size_MediaBlock_VerticalMargin = (#Size_TL_Height - #Size_MediaBlock_Height) / 2
+	#Size_MediaBlock_VerticalMargin = (#Size_TL_DefaultLineHeight - #Size_MediaBlock_Height) / 2
 	
 	#Size_Player_Width = 1
 	#Size_Player_TopHeight = 24
 	#Size_Player_TopWidth = 18
 	#Size_Player_TopOffset = (#Size_Player_TopWidth - #Size_Player_Width) / 2
 	#Size_Player_TopSquare = #Size_Player_TopHeight - #Size_Player_TopOffset - 1
+	
+	#Size_RoundedCorner = 4
 	
 	; Colors
 	#Colors_List_Back_Alternate_Cold = $232941
@@ -803,14 +758,18 @@ Module PureTL
 	Global CornerUL = CatchImage(#PB_Any, ?Corner)
 	Global CornerUR = ROTATE_90(CornerUL)
 	Global CornerDR = ROTATE_90(CornerUR)
-	Global CornerDL = CreateImage(#PB_Any, 3, 3)
+	Global CornerDL = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner)
 	StartDrawing(ImageOutput(CornerDL))
-	Box(0, 0, 3, 3, SetAlpha($FF, FixColor(#Colors_List_Back_Cold)))
+	Box(0, 0, #Size_RoundedCorner, #Size_RoundedCorner, SetAlpha($FF, FixColor(#Colors_List_Back_Cold)))
 	DrawAlphaImage(ImageID(CornerUL), 0, 0)
 	StopDrawing()
 	FreeImage(CornerUL) 
 	CornerUL = CornerDL
 	CornerDL = ROTATE_90(CornerDR)
+	
+	CornerUR = ImageID(CornerUR)
+	CornerDR = ImageID(CornerDR)
+	CornerDL = ImageID(CornerDL)
 	;}
 	;}
 	
@@ -821,20 +780,11 @@ Module PureTL
 	Declare.s UUID()
 	
 	; Line stuff
-	Declare _AddLine(*GadgetData.GadgetData, Position, Text.s, *Parent.Line, Flags, UUID.s)
-	Declare _RemoveLine(*GadgetData.GadgetData, Position, *Parent.Line)
-	Declare Recurcive_RemoveLine(*GadgetData.GadgetData, *Line.Line, XMLNode)
-	Declare RenameLine(*GadgetData.GadgetData, *Line.Line, *Task.Task = 0)
-	Declare HandlerRenameString(hWnd, uMsg, wParam, lParam)
-	Declare _MoveLine(*GadgetData.GadgetData, *Line.Line, Position, *Parent.Line = 0)
-	
-	; Mediablock
-	Declare Batch_DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, MainNode)
-	Declare Batch_MoveMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, Offset, MainNode, Fixed = #False)
-	Declare _DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock)
-	Declare _MoveMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, Offset, MainNode = 0, fixed = #False)
-	Declare _ResizeMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, NewStart, NewEnd)
-	Declare _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, Position, Duration, Icon.s, Text.s, Color, UUID.s, AssetUUID.s)
+	Declare _AddLine(*GadgetData.GadgetData, XMLNode)
+	Declare _RemoveLine(*GadgetData.GadgetData, XMLNode)
+	Declare _Display_InsertLine(*GadgetData.GadgetData, *Line.Line, Position, *Parent.Line)
+	Declare _Display_RemoveLine(*GadgetData.GadgetData, *Line.line)
+	Declare _Display_GetLinePosition(*GadgetData.GadgetData, *Line.Line)
 	
 	; Handler
 	Declare Handler_Body()
@@ -849,11 +799,11 @@ Module PureTL
 	Declare Handler_UndoRedo(*Task.Task, Redo)
 	
 	; Redraw
-	Declare Redraw(Gadget)
+	Declare Redraw(*GadgetData.GadgetData)
 	Declare Redraw_MediaBlock(*GadgetData.GadgetData, yPos, *Block.MediaBlock)
 	
 	; Misc
-	Declare Refit(Gadget)
+	Declare Refit(Gadget, GadgetWidth, GadgetHeight)
 	Declare ToggleFold(Gadget)
 	Declare VerticalFocus(*GadgetData.GadgetData)
 	Declare HorizontalFocus(*GadgetData.GadgetData)
@@ -862,42 +812,31 @@ Module PureTL
 	Declare UnserializeDataPoint(*DataPoint.DataPoint, JsonString.s)
 	;}
 	
-	Macro DeleteParent(Parent)
-		DeleteElement(Parent#\Childrens())
-		If ListSize(Parent#\Childrens()) = 0
-			Parent#\Folded = #NoFold
-			If Parent#\Type = #Line_Folder
-				Parent#\Icon = #FontAwesome_Folder
-			Else
-				Parent#\Icon = #FontAwesome_Chevron_Right
-			EndIf
-		EndIf
-	EndMacro
-	
 	;{ Public procedures
+	;{ Misc
 	Procedure Gadget(Gadget, X, Y, Width, Height, Flags = #Default)
 		Protected Result = ContainerGadget(Gadget, X, Y, Width, Height, #PB_Container_BorderLess), *GadgetData.GadgetData
-		Protected CanvasList = CanvasGadget(#PB_Any, 0, #Size_Header_Height, #Size_List_MinimumWidth, Height - #Size_Header_Height, #PB_Canvas_Container | #PB_Canvas_Keyboard)
-		CloseGadgetList()
-		Protected CanvasBody = CanvasGadget(#PB_Any, #Size_List_MinimumWidth, 0, Width - #Size_List_MinimumWidth, Height, #PB_Canvas_Container | #PB_Canvas_Keyboard)
-		If Gadget = #PB_Any
-			Gadget = Result
-		EndIf
+		Protected CanvasList = CanvasGadget(#PB_Any, 0, #Size_Header_Height, #Size_List_MinimumWidth, Height - #Size_Header_Height, #PB_Canvas_Keyboard)
+		Protected CanvasBody = CanvasGadget(#PB_Any, #Size_List_MinimumWidth - 1, 0, Width - #Size_List_MinimumWidth, Height, #PB_Canvas_Container | #PB_Canvas_Keyboard)
+		Protected Margin, ImageGadget
 		
-		If Result And CanvasBody And CanvasList
-			*GadgetData = AllocateStructure(GadgetData)
+		If Result
+			If Gadget = #PB_Any
+				Gadget = Result
+			EndIf
 			
+			*GadgetData = AllocateStructure(GadgetData)
 			With *GadgetData
-				\Comp_Body = CanvasBody
-				\Comp_List = CanvasList
-				
 				EnableGadgetDrop(CanvasBody, #PB_Drop_Private, #PB_Drag_Link, 1)
 				
 				;Measurement
-				\Meas_List_Width = #Size_List_MinimumWidth
+				\Meas_List_Width = #Size_List_MinimumWidth - 1
 				\Meas_TL_ColumnWidth = #Size_TL_DefaultColumnWidth
+				\Meas_TL_LineHeight = #Size_TL_DefaultLineHeight
 				\Meas_Width = Width
 				\Meas_Height = Height
+				\Meas_TL_TextVericalOffset = #Size_List_Text_VerticalOffset
+				\Meas_TL_TextHorizontaOffset = #Size_List_Text_HorizontalOffset
 				
 				;Colors
 				\Color_List_Back_Alternate[#Cold] = FixColor(#Colors_List_Back_Alternate_Cold)
@@ -938,47 +877,16 @@ Module PureTL
 				\Color_MediaBlock_Front[#Warm] = FixColor(#Color_MediaBlock_Front_Warm)
 				\Color_MediaBlock_Front[#Hot] =  FixColor(#Color_MediaBlock_Front_Hot)
 				
-				; State
-				\State_ActiveLine = -1
-				\State_HoverLine = -1
-				\State_HoverFoldButton = -1
-				\State_Duration = #Default_Duration
-				\State_AssetDragLine = -1
+				;Components
+				SetGadgetColor(\Comp_Container, #PB_Gadget_BackColor, \Color_Primary_Back[#Cold])
 				
-				; Action
-				\Action_Drag_Position = -2
-				
-				SetGadgetData(CanvasBody, *GadgetData)
-				BindGadgetEvent(CanvasBody, @Handler_Body())
-				
-				SetGadgetData(CanvasList, *GadgetData)
-				BindGadgetEvent(CanvasList, @Handler_List())
-				
-				SetGadgetData(Gadget, *GadgetData)
-				SetGadgetColor(Gadget, #PB_Gadget_BackColor, \Color_List_Back[#Cold])
-				
-				\Comp_HScrollBar = ScrollBar::Gadget(#PB_Any, 0, \Meas_Body_Height - #Size_Scrollbar_Thickness, \Meas_Body_Width, #Size_Scrollbar_Thickness, 0, \State_Duration - 2, 10)
-				HideGadget(\Comp_HScrollBar, #True)
-				SetGadgetColor(\Comp_HScrollBar, #PB_Gadget_BackColor, SetAlpha($FF, \Color_List_Back[#Cold]))
-				SetGadgetColor(\Comp_HScrollBar, #PB_Gadget_LineColor, SetAlpha($FF, FixColor(#Color_Scrollbar_Back)))
-				SetGadgetColor(\Comp_HScrollBar, #PB_Gadget_FrontColor, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontCold)))
-				SetGadgetColor(\Comp_HScrollBar, ScrollBar::#Color_FrontWarm, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontWarm)))
-				SetGadgetColor(\Comp_HScrollBar, ScrollBar::#Color_FrontHot, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontHot)))
-				SetGadgetData(\Comp_HScrollBar, *GadgetData)
-				BindGadgetEvent(\Comp_HScrollBar, @Handler_HScrollBar(), #PB_EventType_Change)
-				
-				\Comp_VScrollBar = ScrollBar::Gadget(#PB_Any, \Meas_Body_Width - #Size_Scrollbar_Thickness, #Size_Header_Height, #Size_Scrollbar_Thickness, \Meas_List_Height, 0, 9, 10, ScrollBar::#Vertical)
-				HideGadget(\Comp_VScrollBar, #True)
+				\Comp_Body = CanvasBody
+				\Comp_List = CanvasList
 				CloseGadgetList()
-				SetGadgetColor(\Comp_VScrollBar, #PB_Gadget_BackColor, SetAlpha($FF, \Color_List_Back[#Cold]))
-				SetGadgetColor(\Comp_VScrollBar, #PB_Gadget_LineColor, SetAlpha($FF, FixColor(#Color_Scrollbar_Back)))
-				SetGadgetColor(\Comp_VScrollBar, #PB_Gadget_FrontColor, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontCold)))
-				SetGadgetColor(\Comp_VScrollBar, ScrollBar::#Color_FrontWarm, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontWarm)))
-				SetGadgetColor(\Comp_VScrollBar, ScrollBar::#Color_FrontHot, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontHot)))
-				SetGadgetData(\Comp_VScrollBar, *GadgetData)
-				BindGadgetEvent(\Comp_VScrollBar, @Handler_VScrollBar(), #PB_EventType_Change)
 				
-				Protected Margin = ((\Meas_List_Width - 5 * #Size_Header_ButtonSize + 4)) / 2
+				ImageGadget = ImageGadget(#PB_Any, 0, 0, 4, 4, ImageID(CornerUL))
+				
+				Margin = ((\Meas_List_Width - 5 * #Size_Header_ButtonSize + 4)) / 2
 				
 				\Comp_Button_AddFolder = CanvasButton::Gadget(#PB_Any, Margin, #Size_Header_VerticalMargin, #Size_Header_ButtonSize, #Size_Header_ButtonSize, "", MaterialVector::#Folder, CanvasButton::#MaterialVector | MaterialVector::#Style_Outline | CanvasButton::#Rounded_Left | CanvasButton::#Outline)
 				SetGadgetColor(\Comp_Button_AddFolder, CanvasButton::#BackColor_Cold, SetAlpha($FF ,\Color_Primary_Back[#Cold]))
@@ -1037,510 +945,219 @@ Module PureTL
 				SetGadgetColor(\Comp_Button_Down, CanvasButton::#FrontColor_Warm, SetAlpha($FF ,\Color_Primary_Front[#Warm]))
 				SetGadgetColor(\Comp_Button_Down, CanvasButton::#FrontColor_Hot, SetAlpha($FF , \Color_Primary_Front[#Hot]))
 				
+				
 				SetGadgetData(\Comp_Button_Down, *GadgetData)
 				BindGadgetEvent(\Comp_Button_Down, @Handler_Button_Down(), #PB_EventType_Change)
 				
-				ImageGadget(#PB_Any, 0, 0, 3, 3, ImageID(CornerUL))
 				CloseGadgetList()
 				
+				SetGadgetData(Gadget, *GadgetData)
 				
-				Refit(Gadget)
-				Redraw(Gadget)
+				Refit(*GadgetData\Comp_Container, Width, Height)
+				Redraw(*GadgetData)
+				
+				SetGadgetData(\Comp_List, *GadgetData)
+				BindGadgetEvent(\Comp_List, @Handler_List())
+				
+				DragWindow = OpenWindow(#PB_Any, 0, 0, \Meas_List_Width, \Meas_TL_LineHeight, "", #PB_Window_BorderLess | #PB_Window_Invisible, WindowID(0))
+				SetWindowData(DragWindow, CanvasGadget(#PB_Any, 0, 0, \Meas_List_Width, \Meas_TL_LineHeight))
+				SetWindowLongPtr_(WindowID(DragWindow),#GWL_EXSTYLE,#WS_EX_LAYERED)
+				SetLayeredWindowAttributes_(WindowID(DragWindow),0,140,#LWA_ALPHA)
 			EndWith
-		Else
-			If Result
-				FreeGadget(Gadget)
-			EndIf
-			
-			Result = 0
-			
-			If CanvasBody
-				FreeGadget(CanvasBody)
-			EndIf
-			
-			If CanvasList
-				FreeGadget(CanvasList)
-			EndIf
 		EndIf
-		
 		ProcedureReturn Result
 	EndProcedure
 	
 	Procedure Free(Gadget)
-		
-		
 	EndProcedure
 	
 	Procedure Resize(Gadget, X, Y, Width, Height)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 		
-		*GadgetData\Meas_Width = Width
-		*GadgetData\Meas_Height = Height
-		SetWindowPos_(GadgetID(Gadget), 0, X, Y, Width, Height, #SWP_NOZORDER)
-		Refit(Gadget)
-		Redraw(Gadget)
+		Refit(Gadget, Width, Height)
+		
+		With *GadgetData
+			\Meas_Width = Width
+			\Meas_Height = Height
+			SetWindowPos_(GadgetID(\Comp_Container), 0, X, Y, Width, Height, #SWP_NOZORDER)
+			
+			SetWindowPos_(GadgetID(\Comp_List), 0, 0, 0, \Meas_List_Width, \Meas_List_Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
+			SetWindowPos_(GadgetID(\Comp_Body), 0, 0, 0, \Meas_Body_Width, Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
+			
+			Redraw(*GadgetData)
+		EndWith
+		
 	EndProcedure
 	
-	Procedure ResizeEX(Gadget, X, Y, Width, Height, hWnd, Update)
+	Procedure ResizeEX(Gadget, X, Y, Width, Height)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 		
-		*GadgetData\Meas_Width = Width
-		*GadgetData\Meas_Height = Height
-		SendMessage_(GadgetID(*GadgetData\Comp_List), #WM_SETREDRAW, #False, 0)
-		SendMessage_(GadgetID(*GadgetData\Comp_Body), #WM_SETREDRAW, #False, 0)
-		Refit(Gadget)
-		Redraw(Gadget)
-		SetWindowPos_(GadgetID(Gadget), 0, X, Y, Width, Height, #SWP_NOZORDER)
-		SendMessage_(GadgetID(*GadgetData\Comp_List), #WM_SETREDRAW, #True, 0)
-		SendMessage_(GadgetID(*GadgetData\Comp_Body), #WM_SETREDRAW, #True, 0)
+		With *GadgetData
+			\Meas_Width = Width
+			\Meas_Height = Height
+			SendMessage_(GadgetID(\Comp_List), #WM_SETREDRAW, #False, 0)
+			SendMessage_(GadgetID(\Comp_Body), #WM_SETREDRAW, #False, 0)
+			Refit(Gadget, Width, Height)
+			
+			SetWindowPos_(GadgetID(\Comp_List), 0, 0, 0, \Meas_List_Width, \Meas_List_Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
+			SetWindowPos_(GadgetID(\Comp_Body), 0, 0, 0, \Meas_Body_Width, Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
+			
+			Redraw(*GadgetData)
+			SetWindowPos_(GadgetID(Gadget), 0, X, Y, Width, Height, #SWP_NOZORDER)
+			SendMessage_(GadgetID(\Comp_List), #WM_SETREDRAW, #True, 0)
+			SendMessage_(GadgetID(\Comp_Body), #WM_SETREDRAW, #True, 0)
+			
+			RedrawWindow_(GadgetID(\Comp_List), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
+			RedrawWindow_(GadgetID(\Comp_Body), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
+		EndWith
 		
-		RedrawWindow_(GadgetID(*GadgetData\Comp_List), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
-		RedrawWindow_(GadgetID(*GadgetData\Comp_Body), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
-		RedrawWindow_(GadgetID(*GadgetData\Comp_HScrollBar), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW)
-
 	EndProcedure
 	
 	Procedure AssessDrop(Gadget, State, ObjectType, X, Y)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), Line
-		
-		With *GadgetData
-			Select State
-				Case #PB_Drag_Update
-					If y > #Size_Header_Height
-						Y - #Size_Header_Height
-						Line = Y / #Size_TL_Height + \Meas_VPosition
-						If Line < \Cont_Displayed_Line
-							SelectElement(\Cont_Displayed_List(), Line)
-							\State_AssetDragLine = Line
-							\State_AssetDragPosition = X / \Meas_TL_ColumnWidth + \Meas_HPosition
-							Redraw(Gadget)
-							
-							ProcedureReturn #True
-						EndIf
-					EndIf
-				Case #PB_Drag_Finish
-					If \State_AssetDragLine > -1
-						SelectElement(\Cont_Displayed_List(), \State_AssetDragLine)
-; 						Line = \State_AssetDragLine
-						\State_AssetDragLine = -1
-						
-						PostEvent(#PB_Event_GadgetDrop, 0, Gadget, \Cont_Displayed_List(), \State_AssetDragPosition)
-						
-						ProcedureReturn #True
-					EndIf
-			EndSelect
-			
-			If \State_AssetDragLine > -1
-				\State_AssetDragLine = -1
-				Redraw(Gadget)
-			EndIf
-			
-		EndWith
-			
-		ProcedureReturn #False
 	EndProcedure
 	
 	Procedure UpdateCurrentAssetList(Gadget)
+	EndProcedure
+	;}
+	
+	;{ State
+	Procedure GetActiveLine(Gadget)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		
-		With *GadgetData
-		ClearList(\CurrentAsset())
-		
-		ForEach \Cont_Line_List()
-			_UpdateCurrentAssetList(*GadgetData, \Cont_Line_List())
-		Next
-		
-		EndWith
 	EndProcedure
 	
-	; State
-	Procedure GetActiveLine(Gadget) ; Ok
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Result
-		
-		If *GadgetData\State_ActiveLine > -1
-			SelectElement(*GadgetData\Cont_Displayed_List(), *GadgetData\State_ActiveLine)
-			*Result = *GadgetData\Cont_Displayed_List()
-		EndIf
-		
-		ProcedureReturn *Result
-	EndProcedure
-	
-	Procedure SetActiveLine(Gadget, *Line.Line) ; Ok
+	Procedure SetActiveLine(Gadget, *Line.Line)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		
-		If *Line\DisplayListAdress
-			If *GadgetData\State_ActiveLine > -1
-				SelectElement(*GadgetData\Cont_Displayed_List(), *GadgetData\State_ActiveLine)
-				*GadgetData\Cont_Displayed_List()\State = #Cold
-			EndIf
-			
-			ChangeCurrentElement(*GadgetData\Cont_Displayed_List(), *Line\DisplayListAdress)
-			*GadgetData\Cont_Displayed_List()\State = #Hot
-			*GadgetData\State_ActiveLine = ListIndex(*GadgetData\Cont_Displayed_List())
-			
-			VerticalFocus(*GadgetData)
-			Redraw(*GadgetData\Comp_Container)
-		EndIf
-		
 	EndProcedure
 	
 	Procedure Freeze(Gadget, State)
-		
-	EndProcedure
-	
-	Procedure SetTaskList(Gadget, TaskList) ; Ok
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
- 		*GadgetData\State_TaskList = TaskList
 	EndProcedure
 	
-	Procedure GetPlayerPosition(Gadget) ; Ok
+	Procedure SetTaskList(Gadget, TaskList)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		
-		ProcedureReturn *GadgetData\State_PlayerPosition
+		*GadgetData\State_TaskList = TaskList
 	EndProcedure
 	
-	Procedure.s GetAsset(Gadget, Line) ; Ok
+	Procedure GetPlayerPosition(Gadget)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		SelectElement(*GadgetData\CurrentAsset(), Line)
-		
-		If *GadgetData\CurrentAsset()
-			ProcedureReturn *GadgetData\CurrentAsset()\AssetUUID
-		EndIf
 	EndProcedure
 	
-	Procedure.s GetMediaBlockState(Gadget, Line) ; Returns the state of the mediablock at the current point
+	Procedure.s GetAsset(Gadget, Line)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+	EndProcedure
+	
+	Procedure.s GetMediaBlockState(Gadget, Line)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 		
-		SelectElement(*GadgetData\CurrentAsset(), Line)
-		
- 		ProcedureReturn SerializeDataPoint(@*GadgetData\CurrentAsset()\DataPoints(*GadgetData\State_PlayerPosition - *GadgetData\CurrentAsset()\BlockStart))
 	EndProcedure
 	
-	Procedure GetEditLine(Gadget) ; returns the line of the currently edited mediablock
+	Procedure GetEditedLine(Gadget)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		
-		ProcedureReturn *GadgetData\State_EditLine
+	EndProcedure
+	;}
+	
+	;{ Line stuff
+	Procedure RemoveLine(Gadget, *Line.Line)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 	EndProcedure
 	
-	; Line stuff
-	Procedure RemoveLine(Gadget, Position, *Parent.Line = 0)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Line.Line
-		Protected *Task.Task = AllocateStructure(Task), XML, MainNode, Item
+	Procedure AddLine(Gadget, Position, Text.s, *Parent.Line = 0, Flags = #Line_Asset)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), UUID.s
+		Protected *Task.Task = AllocateStructure(Task), XML = CreateXML(#PB_Any)
+ 		Protected MainNode = CreateXMLNode(RootXMLNode(XML), "Tasks") 
+ 		Protected XMLNode = CreateXMLNode(MainNode, #CreateLine)
 		
-		XML = CreateXML(#PB_Any)
- 		MainNode = CreateXMLNode(RootXMLNode(XML), "Tasks") 
-		
-		If *Parent
-			SelectElement(*Parent\Childrens(), Position)
-			*Line = *Parent\Childrens()
-		Else
-			SelectElement(*GadgetData\Cont_Displayed_List(), Position)
-			*Line = *GadgetData\Cont_Displayed_List()
-		EndIf
-		
-		Recurcive_RemoveLine(*GadgetData, *Line, MainNode)
-		
-		*Task\XML = ComposeXML(XML, #PB_XML_NoDeclaration)
-		FreeXML(XML)
-		
-		TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-	EndProcedure
-	
-	Procedure AddLine(Gadget, Position, Text.s, *Parent.Line = 0, Flags = #Line_Default)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Result.Line
- 		Protected *Task.Task = AllocateStructure(Task), UUID.s = UUID(), MainNode, Item, Visible
- 		
- 		*Task\XMLID = CreateXML(#PB_Any)
- 		MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks") 
- 		Item = CreateXMLNode(MainNode, #CreateLine)
- 		
-		SetXMLAttribute(Item, "Gadget", Str(Gadget))
-		SetXMLAttribute(Item, "Position", Str(Position))
-		SetXMLAttribute(Item, "UUID", UUID)
-		
-		If *Parent
-			SetXMLAttribute(Item, "Parent", *Parent\UUID)
-			Visible = Bool(*Parent\Folded = #Unfolded And *Parent\DisplayListAdress)
-		Else
-			Visible = #True
-			SetXMLAttribute(Item, "Parent", "0")
-		EndIf
-		
-		SetXMLAttribute(Item, "Flags", Str(Flags))
-		
-		If Text = ""
-			If Flags & #Line_Folder
-				Text = "New Folder"
+		With *GadgetData
+			UUID = UUID()
+			
+			While FindMapElement(\Cont_Lines(), UUID) ; Is this really needed? I don't know how random is PB RNG, but even if its reaaaaaally bad I think it would be safe without it. On the other hand, it's so small that I've left it just to be sure...
+				UUID = UUID()
+			Wend
+			
+			SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
+			SetXMLAttribute(XMLNode, "Position", Str(Position))
+			SetXMLAttribute(XMLNode, "UUID", UUID)
+			
+			If *Parent
+				SetXMLAttribute(XMLNode, "Parent", *Parent\UUID)
 			Else
-				Text = "New Line"
+				SetXMLAttribute(XMLNode, "Parent", "0")
 			EndIf
-			SetXMLAttribute(Item, "Text", Text)
 			
-			*Result = _AddLine(*GadgetData, Position, Text.s, *Parent.Line, Flags, UUID)
-			
-			If Visible = #True
-				RenameLine(*GadgetData, *Result, *Task)
-			Else
-				*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-				FreeXML(*Task\XMLID)
+			If Text = ""
+				SetXMLAttribute(XMLNode, "Text", "New Line")
+				_AddLine(*GadgetData, XMLNode)
 				
+			Else
+				SetXMLAttribute(XMLNode, "Text", Text)
+				_AddLine(*GadgetData, XMLNode)
+				
+				*Task\XML = ComposeXML(XML, #PB_XML_NoDeclaration)
+				FreeXML(XML)
 				TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
 			EndIf
-		Else
-			SetXMLAttribute(Item, "Text", Text)
-			*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-			FreeXML(*Task\XMLID)
 			
-			TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
- 			*Result = _AddLine(*GadgetData, Position, Text.s, *Parent.Line, Flags, UUID)
-		EndIf
-		
-		ProcedureReturn *Result
+		EndWith
+			
 	EndProcedure
-			
+	
+	Procedure MoveLine(Gadget, *Line.Line, Position)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Element
+		
+		With *GadgetData
+			If Position = \Cont_Displayed_List_Size - 1
+				ChangeCurrentElement(\Cont_Displayed_List(), *Line\DisplayListAdress)
+				MoveElement(\Cont_Displayed_List(), #PB_List_Last)
+			Else
+				If Position > _Display_GetLinePosition(*GadgetData, \State_SelectedLine)
+					Position + 1
+				EndIf
+				*Element = SelectElement(\Cont_Displayed_List(), Position)
+				ChangeCurrentElement(\Cont_Displayed_List(), *Line\DisplayListAdress)
+				MoveElement(\Cont_Displayed_List(), #PB_List_Before, *Element)
+			EndIf
+		EndWith
+	EndProcedure
+	
 	Procedure GetLineID(Gadget, Position, *Parent.Line = 0)
-		Protected *GadgetData.GadgetData, *Result
-		
-		If *Parent
-			SelectElement(*Parent\Childrens(), Position)
-			*Result = *Parent\Childrens()
-		Else
-			*GadgetData.GadgetData = GetGadgetData(Gadget)
-			SelectElement(*GadgetData\Cont_Line_List(), Position)
-			*Result = *GadgetData\Cont_Line_List()
-		EndIf
-		
-		ProcedureReturn *Result
+		Protected *GadgetData.GadgetData
 	EndProcedure
 	
 	Procedure GetLineText(Gadget, *Line.Line)
-		
 	EndProcedure
 	
 	Procedure SetLineText(Gadget, *Line.Line, Text.s)
-		
 	EndProcedure
 	
 	Procedure CountLine(Gadget)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		
-		ProcedureReturn MapSize(*GadgetData\Lines())
 	EndProcedure
+	;}
 	
-	; Media block
+	;{ Media block
 	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Icon.s, Text.s, Color, AssetUUID.s, DefaultState.s)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *result.MediaBlock
-		Duration - 1
-		Protected *Task.Task = AllocateStructure(Task), UUID.s = UUID(), MainNode, Item, Visible, BlockEnd = Position + Duration, Loop
-		Protected BlockCenter = (Position + BlockEnd) * 0.5, Move, Target
-		
-		With *GadgetData
-			;0) Create Task
-			*Task\XMLID = CreateXML(#PB_Any)
-			MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks") 
-			Item = CreateXMLNode(MainNode, #CreateMediaBlock)
-			
-			;1) check if there is some stuff on those blocks and, if so, move it.
-			For Loop = Position To BlockEnd
-				If *Line\MediaBlocks(Loop)
-					If (*Line\MediaBlocks(Loop)\BlockStart + *Line\MediaBlocks(Loop)\BlockEnd) / 2 > BlockCenter
-						Target = blockend - Loop + 1
-						Move = Batch_MoveMediaBlock(*GadgetData, *Line\MediaBlocks(Loop), Target, Item, #True)
-						
-						If Move < Target
-							Move = Move - Target
-							Position + Move
-							BlockEnd + Move
-							
-							BlockCenter = (Position + BlockEnd) * 0.5
-							
-							If Loop > Position
-								Loop = Position
-							EndIf
-						EndIf
-					Else
-						Target = position - *Line\MediaBlocks(Loop)\BlockEnd - 1
-						Move = Batch_MoveMediaBlock(*GadgetData, *Line\MediaBlocks(Loop), Target, Item, #True)
-						
-						If Move > Target
-							Move = Move - Target
-							Position + Move
-							BlockEnd + Move
-							
-							BlockCenter = (Position + BlockEnd) * 0.5
-							
-							If Loop < Position
-								Loop = Position
-							EndIf
-						EndIf
-					EndIf
-				EndIf
-			Next
-			
-			;2) create the object
-			*result = _AddMediaBlock(*GadgetData, *Line.Line, Position, BlockEnd, Icon, Text, Color, UUID.s, AssetUUID.s)
-			For Loop = 0 To Duration
-				UnserializeDataPoint(@*result\DataPoints(Loop), DefaultState)
-			Next
-			
-			*result\DataState(0)\x = #True
-			*result\DataState(0)\y = #True
-			*result\DataState(0)\z = #True
-			*result\DataState(0)\width = #True
-			*result\DataState(0)\height = #True
-			*result\DataState(0)\depth = #True
-			*result\DataState(0)\yaw = #True
-			*result\DataState(0)\roll = #True
-			*result\DataState(0)\pitch = #True
-			
-			*result\DataState(0)\data0 = #True
-			*result\DataState(0)\data1 = #True
-			*result\DataState(0)\data2 = #True
-			*result\DataState(0)\data3 = #True
-			*result\DataState(0)\data4 = #True
-			
-			;4) Finish the task
-			SetXMLAttribute(Item, "Gadget", Str(Gadget))
-			SetXMLAttribute(Item, "Line", *Line\UUID)
-			SetXMLAttribute(Item, "BlockStart", Str(Position))
-			SetXMLAttribute(Item, "BlockEnd", Str(BlockEnd))
-			SetXMLAttribute(Item, "Icon", Icon)
-			SetXMLAttribute(Item, "Text", Text)
-			SetXMLAttribute(Item, "Color", Str(Color))
-			SetXMLAttribute(Item, "UUID", UUID)
-			SetXMLAttribute(Item, "AssetUUID", AssetUUID)
-			SetXMLAttribute(Item, "DefaultState", DefaultState)
-			
-			*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-			FreeXML(*Task\XMLID)
-			TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-			
-			Redraw(\Comp_Container)
-			
-			PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
-		EndWith
-		ProcedureReturn *result
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 	EndProcedure
 	
 	Procedure DeleteMediaBlock(Gadget, *MediaBlock.Mediablock)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		Protected *Task.Task = AllocateStructure(Task), MainNode
-		
-		*Task\XMLID = CreateXML(#PB_Any)
-		MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks")
-		
-		Batch_DeleteMediaBlock(*GadgetData, *MediaBlock, MainNode)
-		
-		*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-		FreeXML(*Task\XMLID)
-		TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
 	EndProcedure
 	
 	Procedure MoveMediaBlock(Gadget, *MediaBlock.Mediablock, Offset)
-		
 	EndProcedure
 	
 	Procedure ResizeMediaBlock(Gadget, *MediaBlock.Mediablock, NewStart, NewEnd)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), Loop, Move, Target, BlockCenter = (NewStart + NewEnd) * 0.5
-		Protected *Task.Task = AllocateStructure(Task), MainNode, Item
-		
-		With *GadgetData
-			*Task\XMLID = CreateXML(#PB_Any)
-			MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks")
-			Item = CreateXMLNode(MainNode, #ResizeMediaBlock)
-			
-			For Loop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-				*MediaBlock\Line\MediaBlocks(Loop) = 0
-			Next
-			
-			For Loop = NewStart To NewEnd
-				If *MediaBlock\Line\MediaBlocks(Loop)
-					If (*MediaBlock\Line\MediaBlocks(Loop)\BlockStart + *MediaBlock\Line\MediaBlocks(Loop)\BlockEnd) / 2 > BlockCenter
-						Target = NewEnd - Loop + 1
-						Move = Batch_MoveMediaBlock(*GadgetData, *MediaBlock\Line\MediaBlocks(Loop), Target, Item, #True)
-						
-						If Move < Target
-							Move = Move - Target
-							NewStart + Move
-							NewEnd + Move
-							BlockCenter = (NewStart + NewEnd) * 0.5
-							
-							If Loop > NewStart
-								Loop = NewStart
-							EndIf
-						EndIf
-					Else
-						Target = NewStart - *MediaBlock\Line\MediaBlocks(Loop)\BlockEnd - 1
-						Move = Batch_MoveMediaBlock(*GadgetData, *MediaBlock\Line\MediaBlocks(Loop), Target, Item, #True)
-						
-						If Move > Target
-							Move = Move - Target
-							NewStart + Move
-							NewEnd + Move
-							BlockCenter = (NewStart + NewEnd) * 0.5
-							
-							If Loop < NewStart
-								Loop = NewStart
-							EndIf
-						EndIf
-					EndIf
-				EndIf
-			Next
-			
-			SetXMLAttribute(Item, "Gadget", Str(Gadget))
-			SetXMLAttribute(Item, "OriginalStart", Str(*MediaBlock\BlockStart))
-			SetXMLAttribute(Item, "OriginalEnd", Str(*MediaBlock\BlockEnd))
-			
-			SetXMLAttribute(Item, "NewStart", Str(NewStart))
-			SetXMLAttribute(Item, "NewEnd", Str(NewEnd))
-			SetXMLAttribute(Item, "UUID", *MediaBlock\UUID)
-			
-			_ResizeMediaBlock(*GadgetData, *MediaBlock, NewStart, NewEnd)
-			
-			*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-			FreeXML(*Task\XMLID)
-			TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-			
-			PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
-			
-		EndWith
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 	EndProcedure
 	
 	Procedure.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		Protected XML = CreateXML(#PB_Any), MainNode, Result.s
-		MainNode = CreateXMLNode(RootXMLNode(XML), "Tasks")
-		
-		With *GadgetData
-			ForEach \MediaBlocks()
-				If \MediaBlocks()\AssetUUID = AssetUUID
-					Batch_DeleteMediaBlock(*GadgetData, \MediaBlocks(), MainNode)
-				EndIf
-			Next
-		EndWith
-		
-		Result = ComposeXML(XML)
-		FreeXML(XML)
-		
-		ProcedureReturn Result
 	EndProcedure
 	
-	Procedure UpdatetMediaBlockState(Gadget, Line, Json.s)
+	Procedure UpdateMediaBlockState(Gadget, Line, Json.s)
 		Protected Loop, *MediaBlock.Mediablock
-		
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-		SelectElement(*GadgetData\CurrentAsset(), Line)
-		
-		*MediaBlock.Mediablock = *GadgetData\CurrentAsset()
-		If *MediaBlock\Animated
-			
-		Else
-			For Loop = 0 To *MediaBlock\Duration
-				UnserializeDataPoint(@*MediaBlock\DataPoints(Loop), Json)
-			Next
-		EndIf
 	EndProcedure
-	; Data point
+	;}
 	
 	;}
 	
@@ -1571,1590 +1188,222 @@ Module PureTL
 	EndProcedure
 	
 	; Line Stuff
-	Procedure _AddLine(*GadgetData.GadgetData, Position, Text.s, *Parent.Line, Flags, UUID.s)
-		Protected *NewLine.Line
+	Procedure _AddLine(*GadgetData.GadgetData, XMLNode)
+		Protected *NewLine.Line = AddMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(XMLNode, "UUID"))
 		
-		With *GadgetData
-			
-			*NewLine = AddMapElement(\Lines(), UUID , #PB_Map_NoElementCheck)
-			*NewLine\UUID = UUID
-			
-			If *Parent
-				If Position = -1 Or Position >= ListSize(*Parent\Childrens())
-					LastElement(*Parent\Childrens())
-					If ListSize(*Parent\Childrens()) And *Parent\Childrens()\DisplayListAdress
-						ChangeCurrentElement(\Cont_Displayed_List(), *Parent\Childrens()\DisplayListAdress)
-					EndIf
-				ElseIf Position > 0
-					SelectElement(*Parent\Childrens(), Position - 1)
-					If ListSize(*Parent\Childrens()) And *Parent\Childrens()\DisplayListAdress
-						ChangeCurrentElement(\Cont_Displayed_List(), *Parent\Childrens()\DisplayListAdress)
-					EndIf
-				Else
-					ResetList(*Parent\Childrens())
-				EndIf
-				
-				*NewLine\ParentListAdress = AddElement(*Parent\Childrens())
-				*NewLine\Parent = *Parent
-				*NewLine\HorizontalOfsset = *Parent\HorizontalOfsset + #Size_SubItemOffset
-				
-				*Parent\Childrens() = *NewLine
-				
-				If *Parent\Folded = #Unfolded And *Parent\DisplayListAdress
-					*NewLine\DisplayListAdress = AddElement(\Cont_Displayed_List())
-					\Cont_Displayed_List() = *NewLine
-				Else
-					*Parent\Folded = #Folded
-				EndIf
-			Else
-				If Position = -1 Or Position >= ListSize(\Cont_Line_List())
-					LastElement(\Cont_Line_List())
-					LastElement(\Cont_Displayed_List())
-				ElseIf Position > 0
-					SelectElement(\Cont_Line_List(), Position)
-					ChangeCurrentElement(\Cont_Displayed_List(), \Cont_Line_List()\DisplayListAdress)
-					PreviousElement(\Cont_Line_List())
-					PreviousElement(\Cont_Displayed_List())
-				Else
-					ResetList(\Cont_Line_List())
-					ResetList(\Cont_Displayed_List())
-				EndIf
-				
-				*NewLine\ParentListAdress = AddElement(\Cont_Line_List())
-				*NewLine\DisplayListAdress = AddElement(\Cont_Displayed_List())
-				
-				\Cont_Displayed_List() = *NewLine
-				\Cont_Line_List() = *NewLine
-				
-				*NewLine\HorizontalOfsset = #Size_List_Text_HorizontalMargin
-			EndIf
-			
-			*NewLine\Name = Text
-			*NewLine\Type = Flags & #Line_Folder
-			
-			If *NewLine\Type = #Line_Folder
-				*NewLine\Icon = #FontAwesome_Folder
-			EndIf
-			
-			*NewLine\VerticalOffset + #Size_List_Text_VerticalMargin
-			*NewLine\Flags = Flags
-			
-			ReDim *NewLine\MediaBlocks(*GadgetData\State_Duration)
-			
-			If *NewLine\DisplayListAdress
-				\Cont_Displayed_Line + 1
-				SetGadgetAttribute(\Comp_VScrollBar, #PB_ScrollBar_Maximum, \Cont_Displayed_Line - 1)
-			EndIf
-			
-			Refit(\Comp_Container)
-			Redraw(\Comp_Container)
-		EndWith
+		*NewLine\Parent = FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(XMLNode, "Parent"))
+		*NewLine\Name = GetXMLAttribute(XMLNode, "Text")
+		*NewLine\UUID = GetXMLAttribute(XMLNode, "UUID")
+		*NewLine\Type = #Line_Asset
 		
-		ProcedureReturn *NewLine
+		_Display_InsertLine(*GadgetData, *NewLine, Val(GetXMLAttribute(XMLNode, "Position")), *NewLine\Parent)
 		
 	EndProcedure
 	
-	Procedure _RemoveLine(*GadgetData.GadgetData, Position, *Parent.Line)
-		Protected *Line.Line
-		
-		With *GadgetData
-			
-			If *Parent
-				SelectElement(*Parent\Childrens(), Position)
-				*Line = *Parent\Childrens()
-				DeleteParent(*Parent)
-			Else
-				SelectElement(\Cont_Line_List(), Position)
-				*Line = \Cont_Line_List()
-				DeleteElement(\Cont_Line_List())
-			EndIf
-			
-			If *Line\DisplayListAdress
-				ChangeCurrentElement(\Cont_Displayed_List(), *Line\DisplayListAdress)
-				
-				If ListIndex(\Cont_Displayed_List()) = \State_ActiveLine
-					\State_ActiveLine = -1
-				ElseIf ListIndex(\Cont_Displayed_List()) < \State_ActiveLine
-					\State_ActiveLine -1
-				EndIf
-				
-				If ListIndex(\Cont_Displayed_List()) = \State_HoverLine
-					\State_HoverLine = -1
-				ElseIf ListIndex(\Cont_Displayed_List()) < \State_HoverLine
-					\State_HoverLine -1
-				EndIf
-				
-				DeleteElement(\Cont_Displayed_List())
-				\Cont_Displayed_Line - 1
-				SetGadgetAttribute(\Comp_VScrollBar, #PB_ScrollBar_Maximum, \Cont_Displayed_Line - 1)
-			EndIf
-			
-			Refit(\Comp_Container)
-			Redraw(\Comp_Container)
-			DeleteMapElement(\Lines(), *Line\UUID)
-			
-		EndWith
+	Procedure _RemoveLine(*GadgetData.GadgetData, XMLNode)
 	EndProcedure
 	
-	Procedure Recurcive_RemoveLine(*GadgetData.GadgetData, *Line.Line, XMLNode)
-		Protected Item, Position, Loop
-				
-		ForEach *Line\Childrens()
-			Recurcive_RemoveLine(*GadgetData.GadgetData, *Line\Childrens(), XMLNode)
-		Next
-		
-		For Loop = 0 To *GadgetData\State_Duration
-			If *Line\MediaBlocks(Loop)
-				Batch_DeleteMediaBlock(*GadgetData, *Line\MediaBlocks(Loop), XMLNode)
-			EndIf
-		Next
-		
-		Item = CreateXMLNode(XMLNode, #DeleteLine)
-		SetXMLAttribute(Item, "Gadget", Str(*GadgetData\Comp_Container))
-		SetXMLAttribute(Item, "Text", *Line\Name)
-		SetXMLAttribute(Item, "UUID", *Line\UUID)
-		
-		If *Line\Parent
-			ChangeCurrentElement(*Line\Parent\Childrens(), *Line\ParentListAdress)
-			Position = ListIndex(*Line\Parent\Childrens())
-			SetXMLAttribute(Item, "Parent", *Line\Parent\UUID)
-		Else
-			ChangeCurrentElement(*GadgetData\Cont_Line_List(), *Line\ParentListAdress)
-			Position = ListIndex(*GadgetData\Cont_Line_List())
-			SetXMLAttribute(Item, "Parent", "0")
-		EndIf
-		
-		SetXMLAttribute(Item, "Position", Str(Position))
-		SetXMLAttribute(Item, "Flags", Str(*Line\Flags))
- 		
- 		_RemoveLine(*GadgetData, Position, *Line\Parent)
-		
-	EndProcedure
-	
-	Procedure RenameLine(*GadgetData.GadgetData, *Line.Line, *Task.Task = 0)
-		Protected Y
-		
-		SetActiveLine(*GadgetData\Comp_Container, *Line)
-		Y = (*GadgetData\State_ActiveLine - *GadgetData\Meas_VPosition) * #Size_TL_Height
-		
-		OpenGadgetList(*GadgetData\Comp_List)
-		*GadgetData\Comp_Rename = StringGadget(#PB_Any, *Line\HorizontalOfsset - 4, Y + *Line\VerticalOffset - 2, *GadgetData\Meas_List_Width - *Line\HorizontalOfsset - 15, 25, *Line\Name)
-		SendMessage_(GadgetID(*GadgetData\Comp_Rename), #EM_SETSEL, 0, Len(*Line\Name))
-		SetGadgetFont(*GadgetData\Comp_Rename, FontBold)
-		SetGadgetColor(*GadgetData\Comp_Rename, #PB_Gadget_BackColor, *GadgetData\Color_List_Back[#Hot])
-		SetGadgetColor(*GadgetData\Comp_Rename, #PB_Gadget_FrontColor, *GadgetData\Color_List_Front[#Hot])
-		SetGadgetData(*GadgetData\Comp_Rename, *GadgetData)
-		SetProp_(GadgetID(*GadgetData\Comp_Rename), "oldproc", SetWindowLongPtr_(GadgetID(*GadgetData\Comp_Rename), #GWL_WNDPROC, @HandlerRenameString()))
-		SetActiveGadget(*GadgetData\Comp_Rename)
-		
-		SetProp_(GadgetID(*GadgetData\Comp_Rename), "gadget", *GadgetData\Comp_Rename)
-		SetProp_(GadgetID(*GadgetData\Comp_Rename), "Task", *Task)
-		
-		CloseGadgetList()
-		*GadgetData\State_UserAction = #Action_List_Rename
-	EndProcedure
-	
-	Procedure MoveLine(*GadgetData.GadgetData, *Line.Line, NewPosition, OriginalPosition, *Parent.Line, *OriginalParent.Line)
-		Protected *Task.Task = AllocateStructure(Task), MainNode, Item
-		*Task\XMLID = CreateXML(#PB_Any)
-		MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks")
-		Item = CreateXMLNode(MainNode, #MoveLine)
-		
-		SetXMLAttribute(Item, "Gadget", Str(*GadgetData\Comp_Container))
-		SetXMLAttribute(Item, "UUID", *Line\UUID)
-		If *Parent
-			SetXMLAttribute(Item, "NewParent", *Parent\UUID)
-		Else
-			SetXMLAttribute(Item, "NewParent", "0")
-		EndIf
-		If *OriginalParent
-			SetXMLAttribute(Item, "OriginalParent", *OriginalParent\UUID)
-		Else
-			SetXMLAttribute(Item, "OriginalParent", "0")
-		EndIf
-		SetXMLAttribute(Item, "OriginalPosition", Str(OriginalPosition))
-		SetXMLAttribute(Item, "NewPosition", Str(NewPosition))
-		
-		*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-		FreeXML(*Task\XMLID)
-		
-		TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-		
-		_MoveLine(*GadgetData.GadgetData, *Line.Line, NewPosition, *Parent)
-		
-		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
-		
-	EndProcedure
-	
-	Procedure _MoveLine(*GadgetData.GadgetData, *Line.Line, Position, *Parent.Line = 0)
-		Protected *ParentAdress, *TempParent.Line
-		If *Line\DisplayListAdress
-			ChangeCurrentElement(*GadgetData\Cont_Displayed_List(), *Line\DisplayListAdress)
-			
-			If ListIndex(*GadgetData\Cont_Displayed_List()) < Position
-				Position - 1
-			EndIf
-			
-			DeleteElement(*GadgetData\Cont_Displayed_List())
-			*Line\DisplayListAdress = 0
-			*GadgetData\Cont_Displayed_Line - 1
-			SetGadgetAttribute(*GadgetData\Comp_VScrollBar, #PB_ScrollBar_Maximum, *GadgetData\Cont_Displayed_Line - 1)
-		EndIf
-		If *Line\ParentListAdress
-			If *Line\Parent
-				ChangeCurrentElement(*Line\Parent\Childrens(), *Line\ParentListAdress)
-				DeleteParent(*Line\Parent)
-			Else
-				ChangeCurrentElement(*GadgetData\Cont_Line_List(), *Line\ParentListAdress)
-				DeleteElement(*GadgetData\Cont_Line_List())
-			EndIf
-			*Line\ParentListAdress = 0
-			*Line\Parent = 0
-		EndIf
+	Procedure _Display_InsertLine(*GadgetData.GadgetData, *Line.Line, Position, *Parent.Line)
 		
 		If *Parent
-			If Position = 0
-				If *Parent\Folded = #NoFold
-					*Parent\Folded = #Unfolded
-					*Parent\Icon = #FontAwesome_Folder_Open
-					
-				ElseIf *Parent\Folded = #Folded
-					ChangeCurrentElement(*GadgetData\Cont_Displayed_List(), *Parent\DisplayListAdress)
-					ToggleFold(*GadgetData\Comp_Container)
-				EndIf
-				
-				ResetList(*Parent\Childrens())
-				ChangeCurrentElement(*GadgetData\Cont_Displayed_List(), *Parent\DisplayListAdress)
-				*Line\DisplayListAdress = AddElement(*GadgetData\Cont_Displayed_List())
-				*GadgetData\Cont_Displayed_List() = *Line
-				*GadgetData\Cont_Displayed_Line + 1
-				SetGadgetAttribute(*GadgetData\Comp_VScrollBar, #PB_ScrollBar_Maximum, *GadgetData\Cont_Displayed_Line - 1)
-			Else
-				SelectElement(*Parent\Childrens(), Position -1)
-				
-				If *Parent\Childrens()\DisplayListAdress
-					If *Parent\Childrens()\Folded = #Unfolded
-						If NextElement(*Parent\Childrens())
-							ChangeCurrentElement(*GadgetData\Cont_Displayed_List(), *Parent\Childrens()\DisplayListAdress)
-							PreviousElement(*GadgetData\Cont_Displayed_List())
-							PreviousElement(*Parent\Childrens())
-						Else
-							*TempParent = *Parent
-							While *TempParent\Folded = #Unfolded
-								LastElement(*TempParent\Childrens())
-								*TempParent = *TempParent\Childrens()
-							Wend
-							ChangeCurrentElement(*GadgetData\Cont_Displayed_List(), *TempParent\DisplayListAdress)
-						EndIf
-					Else
-						ChangeCurrentElement(*GadgetData\Cont_Displayed_List(), *Parent\Childrens()\DisplayListAdress)
-					EndIf
-					
-					*Line\DisplayListAdress = AddElement(*GadgetData\Cont_Displayed_List())
-					*GadgetData\Cont_Displayed_List() = *Line
-					*GadgetData\Cont_Displayed_Line + 1
-					SetGadgetAttribute(*GadgetData\Comp_VScrollBar, #PB_ScrollBar_Maximum, *GadgetData\Cont_Displayed_Line - 1)
-				EndIf
-			EndIf
-			*Line\HorizontalOfsset = *Parent\HorizontalOfsset + #Size_SubItemOffset
-			*Line\ParentListAdress = AddElement(*Parent\Childrens())
-			*Line\Parent = *Parent
-			*Parent\Childrens() = *Line
+			
 		Else
-			If Position = 0
-				ResetList(*GadgetData\Cont_Line_List())
-				ResetList(*GadgetData\Cont_Displayed_List())
+			If Position = -1 Or Position > *GadgetData\Cont_Displayed_List_Size
+				LastElement(*GadgetData\Cont_Displayed_List())
+				AddElement(*GadgetData\Cont_Displayed_List())
 			Else
-				SelectElement(*GadgetData\Cont_Line_List(), Position -1)
-				If NextElement(*GadgetData\Cont_Line_List())
-					ChangeCurrentElement(*GadgetData\Cont_Displayed_List(), *GadgetData\Cont_Line_List()\DisplayListAdress)
-					PreviousElement(*GadgetData\Cont_Displayed_List())
-					PreviousElement(*GadgetData\Cont_Line_List())
-				Else
-					LastElement(*GadgetData\Cont_Displayed_List())
-				EndIf
+				SelectElement(*GadgetData\Cont_Displayed_List(), Position)
+				InsertElement(*GadgetData\Cont_Displayed_List())
 			EndIf
-			*Line\ParentListAdress = AddElement(*GadgetData\Cont_Line_List())
-			*Line\DisplayListAdress = AddElement(*GadgetData\Cont_Displayed_List())
-			*Line\HorizontalOfsset = #Size_List_Text_HorizontalMargin
+			
+			*GadgetData\Cont_Displayed_List_Size + 1
 			*GadgetData\Cont_Displayed_List() = *Line
-			*GadgetData\Cont_Line_List() = *Line
-			*GadgetData\Cont_Displayed_Line + 1
-			SetGadgetAttribute(*GadgetData\Comp_VScrollBar, #PB_ScrollBar_Maximum, *GadgetData\Cont_Displayed_Line - 1)
+			*Line\DisplayListAdress = @*GadgetData\Cont_Displayed_List()
+			*Line\HorizontalOffset = *GadgetData\Meas_TL_TextHorizontaOffset
+			Redraw(*GadgetData)
 		EndIf
+		
 	EndProcedure
 	
-	; Media Block
-	Procedure Batch_DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, MainNode)
-		Protected Item
-		
-		Item = CreateXMLNode(MainNode, #DeleteMediaBlock)
-		
-		SetXMLAttribute(Item, "Gadget", Str(*GadgetData\Comp_Container))
-		SetXMLAttribute(Item, "Line", *MediaBlock\Line\UUID)
-		SetXMLAttribute(Item, "BlockStart", Str(*MediaBlock\BlockStart))
-		SetXMLAttribute(Item, "BlockEnd", Str(*MediaBlock\BlockEnd))
-		SetXMLAttribute(Item, "Icon", *MediaBlock\Icon)
-		SetXMLAttribute(Item, "Text", *MediaBlock\Text)
-		SetXMLAttribute(Item, "Color", Str(*MediaBlock\Color))
-		SetXMLAttribute(Item, "UUID", *MediaBlock\UUID)
-		
-		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
-		
-		_DeleteMediaBlock(*GadgetData, *MediaBlock)
+	Procedure _Display_RemoveLine(*GadgetData.GadgetData, *Line.line)
 	EndProcedure
-	
-	Procedure Batch_MoveMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, Offset, MainNode, Fixed = #False)
-		Protected Item, RealOffset
-		Item = CreateXMLNode(MainNode, #MoveMediaBlock)
-		SetXMLAttribute(Item, "Gadget", Str(*GadgetData\Comp_Container))
-		SetXMLAttribute(Item, "UUID", *MediaBlock\UUID)
+	 
+	Procedure _Display_GetLinePosition(*GadgetData.GadgetData, *Line.Line) ; Returns the position of the line
+		Protected Result = -1
 		
-		SetXMLAttribute(Item, "OriginalStart", Str(*MediaBlock\BlockStart))
-		SetXMLAttribute(Item, "OriginalEnd", Str(*MediaBlock\BlockEnd))
-		
-		If Offset < 0
-			If *MediaBlock\BlockStart + Offset < 0
-				Offset = - *MediaBlock\BlockStart
+		With *GadgetData
+			If *Line
+				ChangeCurrentElement(\Cont_Displayed_List(), *Line\DisplayListAdress)
+				Result = ListIndex(\Cont_Displayed_List())
 			EndIf
-		Else
-			If *MediaBlock\BlockEnd + Offset >= *GadgetData\State_Duration
-				Offset = *GadgetData\State_Duration - *MediaBlock\BlockEnd
-			EndIf
-		EndIf
+		EndWith
 		
-		RealOffset = _MoveMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, Offset, MainNode, Fixed)
-		
-		SetXMLAttribute(Item, "NewStart", Str(*MediaBlock\BlockStart))
-		SetXMLAttribute(Item, "NewEnd", Str(*MediaBlock\BlockEnd))
-		
-		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
-		
-		
-		ProcedureReturn RealOffset
+		ProcedureReturn Result
 	EndProcedure
 	
-	Procedure _AddMediaBlock(*GadgetData.GadgetData, *Line.Line, BlockStart, BlockEnd, Icon.s, Text.s, Color, UUID.s, AssetUUID.s)
-		Protected *NewMediaBlock.MediaBlock = AddMapElement(*GadgetData\MediaBlocks(), UUID, #PB_Map_NoElementCheck), Loop
+	Procedure EditLine(*GadgetData.GadgetData, *Line.line, XML = 0)
 		
-		*NewMediaBlock\BlockStart = BlockStart
-		*NewMediaBlock\BlockEnd = BlockEnd
-		*NewMediaBlock\Duration = BlockEnd - BlockStart + 1
-		*NewMediaBlock\UUID = UUID
-		*NewMediaBlock\Line = *Line
-		*NewMediaBlock\Color = Color
-		*NewMediaBlock\Icon = Icon
-		*NewMediaBlock\Text = Text
-		*NewMediaBlock\AssetUUID = AssetUUID
-		ReDim *NewMediaBlock\DataPoints(*NewMediaBlock\Duration)
-		ReDim *NewMediaBlock\DataState(*NewMediaBlock\Duration)
-		
-		For Loop = BlockStart To BlockEnd
-			*Line\MediaBlocks(Loop) = *NewMediaBlock
-		Next
-		
-		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_AssetUse, @*NewMediaBlock\AssetUUID)
-		
-		ProcedureReturn *NewMediaBlock
-	EndProcedure
-	
-	Procedure _DeleteMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock)
-		Protected Loop
-		
-		For Loop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-			*MediaBlock\Line\MediaBlocks(Loop) = 0
-		Next
-		
-		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_AssetUnUse, @*MediaBlock\AssetUUID)
-		
-		DeleteMapElement(*GadgetData\MediaBlocks(), *MediaBlock\UUID)
-		
-	EndProcedure
-	
-	Procedure _MoveMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, Offset, MainNode = 0, Fixed = #False)
-		Protected Loop, NewStart, NewEnd, Center, *TempBlock.MediaBlock, TempBlockCenter, TargetOffset, ResultOffset
-		
-		NewStart = *MediaBlock\BlockStart + Offset
-		NewEnd = *MediaBlock\BlockEnd + Offset
-		
-		Center = NewStart + (NewEnd - NewStart) * 0.5
-		
-		For Loop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-			*MediaBlock\Line\MediaBlocks(Loop) = 0
-		Next
-		
-		If Offset > 0
-			For Loop = NewStart To NewEnd
-				If *MediaBlock\Line\MediaBlocks(Loop)
-					*TempBlock = *MediaBlock\Line\MediaBlocks(Loop)
-					
-					TempBlockCenter = *TempBlock\BlockStart + (*TempBlock\BlockEnd - *TempBlock\BlockStart) * 0.5
-					
-					If Center <= TempBlockCenter Or Fixed
-						TargetOffset = NewEnd - *TempBlock\BlockStart + 1
-					Else
-						;move to the left
-						TargetOffset = NewStart - *TempBlock\BlockEnd - 1
-					EndIf
-					
-					If MainNode
-						ResultOffset = Batch_MoveMediaBlock(*GadgetData, *TempBlock, TargetOffset, MainNode, #True)
-					Else
-						ResultOffset = _MoveMediaBlock(*GadgetData, *TempBlock, TargetOffset, 0, #True)
-					EndIf
-					
-					If ResultOffset <> TargetOffset
-						ResultOffset - TargetOffset
-						NewStart + ResultOffset
-						NewEnd + ResultOffset
-					EndIf
-				EndIf
-			Next
-		Else
-			For Loop = NewEnd To NewStart Step -1
-				If *MediaBlock\Line\MediaBlocks(Loop)
-					*TempBlock = *MediaBlock\Line\MediaBlocks(Loop)
-					
-					TempBlockCenter = *TempBlock\BlockStart + (*TempBlock\BlockEnd - *TempBlock\BlockStart) * 0.5
-					
-					If Center > TempBlockCenter Or Fixed
-						;move to the left
-						TargetOffset = NewStart - *TempBlock\BlockEnd - 1
-					Else
-						TargetOffset = NewEnd - *TempBlock\BlockStart + 1
-					EndIf
-					
-					If MainNode
-						ResultOffset = Batch_MoveMediaBlock(*GadgetData, *TempBlock, TargetOffset, MainNode, #True)
-					Else
-						ResultOffset = _MoveMediaBlock(*GadgetData, *TempBlock, TargetOffset, 0, #True)
-					EndIf
-					
-					If ResultOffset <> TargetOffset
-						ResultOffset - TargetOffset
-						NewStart + ResultOffset
-						NewEnd + ResultOffset
-					EndIf
-				EndIf
-			Next
-		EndIf
-		
-		Offset = NewStart - *MediaBlock\BlockStart
-		
-		*MediaBlock\BlockStart = NewStart
-		*MediaBlock\BlockEnd = NewEnd
-		
-		For Loop = NewStart To NewEnd
-			*MediaBlock\Line\MediaBlocks(Loop) = *MediaBlock
-		Next
-		
-		ProcedureReturn Offset
-	EndProcedure
-	
-	Procedure _ResizeMediaBlock(*GadgetData.GadgetData, *MediaBlock.Mediablock, NewStart, NewEnd)
-		Protected Loop
-		
-		For Loop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-			*MediaBlock\Line\MediaBlocks(Loop) = 0
-		Next
-		
-		*MediaBlock\BlockStart = NewStart
-		*MediaBlock\BlockEnd = NewEnd
-		*MediaBlock\Duration = NewEnd - NewStart + 1
-		
-		For Loop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-			*MediaBlock\Line\MediaBlocks(Loop) = *MediaBlock
-		Next
-		
-		ReDim *MediaBlock\DataPoints(*MediaBlock\Duration)
-		ReDim *MediaBlock\DataState(*MediaBlock\Duration)
 	EndProcedure
 	
 	; Handler
 	Procedure Handler_Body()
-		Protected *GadgetData.GadgetData = GetGadgetData(EventGadget()), *Task.Task = AllocateStructure(Task), MainNode, Loop
-		
-		With *GadgetData
-			Protected MouseX = GetGadgetAttribute(\Comp_Body, #PB_Canvas_MouseX), MouseY = GetGadgetAttribute(\Comp_Body, #PB_Canvas_MouseY)
-			Protected Line, Column
-			Protected *HoverMB.MediaBlock = 0
-			Protected HoverResize = 0
-			
-			Select \State_UserAction
-				Case #Action_Hover ;{
-					Select EventType()
-						Case #PB_EventType_MouseMove ;{
-							If MouseY > #Size_Header_Height
-								MouseY - #Size_Header_Height
-								Line = MouseY / #Size_TL_Height + \Meas_VPosition
-								MouseY % #Size_TL_Height
-								
-								If Line < \Cont_Displayed_Line
-									SelectElement(\Cont_Displayed_List(), Line)
-									Column = MouseX / \Meas_TL_ColumnWidth + \Meas_HPosition
-									
-									If \Cont_Displayed_List()\MediaBlocks(Column)
-										If Mousey > #Size_MediaBlock_VerticalMargin And MouseY < #Size_TL_Height - #Size_MediaBlock_VerticalMargin
-											*HoverMB = \Cont_Displayed_List()\MediaBlocks(Column)
-											If *HoverMB\State = #Hot And MouseY > #Size_MediaBlock_VerticalMargin And MouseY < #Size_TL_Height - #Size_MediaBlock_VerticalMargin
-												If (MouseX >= (*HoverMB\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth And MouseX <= (*HoverMB\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth + 5) 
-													HoverResize = 1
-												ElseIf MouseX >= (*HoverMB\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth - 5 And MouseX <= (*HoverMB\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth + 2
-													HoverResize = 2
-												EndIf
-											EndIf
-											
-										EndIf
-									EndIf
-								EndIf
-							EndIf
-							
-							If \State_HoverResize <> HoverResize
-								\State_HoverResize = HoverResize
-								
-								If HoverResize
-									SetGadgetAttribute(\Comp_Body, #PB_Canvas_Cursor, #PB_Cursor_LeftRight)
-								Else
-									SetGadgetAttribute(\Comp_Body, #PB_Canvas_Cursor, #PB_Cursor_Default)
-								EndIf
-								
-							EndIf
-							
-							If \State_HoverMB <> *HoverMB
-								If \State_HoverMB And \State_HoverMB\State = #Warm
-									\State_HoverMB\State = #Cold
-								EndIf
-								
-								\State_HoverMB = *HoverMB
-								
-								If *HoverMB
-									If \State_HoverMB\State = #Cold
-										\State_HoverMB\State = #Warm
-									EndIf
-								EndIf
-								Redraw(\Comp_Container)
-							EndIf
-							;}
-						Case #PB_EventType_LeftButtonDown ;{
-							If MouseY < #Size_Header_Height
-								Column = Min(Max(Round(MouseX / \Meas_TL_ColumnWidth, #PB_Round_Nearest) + \Meas_HPosition, 0), \Meas_Displayed_Columns)
-								If Column <> \State_PlayerPosition
-									\State_PlayerPosition = Column
-									Redraw(\Comp_Container)
-									PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove, Column)
-								EndIf
-								
-								\State_UserAction = #Action_Player_Drag
-							Else
-								If \State_HoverResize
-									ForEach \State_MediaBlocks()
-										\State_MediaBlocks()\State = #Cold
-										DeleteElement(\State_MediaBlocks())
-									Next
-									
-									AddElement(\State_MediaBlocks())
-									\State_MediaBlocks() = \State_HoverMB
-									\State_MediaBlocks()\State = #Hot
-									\State_MediaBlocks()\Drag = #True
-									
-									\State_UserAction = #Action_Body_Resize
-									If \State_HoverResize = 1
-										\Action_Drag_HorizontalOffset = \State_MediaBlocks()\BlockStart
-									Else
-										\Action_Drag_HorizontalOffset = \State_MediaBlocks()\BlockEnd
-									EndIf
-									
-									Redraw(\Comp_Container)
-									
-								Else
-									If GetGadgetAttribute(\Comp_Body, #PB_Canvas_Modifiers) & #PB_Canvas_Control
-										If \State_HoverMB
-											\Action_Drag_OriginX = MouseX
-											\Action_Drag_OriginY = MouseY
-											\State_UserAction = #Action_Body_InitDrag
-											\Action_InitDrag_Modifier = #PB_Canvas_Control
-											If \State_HoverMB\State = #warm
-												\State_HoverMB\StateListAdress = AddElement(\State_MediaBlocks())
-												\State_MediaBlocks() = \State_HoverMB
-												\State_HoverMB\State = #Hot
-												Redraw(\Comp_Container)
-												\State_HoverMB = 0
-											EndIf
-										EndIf
-									Else
-										If \State_HoverMB
-											\Action_Drag_OriginX = MouseX
-											\Action_Drag_OriginY = MouseY
-											\State_UserAction = #Action_Body_InitDrag
-											\Action_InitDrag_Modifier = 0
-											If \State_HoverMB\State = #warm
-												ForEach \State_MediaBlocks()
-													\State_MediaBlocks()\State = #Cold
-													DeleteElement(\State_MediaBlocks())
-												Next
-												\State_HoverMB\StateListAdress = AddElement(\State_MediaBlocks())
-												\State_MediaBlocks() = \State_HoverMB
-												\State_HoverMB\State = #Hot
-												Redraw(\Comp_Container)
-											EndIf
-										Else
-											ForEach \State_MediaBlocks()
-												\State_MediaBlocks()\State = #Cold
-												DeleteElement(\State_MediaBlocks())
-											Next
-											Redraw(\Comp_Container)
-										EndIf
-									EndIf
-								EndIf
-							EndIf
-							;}
-						Case #PB_EventType_MouseWheel ;{
-							Handler_List();}
-						Case #PB_EventType_KeyDown ;{
-							Select GetGadgetAttribute(\Comp_Body, #PB_Canvas_Key)
-								Case #PB_Shortcut_Delete
-									If ListSize(\State_MediaBlocks())
-										*Task\XMLID = CreateXML(#PB_Any)
-										MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks")
-										
-										ForEach \State_MediaBlocks()
-											Batch_DeleteMediaBlock(*GadgetData, \State_MediaBlocks(), MainNode)
-										Next
-									EndIf
-									
-									If ListSize(\State_DataPoints())
-										If Not *Task\XMLID 
-											*Task\XMLID = CreateXML(#PB_Any)
-											MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks")
-										EndIf
-										
-										ForEach \State_DataPoints()
-											; Delete datapoints
-										Next
-										
-									EndIf
-									
-									If *Task\XMLID
-										*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-										FreeXML(*Task\XMLID)
-										TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-									Else
-										FreeStructure(*Task)
-									EndIf
-									
-									Redraw(*GadgetData\Comp_Container)
-							EndSelect
-							;}
-					EndSelect
-					;}
-				Case #Action_Body_InitDrag ;{
-					Select EventType()
-						Case #PB_EventType_MouseMove ;{
-							If Abs(MouseX - \Action_Drag_OriginX) > 15 Or Abs(MouseY - \Action_Drag_OriginY) > 15
-								\State_UserAction = #Action_Body_Drag
-								\Action_Drag_HorizontalOffset = 0
-								\Action_Drag_VerticalOffset = 0
-								\Action_Drag_OriginY = Round( (\Action_Drag_OriginY - #Size_Header_Height) / #Size_TL_Height, #PB_Round_Down) * #Size_TL_Height + #Size_Header_Height
-								ForEach \State_MediaBlocks()
-									\State_MediaBlocks()\Drag = #True
-								Next
-								Redraw(\Comp_Container)
-							EndIf ;}
-						Case #PB_EventType_LeftButtonUp ;{
-							If \Action_InitDrag_Modifier = #PB_Canvas_Control
-								If \State_HoverMB And \State_HoverMB\State = #Hot
-									\State_HoverMB\State = #Warm
-									ChangeCurrentElement(\State_MediaBlocks(), \State_HoverMB\StateListAdress)
-									DeleteElement(\State_MediaBlocks())
-								EndIf
-								Redraw(\Comp_Container)
-							Else
-								If ListSize(\State_MediaBlocks()) > 1
-									ForEach \State_MediaBlocks()
-										\State_MediaBlocks()\State = #Cold
-										DeleteElement(\State_MediaBlocks())
-									Next
-									
-									\State_HoverMB\StateListAdress = AddElement(\State_MediaBlocks())
-									\State_MediaBlocks() = \State_HoverMB
-									\State_HoverMB\State = #Hot 
-									Redraw(\Comp_Container)
-								EndIf
-								
-							EndIf
-							\State_UserAction = #Action_Hover
-							;}
-						Case #PB_EventType_LeftDoubleClick ;{
-							If \State_HoverMB
-								If \State_HoverMB\BlockStart <= \State_PlayerPosition And \State_HoverMB\BlockEnd >= \State_PlayerPosition
-									ForEach \CurrentAsset()
-										If \CurrentAsset() = \State_HoverMB
-											\State_EditLine = ListIndex(\CurrentAsset())
-											PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_Edit)
-											Break
-										EndIf
-									Next
-								EndIf
-							EndIf
-							;}
-					EndSelect
-					;}
-				Case #Action_Body_Drag ;{
-					Select EventType()
-						Case #PB_EventType_MouseMove ;{
-							Column = (MouseX - \Action_Drag_OriginX) / \Meas_TL_ColumnWidth
-							Line = (MouseY - \Action_Drag_OriginY) / #Size_TL_Height
-							If \Action_Drag_VerticalOffset <> Line
-								\Action_Drag_VerticalOffset = Line
-								If \Action_Drag_HorizontalOffset <> Column
-									\Action_Drag_HorizontalOffset = Column
-								EndIf
-								Redraw(\Comp_Container)
-							ElseIf \Action_Drag_HorizontalOffset <> Column
-								\Action_Drag_HorizontalOffset = Column
-								Redraw(\Comp_Container)
-							EndIf
-							;}
-						Case #PB_EventType_LeftButtonUp ;{
-							*Task\XMLID = CreateXML(#PB_Any)
-							MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks")
-							MainNode = CreateXMLNode(MainNode, #MoveMediaBlock)
-							
-							ForEach \State_MediaBlocks()
-								Batch_MoveMediaBlock(*GadgetData, \State_MediaBlocks(), \Action_Drag_HorizontalOffset, MainNode)
-								\State_MediaBlocks()\Drag = #False
-							Next
-							
-							*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-							FreeXML(*Task\XMLID)
-							TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-							\State_UserAction = #Action_Hover
-							Redraw(\Comp_Container)
-							;}
-					EndSelect
-					;}
-				Case #Action_Player_Drag ;{
-					Select EventType()
-						Case #PB_EventType_MouseMove ;{
-							Column = Min(Max(Round(MouseX / \Meas_TL_ColumnWidth, #PB_Round_Nearest) + \Meas_HPosition, 0), \Meas_Displayed_Columns)
-							If Column <> \State_PlayerPosition
-								PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove, Column)
-								\State_PlayerPosition = Column
-								Redraw(\Comp_Container)
-							EndIf
-							;}
-						Case #PB_EventType_LeftButtonUp;{
-							\State_UserAction = #Action_Hover
-							;}
-					EndSelect
-					;}	
-				Case #Action_Body_Resize ;{
-					Select EventType() 
-						Case #PB_EventType_MouseMove
-							If \State_HoverResize = 1
-								\Action_Drag_HorizontalOffset = Min(Max(MouseX / \Meas_TL_ColumnWidth + \Meas_HPosition, 0), \State_HoverMB\BlockEnd - 1)
-							Else
-								\Action_Drag_HorizontalOffset = Min(Max(MouseX / \Meas_TL_ColumnWidth + \Meas_HPosition, \State_HoverMB\BlockStart + 1), \State_Duration)
-							EndIf
-							Redraw(\Comp_Container)
-						Case #PB_EventType_LeftButtonUp
-							\State_HoverMB\Drag = #False
-							\State_UserAction = #Action_Hover
-							
-							If \State_HoverResize = 1
-								ResizeMediaBlock(\Comp_Container, \State_HoverMB, \Action_Drag_HorizontalOffset, \State_HoverMB\BlockEnd)
-							Else
-								ResizeMediaBlock(\Comp_Container, \State_HoverMB, \State_HoverMB\BlockStart, \Action_Drag_HorizontalOffset)
-							EndIf
-							
-							Redraw(\Comp_Container)
-					EndSelect
-					;}
-			EndSelect
-			
-			PassKeyboardInput(\Comp_Body)
-		EndWith
-		
 	EndProcedure
 	
 	Procedure Handler_List()
-		Protected Gadget = EventGadget()
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), MouseX, MouseY, Line, Redraw, *Line.Line, *Task.Task
-		Protected HoverLine = - 1, HoverButton = - 1, SubLine
+		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget), Y = GetGadgetAttribute(Gadget, #PB_Canvas_MouseY), Item
 		
 		With *GadgetData
-			Select \State_UserAction
-				Case #Action_Hover ;{
-					Select EventType()
-						Case #PB_EventType_MouseMove ;{
-							MouseX = GetGadgetAttribute(\Comp_List, #PB_Canvas_MouseX)
-							MouseY = GetGadgetAttribute(\Comp_List, #PB_Canvas_MouseY)
+			Select EventType()
+				Case #PB_EventType_MouseMove ;{
+					Select \State_List
+						Case #Action_List_Drag
 							
-							If MouseX > 0 Or MouseY > 0
-								Line = MouseY / #Size_TL_Height + \Meas_VPosition
-								
-								If Line < \Cont_Displayed_Line
-									SelectElement(\Cont_Displayed_List(), Line)
-									MouseY % #Size_TL_Height
-									
-									If \Cont_Displayed_List()\Folded And MouseX < \Cont_Displayed_List()\HorizontalOfsset + #Size_List_Icon_Offset - 6 And MouseX > \Cont_Displayed_List()\HorizontalOfsset - 6 And MouseY > 13 And MouseY < #Size_TL_Height - 13
-										HoverButton = Line
-									ElseIf Line <> \State_ActiveLine
-										HoverLine = Line
-									EndIf
-								EndIf
-								
-								If HoverButton <> \State_HoverFoldButton
-									\State_HoverFoldButton = HoverButton
-									Redraw = #True
-								EndIf
-								
-								If HoverLine <> \State_HoverLine
-									If \State_HoverLine > -1
-										SelectElement(\Cont_Displayed_List(), \State_HoverLine)
-										\Cont_Displayed_List()\State = #Cold	
-										\State_HoverLine = -1
-									EndIf
-									
-									\State_HoverLine = HoverLine
-									
-									If \State_HoverLine > -1
-										SelectElement(\Cont_Displayed_List(), \State_HoverLine)
-										\Cont_Displayed_List()\State = #Warm
-									EndIf
-									
-									Redraw = #True
-								EndIf
-								
-								If Redraw 
-									Redraw(\Comp_Container)
-								EndIf
+							ResizeWindow(DragWindow, GadgetX(\Comp_List, #PB_Gadget_ScreenCoordinate),Min(Max(GadgetY(\Comp_List, #PB_Gadget_ScreenCoordinate), DesktopMouseY() - \State_Drag_Y), GadgetY(\Comp_List, #PB_Gadget_ScreenCoordinate) + \Meas_List_Height - \Meas_TL_LineHeight), #PB_Ignore, #PB_Ignore)
+							
+							Item = Min(Round(Max(y- \State_Drag_Y, 0) / \Meas_TL_LineHeight + 0.49, #PB_Round_Down), \Cont_Displayed_List_Size - 1)
+							If \State_List_Item <> Item
+								\State_List_Item = Item
+								Redraw(*GadgetData)
 							EndIf
-							;}
-						Case #PB_EventType_MouseLeave ;{
-							If \State_HoverLine > -1
-								SelectElement(\Cont_Displayed_List(), \State_HoverLine)
-								\Cont_Displayed_List()\State = #Cold	
-								\State_HoverLine = -1
+							
+						Case #Action_List_InitDrag
+							If Abs(\State_Drag_X - GetGadgetAttribute(Gadget, #PB_Canvas_MouseX)) + Abs(\State_Drag_Y - Y) > #Size_DragInit_Distance
+								\State_List = #Action_List_Drag
+								\State_Action = #Action_List_Drag
+								\State_SelectedLine\State = #Draged
 								
-								Redraw(\Comp_Container)
-							EndIf
-							;}
-						Case #PB_EventType_LeftButtonDown ;{
-							If \State_HoverFoldButton > -1
-								SelectElement(\Cont_Displayed_List(), \State_HoverFoldButton)
-								ToggleFold(\Comp_Container)
-								Redraw(\Comp_Container)
-							Else
-								If \State_HoverLine > -1
-									If \State_ActiveLine > -1
-										SelectElement(\Cont_Displayed_List(), \State_ActiveLine)
-										\Cont_Displayed_List()\State = #Cold
-									EndIf
-									
-									\State_ActiveLine = \State_HoverLine
-									\State_HoverLine = -1
-									
-									SelectElement(\Cont_Displayed_List(), \State_ActiveLine)
-									\Cont_Displayed_List()\State = #Hot
-									
-									Redraw(\Comp_Container)
-								EndIf
+								\State_Drag_X = GetGadgetAttribute(Gadget, #PB_Canvas_MouseX)
+								\State_Drag_Y = y % \Meas_TL_LineHeight
 								
-								MouseY = GetGadgetAttribute(\Comp_List, #PB_Canvas_MouseY)
+								ResizeWindow(DragWindow, GadgetX(\Comp_List, #PB_Gadget_ScreenCoordinate), DesktopMouseY() - \State_Drag_Y, \Meas_List_Width, \Meas_TL_LineHeight)
+								ResizeGadget(GetWindowData(DragWindow), 0, 0, \Meas_List_Width, \Meas_TL_LineHeight)
 								
-								If MouseY / #Size_TL_Height + \Meas_VPosition = \State_ActiveLine
-									\State_UserAction = #Action_List_InitDrag
-									\Action_Drag_OriginX = GetGadgetAttribute(\Comp_List, #PB_Canvas_MouseX)
-									\Action_Drag_OriginY = MouseY
-								EndIf
-							EndIf
-							;}
-						Case #PB_EventType_LeftDoubleClick ;{
-							;}
-						Case #PB_EventType_KeyDown ;{
-							Select GetGadgetAttribute(\Comp_List, #PB_Canvas_Key)
-								Case #PB_Shortcut_F2 ;{ Rename
-									If \State_ActiveLine > -1
-										SelectElement(\Cont_Displayed_List(), \State_ActiveLine)
-										*Line = \Cont_Displayed_List()
-										*Task.Task = AllocateStructure(Task)
-										*Task\XMLID = CreateXML(#PB_Any)
-										CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks")
-										
-										RenameLine(*GadgetData, *Line, *Task)
-										
-									EndIf
-								;}
-							EndSelect
-							;}
-						Case #PB_EventType_MouseWheel ;{
-							SetGadgetState(\Comp_VScrollBar, \Meas_VPosition - GetGadgetAttribute(Gadget, #PB_Canvas_WheelDelta))
-							\Meas_VPosition = GetGadgetState(\Comp_VScrollBar)
-							;TODO : mousemover :D
-							Redraw(\Comp_Container)
-							;}
-					EndSelect
-					;}
-				Case #Action_List_InitDrag ;{
-					Select EventType()
-						Case #PB_EventType_LeftButtonUp
-							\State_UserAction = #Action_Hover
-						Case #PB_EventType_MouseMove
-							If Abs(GetGadgetAttribute(\Comp_List, #PB_Canvas_MouseX) - \Action_Drag_OriginX) > 15 Or Abs(GetGadgetAttribute(\Comp_List, #PB_Canvas_MouseY) - \Action_Drag_OriginY) > 15
-								SelectElement(\Cont_Displayed_List(), \State_ActiveLine)
-								If \Cont_Displayed_List()\Folded = #Unfolded
-									ToggleFold(*GadgetData\Comp_Container)
-									Redraw(\Comp_Container)
-								EndIf
-								
-								\State_UserAction = #Action_List_Drag
-								SelectElement(\Cont_Displayed_List(), \State_ActiveLine)
-								\Action_Drag_Line = \Cont_Displayed_List()
-								\Action_Drag_OriginalParent = \Action_Drag_Line\Parent
-								\State_ActiveLine = -1
-								DeleteElement(\Cont_Displayed_List())
-								\Action_Drag_Line\DisplayListAdress = 0
-								
-								If \Action_Drag_Line\Parent
-									ChangeCurrentElement(\Action_Drag_Line\Parent\Childrens(), \Action_Drag_Line\ParentListAdress)
-									\Action_Drag_OriginalPosition = ListIndex(\Action_Drag_Line\Parent\Childrens())
-									DeleteParent(\Action_Drag_Line\Parent)
-								Else
-									ChangeCurrentElement(\Cont_Line_List(), \Action_Drag_Line\ParentListAdress)
-									\Action_Drag_OriginalPosition = ListIndex(\Cont_Line_List())
-									DeleteElement(\Cont_Line_List())
-								EndIf
-								
-								\Action_Drag_Line\ParentListAdress = 0
-								\Action_Drag_Line\Parent = 0
-								
-								\Cont_Displayed_Line - 1
-								SetGadgetAttribute(\Comp_VScrollBar, #PB_ScrollBar_Maximum, \Cont_Displayed_Line - 1)
-								Refit(\Comp_Container)
-								Redraw(\Comp_Container)
-								
-								\Action_Drag_Image = CreateImage(#PB_Any, \Meas_List_Width, #Size_TL_Height)
-								StartDrawing(ImageOutput(\Action_Drag_Image))
-								Box(0, 0, \Meas_List_Width, #Size_TL_Height, \Color_List_Back[#Hot])
-								FrontColor(\Color_List_Front[#Hot])
+								StartDrawing(CanvasOutput(GetWindowData(DragWindow)))
+								Box(0, 0,  \Meas_List_Width, \Meas_TL_LineHeight, \Color_List_Back[#Hot])
 								DrawingFont(FontBold)
 								DrawingMode(#PB_2DDrawing_Transparent)
+								FrontColor(\Color_List_Front[#Cold])
+								DrawText(\State_SelectedLine\HorizontalOffset, \Meas_TL_TextVericalOffset,  \State_SelectedLine\Name)
 								
-								DrawText(\Action_Drag_Line\HorizontalOfsset, \Action_Drag_Line\VerticalOffset, \Action_Drag_Line\Name)
-								If \Action_Drag_Line\Folded
-									DrawingFont(IconSolid)
-									DrawText(\Action_Drag_Line\HorizontalOfsset, #Size_List_Icon_VerticalMargin, \Action_Drag_Line\Icon)
-								ElseIf \Action_Drag_Line\Type = #Line_Folder
-									DrawingFont(Icon)
-									DrawText(\Action_Drag_Line\HorizontalOfsset, #Size_List_Icon_VerticalMargin, #FontAwesome_Folder)
-								EndIf
 								StopDrawing()
+								Redraw(*GadgetData)
+								HideWindow(DragWindow, #False)
+							EndIf
+						Default
+							Item = Round(y / \Meas_TL_LineHeight, #PB_Round_Down)
+							
+							If Item + \Meas_VPosition >= \Cont_Displayed_List_Size
+								\State_List_Item = -1
+							Else
+								\State_List_Item = Item
 								
-								\Action_Drag_Window = OpenWindow(#PB_Any, DesktopMouseX() + 15, DesktopMouseY() - 0.5 * #Size_TL_Height, \Meas_List_Width, #Size_TL_Height, "", #PB_Window_BorderLess | #PB_Window_Invisible)
-								ImageGadget(#PB_Any, 0, 0, \Meas_List_Width, #Size_TL_Height, ImageID(\Action_Drag_Image))
+								; Check if it's hovering over a fold button (we need a fold button first...)
 								
-								SetWindowLongPtr_(WindowID(\Action_Drag_Window),#GWL_EXSTYLE,#WS_EX_LAYERED)
-								SetLayeredWindowAttributes_(WindowID(\Action_Drag_Window),0,140,#LWA_ALPHA)
-								HideWindow(\Action_Drag_Window, #False, #PB_Window_NoActivate)
 							EndIf
 					EndSelect
 					;}
-				Case #Action_List_Drag ;{
-					Select EventType()
-						Case #PB_EventType_MouseMove
-							MouseX = GetGadgetAttribute(\Comp_List, #PB_Canvas_MouseX)
-							MouseY = GetGadgetAttribute(\Comp_List, #PB_Canvas_MouseY)
+				Case #PB_EventType_MouseLeave ;{
+					Select \State_List
+						Case #Action_List_HoverFold
 							
-							Line = Round(MouseY / #Size_TL_Height, #PB_Round_Nearest) - 1
-							
-							If Line < -1
-								Line = -1
-							Else
-								If Line >= \Cont_Displayed_Line
-									Line = \Cont_Displayed_Line - 1
-								ElseIf MouseY % #Size_TL_Height > #Size_TL_Height * 0.5
-									SubLine = 1
-								EndIf
-							EndIf
-							
-							If \Action_Drag_Position <> Line Or SubLine <> \Action_Drag_SubPosition
-								\Action_Drag_SubPosition = SubLine
-								\Action_Drag_Position = Line
-								Redraw(\Comp_Container)
-							EndIf
-							
-							ResizeWindow(\Action_Drag_Window, DesktopMouseX() + 15, DesktopMouseY() - 0.5 * #Size_TL_Height, #PB_Ignore, #PB_Ignore)
-							
-						Case #PB_EventType_LeftButtonUp
-							\State_UserAction = #Action_Hover
-							CloseWindow(\Action_Drag_Window)
-							FreeImage(\Action_Drag_Image)
-							
-							If \Action_Drag_Position = - 1
-								MoveLine(*GadgetData, \Action_Drag_Line, 0, \Action_Drag_OriginalPosition, 0, \Action_Drag_OriginalParent)
-							Else
-								SelectElement(\Cont_Displayed_List(), \Action_Drag_Position)
-								If \Cont_Displayed_List()\Type = #Line_Default
-									If \Action_Drag_SubPosition Or NextElement(\Cont_Displayed_List())
-										If \Cont_Displayed_List()\Parent
-											ChangeCurrentElement(\Cont_Displayed_List()\Parent\Childrens(), \Cont_Displayed_List()\ParentListAdress)
-											MoveLine(*GadgetData, \Action_Drag_Line, ListIndex(\Cont_Displayed_List()\Parent\Childrens())  + \Action_Drag_SubPosition * 1, \Action_Drag_OriginalPosition, \Cont_Displayed_List()\Parent, \Action_Drag_OriginalParent)
-										Else
-											MoveLine(*GadgetData, \Action_Drag_Line, ListIndex(\Cont_Line_List()) + \Action_Drag_SubPosition * 1, \Action_Drag_OriginalPosition, 0, \Action_Drag_OriginalParent)
-										EndIf
-									Else
-										MoveLine(*GadgetData, \Action_Drag_Line, ListSize(\Cont_Line_List()), \Action_Drag_OriginalPosition, 0, \Action_Drag_OriginalParent)
-									EndIf
-								Else
-									If ListIndex(\Cont_Displayed_List()) = ListSize(\Cont_Displayed_List()) And Not \Action_Drag_SubPosition
-										MoveLine(*GadgetData, \Action_Drag_Line, ListSize(\Cont_Line_List()), \Action_Drag_OriginalPosition, 0, \Action_Drag_OriginalParent)
-									Else ; Things are wrong here. It guess a quick refactor of the drag and drop would help...
-										If \Action_Drag_SubPosition
-											MoveLine(*GadgetData, \Action_Drag_Line, 0, \Action_Drag_OriginalPosition, \Cont_Displayed_List(), \Action_Drag_OriginalParent)
-										Else
-											
-											If \Cont_Displayed_List()\Parent
-												ChangeCurrentElement(\Cont_Displayed_List()\Parent\Childrens(), \Cont_Displayed_List()\ParentListAdress)
-												MoveLine(*GadgetData, \Action_Drag_Line, ListIndex(\Cont_Displayed_List()\Parent\Childrens()) + \Action_Drag_SubPosition * 1, \Action_Drag_OriginalPosition, \Cont_Displayed_List()\Parent, \Action_Drag_OriginalParent)
-											Else
-												MoveLine(*GadgetData, \Action_Drag_Line, ListIndex(\Cont_Line_List()) + \Action_Drag_SubPosition * 1, \Action_Drag_OriginalPosition, 0, \Action_Drag_OriginalParent)
-											EndIf
-											
-										EndIf
-									EndIf
-								EndIf
-							EndIf
-							
-							\Action_Drag_Position = -2
-							\Action_Drag_Line\State = #Hot
-							\State_ActiveLine = ListIndex(\Cont_Displayed_List())
-							Refit(\Comp_Container)
-							Redraw(\Comp_Container)
+						Case #Action_Hover
+							\State_List_Item = -1
 					EndSelect
 					;}
-				Case #Action_List_Rename ;{
-					
+				Case #PB_EventType_LeftButtonDown ;{
+					If \State_List = #Action_Hover
+						If \State_List_Item > -1
+							If SelectElement(\Cont_Displayed_List(), \State_List_Item) And \State_SelectedLine <> \Cont_Displayed_List()
+								If \State_SelectedLine 
+									\State_SelectedLine\State = #Cold
+								EndIf
+								
+								\State_SelectedLine = \Cont_Displayed_List()
+								\State_SelectedLine\State = #Hot
+								Redraw(*GadgetData)
+							EndIf
+							
+							\state_list = #Action_List_InitDrag
+							\State_Drag_X = GetGadgetAttribute(Gadget, #PB_Canvas_MouseX)
+							\State_Drag_Y = Y
+							
+						EndIf
+					ElseIf \State_List = #Action_List_HoverFold
+						
+					EndIf
+					;}
+				Case #PB_EventType_LeftButtonUp ;{
+					If \State_List = #Action_List_InitDrag
+						\State_List = #Action_Hover
+					ElseIf \State_List = #Action_List_Drag
+						HideWindow(DragWindow, #True)
+						
+						MoveLine(Gadget, \State_SelectedLine, \State_List_Item)
+						
+						\State_List = #Action_Hover
+						\State_Action = #Action_Hover
+						\State_SelectedLine\State = #Hot
+						
+						Redraw(*GadgetData)
+					EndIf
+					;}
+				Case #PB_EventType_LeftClick ;{
+					;}
+				Case #PB_EventType_LeftDoubleClick ;{
 					;}
 			EndSelect
-			
-			PassKeyboardInput(\Comp_List)
 		EndWith
 	EndProcedure
 	
 	Procedure Handler_Button_AddFolder()
-		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget)
-		Protected *CurrentLine.Line = GetActiveLine(Gadget), Position
-		
-		If Not *CurrentLine
-			AddLine(*GadgetData\Comp_Container, -1, "", 0, #Line_Folder)
-		Else
-			If *CurrentLine\Parent
-				If *CurrentLine\Parent\Parent
-					ChangeCurrentElement(*GadgetData\Cont_Line_List(), *CurrentLine\Parent\Parent\ParentListAdress)
-				Else
-					ChangeCurrentElement(*GadgetData\Cont_Line_List(), *CurrentLine\Parent\ParentListAdress)
-				EndIf
-			Else
-				ChangeCurrentElement(*GadgetData\Cont_Line_List(), *CurrentLine\ParentListAdress)
-			EndIf
-			
-			Position = ListIndex(*GadgetData\Cont_Line_List())
-			AddLine(*GadgetData\Comp_Container, Position + 1, "", *CurrentLine\Parent, #Line_Folder)
-				
-		EndIf
 	EndProcedure
 	
 	Procedure Handler_Button_AddLine()
 		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget)
-		Protected *CurrentLine.Line = GetActiveLine(Gadget), Position
-		
-		If Not *CurrentLine
-			AddLine(*GadgetData\Comp_Container, -1, "")
-		Else
-			If *CurrentLine\Type = #Line_Folder
-				AddLine(*GadgetData\Comp_Container, -1, "", *CurrentLine)
-			Else
-				If *CurrentLine\Parent
-					ChangeCurrentElement(*CurrentLine\Parent\Childrens(), *CurrentLine\ParentListAdress)
-					Position = ListIndex(*CurrentLine\Parent\Childrens())
-				Else
-					ChangeCurrentElement(*GadgetData\Cont_Line_List(), *CurrentLine\ParentListAdress)
-					Position = ListIndex(*GadgetData\Cont_Line_List())
-				EndIf
-				
-				AddLine(*GadgetData\Comp_Container, Position + 1, "", *CurrentLine\Parent)
-				
-			EndIf
-		EndIf
+		AddLine(Gadget, _Display_GetLinePosition(*GadgetData, *GadgetData\State_SelectedLine) + 1, "")
 	EndProcedure
 	
 	Procedure Handler_Button_RemoveLine()
-		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget)
-		Protected *CurrentLine.Line = GetActiveLine(Gadget), Position
-		
-		If *CurrentLine
-			If *CurrentLine\Parent
-				ChangeCurrentElement(*CurrentLine\Parent\Childrens(), *CurrentLine\ParentListAdress)
-				Position = ListIndex(*CurrentLine\Parent\Childrens())
-			Else
-				ChangeCurrentElement(*GadgetData\Cont_Line_List(), *CurrentLine\ParentListAdress)
-				Position = ListIndex(*GadgetData\Cont_Line_List())
-			EndIf
-			
-			RemoveLine(Gadget, Position, *CurrentLine\Parent)
-			
-		EndIf
 	EndProcedure
 	
 	Procedure Handler_Button_Up()
-		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget)
-		Protected *CurrentLine.Line = GetActiveLine(Gadget), Position
-		
-		With *GadgetData
-			If *CurrentLine
-				ChangeCurrentElement(\Cont_Displayed_List(), *CurrentLine\DisplayListAdress)
-				Position = ListIndex(\Cont_Displayed_List())
-				
-			EndIf
-		EndWith
 	EndProcedure
 	
 	Procedure Handler_Button_Down()
-		
 	EndProcedure
 	
 	Procedure Handler_VScrollBar()
-		Protected *GadgetData.GadgetData = GetGadgetData(EventGadget())
-		*GadgetData\Meas_VPosition = GetGadgetState(*GadgetData\Comp_VScrollBar)
-		Redraw(*GadgetData\Comp_Container)
 	EndProcedure
 	
 	Procedure Handler_HScrollBar()
-		Protected *GadgetData.GadgetData = GetGadgetData(EventGadget())
-		*GadgetData\Meas_HPosition = GetGadgetState(*GadgetData\Comp_HScrollBar)
-		Redraw(*GadgetData\Comp_Container)
 	EndProcedure
 	
 	Procedure HandlerRenameString(hWnd, uMsg, wParam, lParam)
-		Protected oldproc = GetProp_(hWnd, "oldproc"), Gadget, *GadgetData.GadgetData, *Task.Task, Item, NewName.s
-		
-		Select uMsg
-			Case #WM_NCDESTROY
-				RemoveProp_(hWnd, "oldproc")
-				RemoveProp_(hWnd, "gadget")
-				RemoveProp_(hWnd, "Task")
-			Case #WM_KEYDOWN
-				Gadget = GetProp_(hWnd, "gadget")
-				If wParam = #VK_RETURN And GetGadgetText(Gadget) <> ""
-					*GadgetData = GetGadgetData(GetProp_(hWnd, "gadget"))
-					SetActiveGadget(*GadgetData\Comp_List)
-				EndIf
-				ProcedureReturn #False
-			Case #WM_KILLFOCUS
-				*Task = GetProp_(hWnd, "Task")
-				Gadget = GetProp_(hWnd, "gadget")
-				*GadgetData = GetGadgetData(Gadget)
-				NewName = GetGadgetText(Gadget)
-				
-				If *Task
-					SelectElement(*GadgetData\Cont_Displayed_List(), *GadgetData\State_ActiveLine)
-					If NewName = "" Or NewName = *GadgetData\Cont_Displayed_List()\Name
-						If XMLChildCount(ChildXMLNode(RootXMLNode(*Task\XMLID)))
-							*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-							FreeXML(*Task\XMLID)
-							
-							TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-						Else
-							FreeXML(*Task\XMLID)
-							FreeStructure(*Task)
-						EndIf
-					Else
-						Item = CreateXMLNode(ChildXMLNode(RootXMLNode(*Task\XMLID)), #RenameLine)
-						SetXMLAttribute(Item, "UUID", *GadgetData\Cont_Displayed_List()\UUID)
-						SetXMLAttribute(Item, "OldName", *GadgetData\Cont_Displayed_List()\Name)
-						SetXMLAttribute(Item, "NewName", NewName)
-						
-						*Task\XML = ComposeXML(*Task\XMLID, #PB_XML_NoDeclaration)
-						FreeXML(*Task\XMLID)
-						
-						TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
-						*GadgetData\Cont_Displayed_List()\Name = NewName
-						Redraw(*GadgetData\Comp_Container)
-					EndIf
-				EndIf
-				
-				*GadgetData\State_UserAction = #Action_Hover
-				FreeGadget(Gadget)
-				ProcedureReturn #False
-		EndSelect
-		
-		ProcedureReturn CallWindowProc_(oldproc, hWnd, uMsg, wParam, lParam)
 	EndProcedure
 	
 	Procedure Handler_UndoRedo(*Task.Task, Redo)
-		Protected *GadgetData.GadgetData, XML = ParseXML(#PB_Any, *Task\XML), Loop, TaskCount, TaskNode, Task, *Line.Line, *MediaBlock.MediaBlock, SubLoop, SubTaskCount, BlockLoop, SubTask
-		Protected Data0, ChangeEvent
-		
-		TaskNode = ChildXMLNode(RootXMLNode(XML))
-		TaskCount = XMLChildCount(TaskNode)
-		
-		If Redo ;{ Redo
-			For loop = 1 To TaskCount
-				Task = ChildXMLNode(TaskNode, Loop)
-				
-				*GadgetData.GadgetData = GetGadgetData( Val(GetXMLAttribute(Task, "Gadget")))
-				
-				If *GadgetData\State_UserAction <> #Action_Hover
-					FreeXML(XML)
-					ProcedureReturn #False
-				EndIf
-				
-				Select GetXMLNodeName(Task)
-					Case #CreateLine ;{
-						*GadgetData.GadgetData = GetGadgetData( Val(GetXMLAttribute(Task, "Gadget")))
-						_AddLine(*GadgetData,
-						         Val(GetXMLAttribute(Task, "Position")),
-						         GetXMLAttribute(Task, "Text"),
-						         FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Parent")),
-						         Val(GetXMLAttribute(Task, "Flags")),
-						         GetXMLAttribute(Task, "UUID"))
-						;}
-					Case #DeleteLine ;{
-						*GadgetData.GadgetData = GetGadgetData( Val(GetXMLAttribute(Task, "Gadget")))
-						
-						FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID"))
-						
-						If *GadgetData\Lines()\Parent
-							ChangeCurrentElement(*GadgetData\Lines()\Parent\Childrens(), *GadgetData\Lines()\ParentListAdress)
-							Data0 = ListIndex(*GadgetData\Lines()\Parent\Childrens())
-						Else
-							ChangeCurrentElement(*GadgetData\Cont_Line_List(), *GadgetData\Lines()\ParentListAdress)
-							Data0 = ListIndex(*GadgetData\Cont_Line_List())
-						EndIf
-						
-						_RemoveLine(*GadgetData, Data0, *GadgetData\Lines()\Parent)
-						
-						ChangeEvent = #True
-		
-						;}
-					Case #RenameLine ;{
-						*Line = FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID"))
-						*Line\Name = GetXMLAttribute(Task, "NewName")
-						Redraw(*GadgetData\Comp_Container)
-						;}
-					Case #MoveLine ;{
-						*Line = GetActiveLine(*GadgetData\Comp_Container)
-						If *Line
-							*Line\State = #Cold
-							*GadgetData\State_ActiveLine = -1
-						EndIf
-						_MoveLine(*GadgetData, FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "NewPosition")), FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "NewParent")))
-						Refit(*GadgetData\Comp_Container)
-						Redraw(*GadgetData\Comp_Container)
-						
-						ChangeEvent = #True
-						;}
-					Case #CreateMediaBlock ;{
-						SubTaskCount = XMLChildCount(Task)
-						
-						SubTaskCount = XMLChildCount(Task)
-						
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
-							Next
-							
-							*MediaBlock\BlockStart = Val(GetXMLAttribute(SubTask, "NewStart"))
-							*MediaBlock\BlockEnd = Val(GetXMLAttribute(SubTask, "NewEnd"))
-							
-						Next
-						
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
-							Next
-						Next
-						
-						*MediaBlock = _AddMediaBlock(*GadgetData,
-						                             FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Line")),
-						                             Val(GetXMLAttribute(Task, "BlockStart")),
-						                             Val(GetXMLAttribute(Task, "BlockEnd")),
-						                             GetXMLAttribute(Task, "Icon"),
-						                             GetXMLAttribute(Task, "Text"),
-						                             Val(GetXMLAttribute(Task, "Color")),
-						                             GetXMLAttribute(Task, "UUID"),
-						                             GetXMLAttribute(Task, "AssetUUID"))
-						
-						Redraw(*GadgetData\Comp_Container)
-						
-						ChangeEvent = #True
-						;}
-					Case #DeleteMediaBlock ;{
-						*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(Task, "UUID"))
-						For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-							*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
-						Next
-						DeleteMapElement(*GadgetData\MediaBlocks())
-						Redraw(*GadgetData\Comp_Container)
-						
-						ChangeEvent = #True
-						;}
-					Case #MoveMediaBlock ;{
-						SubTaskCount = XMLChildCount(Task)
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
-							Next
-							
-							*MediaBlock\BlockStart = Val(GetXMLAttribute(SubTask, "NewStart"))
-							*MediaBlock\BlockEnd = Val(GetXMLAttribute(SubTask, "NewEnd"))
-							
-						Next
-						
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
-							Next
-							
-						Next
-						
-						Redraw(*GadgetData\Comp_Container)
-						
-						ChangeEvent = #True
-						;}
-					Case #ResizeMediaBlock ;{
-						SubTaskCount = XMLChildCount(Task)
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
-							Next
-							
-							*MediaBlock\BlockStart = Val(GetXMLAttribute(SubTask, "NewStart"))
-							*MediaBlock\BlockEnd = Val(GetXMLAttribute(SubTask, "NewEnd"))
-							
-						Next
-						
-						_ResizeMediaBlock(*GadgetData\Comp_Container, *GadgetData\MediaBlocks(GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "NewStart")), Val(GetXMLAttribute(Task, "NewEnd")))
-						
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
-							Next
-							
-						Next
-						
-						Redraw(*GadgetData\Comp_Container)
-						ChangeEvent = #True
-						;}
-				EndSelect
-			Next
-			;}
-		Else ;{ Undo
-			For loop = TaskCount To 1 Step -1
-				Task = ChildXMLNode(TaskNode, Loop)
-				
-				*GadgetData.GadgetData = GetGadgetData(Val(GetXMLAttribute(Task, "Gadget")))
-				
-				If *GadgetData\State_UserAction <> #Action_Hover
-					FreeXML(XML)
-					ProcedureReturn #False
-				EndIf
-				
-				Select GetXMLNodeName(Task)
-					Case #CreateLine ;{
-						FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID"))
-						
-						If *GadgetData\Lines()\Parent
-							ChangeCurrentElement(*GadgetData\Lines()\Parent\Childrens(), *GadgetData\Lines()\ParentListAdress)
-							Data0 = ListIndex(*GadgetData\Lines()\Parent\Childrens())
-						Else
-							ChangeCurrentElement(*GadgetData\Cont_Line_List(), *GadgetData\Lines()\ParentListAdress)
-							Data0 = ListIndex(*GadgetData\Cont_Line_List())
-						EndIf
-						
-						_RemoveLine(*GadgetData, Data0, *GadgetData\Lines()\Parent)
-						;}
-					Case #DeleteLine ;{
-						_AddLine(*GadgetData,
-						         Val(GetXMLAttribute(Task, "Position")),
-						         GetXMLAttribute(Task, "Text"),
-						         FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Parent")),
-						         Val(GetXMLAttribute(Task, "Flags")),
-						         GetXMLAttribute(Task, "UUID"))
-						ChangeEvent = #True
-						;}
-					Case #RenameLine ;{
-						*Line = FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID"))
-						*Line\Name = GetXMLAttribute(Task, "OldName")
-						Redraw(*GadgetData\Comp_Container) ;}
-					Case #MoveLine ;{
-						*Line = GetActiveLine(*GadgetData\Comp_Container)
-						If *Line
-							*Line\State = #Cold
-							*GadgetData\State_ActiveLine = -1
-						EndIf
-						_MoveLine(*GadgetData, FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "OriginalPosition")), FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "OriginalParent")))
-						Refit(*GadgetData\Comp_Container)
-						Redraw(*GadgetData\Comp_Container)
-						ChangeEvent = #True
-						;}
-					Case #CreateMediaBlock ;{
-						*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(Task, "UUID"))
-						For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-							*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
-						Next
-						DeleteMapElement(*GadgetData\MediaBlocks())
-						
-						SubTaskCount = XMLChildCount(Task)
-						
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
-							Next
-							
-							*MediaBlock\BlockStart = Val(GetXMLAttribute(SubTask, "OriginalStart"))
-							*MediaBlock\BlockEnd = Val(GetXMLAttribute(SubTask, "OriginalEnd"))
-							
-						Next
-						
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
-							Next
-							
-						Next
-						
-						Redraw(*GadgetData\Comp_Container)
-						ChangeEvent = #True
-						;}
-					Case #DeleteMediaBlock ;{
-						*MediaBlock = _AddMediaBlock(*GadgetData,
-						                             FindMapElement(*GadgetData\Lines(), GetXMLAttribute(Task, "Line")),
-						                             Val(GetXMLAttribute(Task, "BlockStart")),
-						                             Val(GetXMLAttribute(Task, "BlockEnd")),
-						                             GetXMLAttribute(Task, "Icon"),
-						                             GetXMLAttribute(Task, "Text"),
-						                             Val(GetXMLAttribute(Task, "Color")),
-						                             GetXMLAttribute(Task, "UUID"),
-						                             GetXMLAttribute(Task, "AssetUUID"))
-						
-						Redraw(*GadgetData\Comp_Container)
-						ChangeEvent = #True
-						;}
-					Case #MoveMediaBlock ;{
-						SubTaskCount = XMLChildCount(Task)
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
-							Next
-							
-							*MediaBlock\BlockStart = Val(GetXMLAttribute(SubTask, "OriginalStart"))
-							*MediaBlock\BlockEnd = Val(GetXMLAttribute(SubTask, "OriginalEnd"))
-							
-						Next
-						
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
-							Next
-						Next
-						
-						Redraw(*GadgetData\Comp_Container)
-						
-						ChangeEvent = #True
-						;}
-					Case #ResizeMediaBlock ;{
-						SubTaskCount = XMLChildCount(Task)
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = 0
-							Next
-							
-							*MediaBlock\BlockStart = Val(GetXMLAttribute(SubTask, "OriginalStart"))
-							*MediaBlock\BlockEnd = Val(GetXMLAttribute(SubTask, "OriginalEnd"))
-							
-						Next
-						
-						_ResizeMediaBlock(*GadgetData\Comp_Container, *GadgetData\MediaBlocks(GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "OriginalStart")), Val(GetXMLAttribute(Task, "OriginalEnd")))
-						
-						For SubLoop = 1 To SubTaskCount
-							SubTask = ChildXMLNode(Task, SubLoop)
-							*MediaBlock = FindMapElement(*GadgetData\MediaBlocks(), GetXMLAttribute(SubTask, "UUID"))
-							
-							For BlockLoop = *MediaBlock\BlockStart To *MediaBlock\BlockEnd
-								*MediaBlock\Line\MediaBlocks(BlockLoop) = *MediaBlock
-							Next
-						Next
-						
-						Redraw(*GadgetData\Comp_Container)
-						
-						ChangeEvent = #True
-						;}
-				EndSelect
-			Next
-		EndIf ;}
-		FreeXML(XML)
-		
-		If ChangeEvent
-			PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_Change)
-		EndIf
-		
-		ProcedureReturn #True
 	EndProcedure
 	
 	; Redraw
-	Procedure Redraw(Gadget)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), ListLoop, ListLoopMax, ListIndex, MediaLoop, MediaLoopMax, YPos, BodyYPos, XMin
+	Procedure Redraw(*GadgetData.GadgetData)
+		Protected Loop, LoopEnd, BodyYPos, YPos, OddLine
 		
 		With *GadgetData
 			StartDrawing(CanvasOutput(\Comp_List))
 			StartVectorDrawing(CanvasVectorOutput(\Comp_Body))
 			
-			;{ List
+			;{ Background color
 			Box(0, 0, \Meas_List_Width, \Meas_List_Height, \Color_List_Back[#cold])
 			DrawingFont(FontBold)
 			DrawingMode(#PB_2DDrawing_Transparent)
-			;}
+			FrontColor(\Color_List_Front[#Cold])
 			
-			;{ Body
-			AddPathBox(0, 0, \Meas_Body_Width, \Meas_Body_Height)
+			AddPathBox(0, 0, \Meas_Body_Width, VectorOutputHeight())
 			VectorSourceColor(SetAlpha($FF, \Color_List_Back[#cold]))
 			FillPath()
+			;}
 			
+			;{ Header
 			MovePathCursor(0, #Size_Header_Height - 0.5)
 			AddPathLine(\Meas_Body_Width, 0, #PB_Path_Relative)
 			VectorSourceColor(SetAlpha($FF, \Color_General_Line))
@@ -3162,414 +1411,133 @@ Module PureTL
 			;}
 			
 			;{ Content
-			ListLoopMax = Min(\Meas_Displayed_Lines, \Cont_Displayed_Line) - 1
-			MediaLoopMax = min(\Meas_HPosition + \Meas_Displayed_Columns, \State_Duration)
-			SelectElement(\Cont_Displayed_List(), \Meas_VPosition)
-			
-			ListIndex = Max(ListIndex(\Cont_Displayed_List()), 0)
-			
-			If \Action_Drag_Position = ListIndex - 1
-				If \Action_Drag_Position = -1
-					Box(#Size_List_Text_HorizontalMargin, 0, \Meas_List_Height, 3, \Color_List_Front[#Hot])
-				Else
-					PreviousElement(\Cont_Displayed_List())
-					Box(\Cont_Displayed_List()\HorizontalOfsset, 0, \Meas_List_Height, 3, \Color_List_Front[#Hot])
-					NextElement(\Cont_Displayed_List())
-				EndIf
-			EndIf
-			
-			For ListLoop = 0 To ListLoopMax
-				YPos = ListLoop * #Size_TL_Height
-				BodyYPos = YPos + #Size_Header_Height
+			If \Cont_Displayed_List_Size
+				SelectElement(\Cont_Displayed_List(), \Meas_VPosition)
+				LoopEnd = \Meas_VPosition + \Meas_Displayed_Line_Count
+				OddLine = \Meas_VPosition % 2
+				BodyYPos = #Size_Header_Height
 				
-				If \Cont_Displayed_List()\State
-					Box(0, YPos, \Meas_List_Width, #Size_TL_Height, \Color_List_Back[\Cont_Displayed_List()\State])
-				EndIf
-				
-				If \Cont_Displayed_List()\Folded
-					DrawText(\Cont_Displayed_List()\HorizontalOfsset + #Size_List_Icon_Offset, YPos + \Cont_Displayed_List()\VerticalOffset, \Cont_Displayed_List()\Name, \Color_List_Front[\Cont_Displayed_List()\State])
-					If ListIndex = \State_HoverFoldButton
-						RoundBox(\Cont_Displayed_List()\HorizontalOfsset - 6, YPos + 13, #Size_List_Icon_Offset, #Size_TL_Height - 26, 2, 2, \Color_List_Back[Bool( \Cont_Displayed_List()\State = #Cold ) * #Hot])
+				For Loop = \Meas_VPosition To \Meas_Displayed_Line_Count
+					If \Cont_Displayed_List()\State = #Draged
+						Loop - 1
+					Else
+						
+						If \State_Action = #Action_List_Drag And Loop = \State_List_Item
+							If Not OddLine
+								AddPathBox(0, BodyYPos, \Meas_Body_Width, \Meas_TL_LineHeight)
+								VectorSourceColor(SetAlpha($FF, \Color_List_Back_Alternate[\Cont_Displayed_List()\State]))
+								FillPath()
+							EndIf
+							Loop + 1
+							YPos + \Meas_TL_LineHeight
+							BodyYPos + \Meas_TL_LineHeight
+							OddLine = Bool(Not OddLine)
+						EndIf
+						
+						; List
+						If \Cont_Displayed_List()\State
+							Box(0, YPos, \Meas_List_Width, \Meas_TL_LineHeight, \Color_List_Back[\Cont_Displayed_List()\State])
+						EndIf
+						DrawText(\Cont_Displayed_List()\HorizontalOffset, YPos + \Meas_TL_TextVericalOffset,  \Cont_Displayed_List()\Name)
+						
+						; Body
+						If Not OddLine
+							AddPathBox(0, BodyYPos, \Meas_Body_Width, \Meas_TL_LineHeight)
+							VectorSourceColor(SetAlpha($FF, \Color_List_Back_Alternate[\Cont_Displayed_List()\State]))
+							FillPath()
+						ElseIf \Cont_Displayed_List()\State
+							AddPathBox(0, BodyYPos, \Meas_Body_Width, \Meas_TL_LineHeight)
+							VectorSourceColor(SetAlpha($FF, \Color_List_Back[\Cont_Displayed_List()\State]))
+							FillPath()
+						EndIf
+						
+						YPos + \Meas_TL_LineHeight
+						BodyYPos + \Meas_TL_LineHeight
+						OddLine = Bool(Not OddLine)
 					EndIf
 					
-					DrawingFont(IconSolid)
-					DrawText(\Cont_Displayed_List()\HorizontalOfsset, YPos + #Size_List_Icon_VerticalMargin, \Cont_Displayed_List()\Icon, \Color_List_Front[\Cont_Displayed_List()\State])
-					DrawingFont(FontBold)
-				ElseIf \Cont_Displayed_List()\Type = #Line_Folder
-					DrawText(\Cont_Displayed_List()\HorizontalOfsset + #Size_List_Icon_Offset, YPos + \Cont_Displayed_List()\VerticalOffset, \Cont_Displayed_List()\Name, \Color_List_Front[\Cont_Displayed_List()\State])
-					DrawingFont(Icon)
-					DrawText(\Cont_Displayed_List()\HorizontalOfsset, YPos + #Size_List_Icon_VerticalMargin, #FontAwesome_Folder, \Color_List_Front[\Cont_Displayed_List()\State])
-					DrawingFont(FontBold)
-				Else
-					DrawText(\Cont_Displayed_List()\HorizontalOfsset, YPos + \Cont_Displayed_List()\VerticalOffset, \Cont_Displayed_List()\Name, \Color_List_Front[\Cont_Displayed_List()\State])
-				EndIf
-				
-				If Not ListIndex % 2
-					AddPathBox(0, BodyYPos, \Meas_Body_Width, #Size_TL_Height)
-					VectorSourceColor(SetAlpha($FF, \Color_List_Back_Alternate[\Cont_Displayed_List()\State]))
-					FillPath()
-				ElseIf \Cont_Displayed_List()\State
-					AddPathBox(0, BodyYPos, \Meas_Body_Width, #Size_TL_Height)
-					VectorSourceColor(SetAlpha($FF, \Color_List_Back[\Cont_Displayed_List()\State]))
-					FillPath()
-				EndIf
-				
-				If \Action_Drag_Position = ListIndex
-					If \Cont_Displayed_List()\Type = #Line_Default
-						If \Action_Drag_SubPosition 
-							Box(\Cont_Displayed_List()\HorizontalOfsset, (ListLoop + 1) * #Size_TL_Height, \Meas_List_Height, - 3, \Color_List_Front[#Hot])
-						ElseIf NextElement(\Cont_Displayed_List())
-							Box(\Cont_Displayed_List()\HorizontalOfsset, (ListLoop + 1) * #Size_TL_Height, \Meas_List_Height, - 3, \Color_List_Front[#Hot])
-							PreviousElement(\Cont_Displayed_List())
-						Else
-							Box(#Size_List_Text_HorizontalMargin, (ListLoop + 1) * #Size_TL_Height, \Meas_List_Height, - 3, \Color_List_Front[#Hot])
-						EndIf
-					Else ; Folder.
-						If \Cont_Displayed_List()\Folded = #Unfolded
-							NextElement(\Cont_Displayed_List())
-							Box(\Cont_Displayed_List()\HorizontalOfsset, (ListLoop + 1) * #Size_TL_Height, \Meas_List_Height, - 3, \Color_List_Front[#Hot])
-							PreviousElement(\Cont_Displayed_List())
-						Else
-							If \Action_Drag_SubPosition
-								Box(\Cont_Displayed_List()\HorizontalOfsset + #Size_SubItemOffset, (ListLoop + 1) * #Size_TL_Height, \Meas_List_Height, - 3, \Color_List_Front[#Hot])
-							Else
-								Box(\Cont_Displayed_List()\HorizontalOfsset, (ListLoop + 1) * #Size_TL_Height, \Meas_List_Height, - 3, \Color_List_Front[#Hot])
+					If Not NextElement(\Cont_Displayed_List())
+						If \State_Action = #Action_List_Drag And (Loop + 1) = \State_List_Item ; Draw the alternate color in the edgecase were a line is dragged to the very end of the line
+							If Not OddLine
+								AddPathBox(0, BodyYPos, \Meas_Body_Width, \Meas_TL_LineHeight)
+								VectorSourceColor(SetAlpha($FF, \Color_List_Back_Alternate[#Cold]))
+								FillPath()
 							EndIf
 						EndIf
+						
+						Break
 					EndIf
-				EndIf
-				
-				For MediaLoop = \Meas_HPosition To MediaLoopMax
-					If \Cont_Displayed_List()\MediaBlocks(MediaLoop)
-						MediaLoop = Redraw_MediaBlock(*GadgetData, BodyYPos + #Size_MediaBlock_VerticalMargin, \Cont_Displayed_List()\MediaBlocks(MediaLoop))
-					EndIf
+					
 				Next
 				
-				If \State_UserAction = #Action_Body_Drag 
-					ForEach \State_MediaBlocks()
-						If \State_MediaBlocks()\Line = \Cont_Displayed_List()
-							MaterialVector::AddPathRoundedBox((Min(Max((\State_MediaBlocks()\BlockStart + \Action_Drag_HorizontalOffset), 0), \State_Duration - \State_MediaBlocks()\Duration) - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, (BodyYPos + \Action_Drag_VerticalOffset * #Size_TL_Height )  + #Size_MediaBlock_VerticalMargin + 0.5, \State_MediaBlocks()\Duration * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
-						EndIf
-					Next
-					VectorSourceColor($FFFFFFFF)
-					StrokePath(1)
-				ElseIf \State_UserAction = #Action_Body_Resize
-					If \State_HoverMB\Line = \Cont_Displayed_List()
-						If \State_HoverResize = 1
-							MaterialVector::AddPathRoundedBox((\Action_Drag_HorizontalOffset - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5, (\State_HoverMB\BlockEnd - \Action_Drag_HorizontalOffset + 1) * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
-						Else
-							MaterialVector::AddPathRoundedBox((\State_HoverMB\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5, BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5, (\Action_Drag_HorizontalOffset - \State_HoverMB\BlockStart + 1) * \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
-						EndIf
-						VectorSourceColor($FFFFFFFF)
-						StrokePath(1)
-					EndIf
-				EndIf
 				
-				If ListIndex = \State_AssetDragLine And \State_AssetDragPosition >= \Meas_HPosition And \State_AssetDragPosition <= MediaLoopMax
-					AddPathBox((\State_AssetDragPosition - \Meas_HPosition) * \Meas_TL_ColumnWidth, BodyYPos, 2, #Size_TL_Height)
-					VectorSourceColor($80FFFFFF)
-					FillPath()
-				EndIf
 				
-				ListIndex + 1
-				If Not NextElement(\Cont_Displayed_List())
-					Break
-				EndIf
-				
-			Next
-			;}
-			
-			Box(\Meas_List_Width - #Size_Line_Thin, 0, #Size_Line_Thin, \Meas_List_Height, \Color_General_Line)
-			
-			;{ Player
-			If \State_PlayerPosition >= \Meas_HPosition - 5 And \State_PlayerPosition <= MediaLoopMax + 5
-				MovePathCursor((\State_PlayerPosition - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5 - #Size_Player_TopOffset, 0)
-				AddPathLine(0, #Size_Player_TopSquare, #PB_Path_Relative)
-				AddPathLine(#Size_Player_TopOffset - 0.5, #Size_Player_TopHeight - #Size_Player_TopSquare, #PB_Path_Relative)
-				AddPathLine(#Size_Player_Width, 0, #PB_Path_Relative)
-				AddPathLine(#Size_Player_TopOffset - 0.5, - (#Size_Player_TopHeight - #Size_Player_TopSquare), #PB_Path_Relative)
-				AddPathLine(0, - #Size_Player_TopSquare, #PB_Path_Relative)
-				ClosePath()
-				MovePathCursor(#Size_Player_TopOffset - 0.5, #Size_Player_TopHeight, #PB_Path_Relative)
-				AddPathBox(0,0, #Size_Player_Width, \Meas_Body_Height, #PB_Path_Relative)
-				VectorSourceColor($FF5466FF)
-				FillPath()
 			EndIf
 			;}
 			
-			;{ Corners
-			DrawAlphaImage(ImageID(CornerDL), 0, \Meas_List_Height -3)
-			MovePathCursor(\Meas_Body_Width - 3, 0)
-			DrawVectorImage(ImageID(CornerUR))
-			
-			MovePathCursor(\Meas_Body_Width - 3, \Meas_Body_Height - 3)
-			DrawVectorImage(ImageID(CornerDR))
-			;}
-			
-			StopVectorDrawing()
+			;{ Corner and finish
+			Box(\Meas_List_Width - 1, 0, #Size_Line_Thin, \Meas_List_Height, \Color_General_Line)
+			MovePathCursor(\Meas_Body_Width - #Size_RoundedCorner, 0)
+			DrawVectorImage(CornerUR)
+			MovePathCursor(\Meas_Body_Width - #Size_RoundedCorner, VectorOutputHeight() - #Size_RoundedCorner)
+			DrawVectorImage(CornerDR)
+			DrawAlphaImage(CornerDL, 0, \Meas_List_Height - #Size_RoundedCorner)
 			StopDrawing()
-			
-		EndWith
+			StopVectorDrawing()
+			;}
+		EndWith		
 	EndProcedure
 	
 	Procedure Redraw_MediaBlock(*GadgetData.GadgetData, YPos, *Block.MediaBlock)
-		Protected XPos, Duration, BlockStart, Height, Width, Alpha = $FF
-		With *GadgetData
-			If *Block\Drag
-				Alpha = 80
-			EndIf
-			
-			BlockStart = Max(*Block\BlockStart, \Meas_HPosition - 3) ; minus 3 to have the right corners correctly rounded even at the lowest zoom level.
-			Duration = *Block\BlockEnd - BlockStart + 1
-			
-			BlockStart - \Meas_HPosition
-			XPos = BlockStart * \Meas_TL_ColumnWidth
-			SaveVectorState()
-			
-			MovePathCursor(XPos + 3.5, YPos + 4)
-			AddPathLine(Duration * \Meas_TL_ColumnWidth - 7, 0, #PB_Path_Relative)
-			VectorSourceColor(SetAlpha(Alpha, *Block\Color))
-			StrokePath(6, #PB_Path_RoundEnd)
-			
-			Height = #Size_MediaBlock_Height - 3
-			Width = Duration * \Meas_TL_ColumnWidth
-			
-			MovePathCursor(XPos, YPos + 5)
-			
-			AddPathArc(0, Height - 3, Width, Height - 3, 3, #PB_Path_Relative)
-			AddPathArc(Width - 3, 0, Width - 3, - Height, 3, #PB_Path_Relative)
-			AddPathLine(0, 2 * 3 - Height, #PB_Path_Relative)
-			ClosePath()
-			VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Back[#Cold]))
-			FillPath()
-			
-			Height = #Size_MediaBlock_Height - 4
-			Width = Duration * \Meas_TL_ColumnWidth - 2
-			
-			MovePathCursor(XPos + 1, YPos + 5)
-			
-			AddPathArc(0, Height - 3, Width, Height - 3, 3, #PB_Path_Relative)
-			AddPathArc(Width - 3, 0, Width - 3, - Height, 3, #PB_Path_Relative)
-			AddPathLine(0, 2 * 3 - Height, #PB_Path_Relative)
-			ClosePath()
-			
-			VectorSourceColor(SetAlpha(Alpha,\Color_MediaBlock_Back[*Block\State]))
-			FillPath(#PB_Path_Preserve)
-			
-			ClipPath()
- 			If *Block\Duration * \Meas_TL_ColumnWidth >= 37 ; Calculate the width of the text to see if we shoul display it
-				XPos = Min(Max(XPos, -3), (*Block\BlockEnd - \Meas_HPosition) * \Meas_TL_ColumnWidth - 37)
-				
-				VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Front[*Block\State]))
-				MovePathCursor( XPos + 10, YPos + 11)
-				VectorFont(Icon, 26)
-				DrawVectorText(*Block\Icon)
-				
-				VectorFont(FontTest)
-				MovePathCursor( XPos + 47, YPos + 15)
-				DrawVectorText(*Block\Text)
-			EndIf
-			RestoreVectorState()
-			
-		EndWith
-		ProcedureReturn *Block\BlockEnd
 	EndProcedure
 	
 	; Misc
-	Procedure Refit(Gadget)
-		Protected Visible_VScrollbar, Visible_HScrollbar
+	Procedure Refit(Gadget, GadgetWidth, GadgetHeight)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 		
 		With *GadgetData
+			GadgetHeight - #Size_Header_Height
 			
-			\Meas_List_Height = \Meas_Height - #Size_Header_Height
+			\Meas_List_Height = GadgetHeight
 			
-			SetWindowPos_(GadgetID(\Comp_List), 0, 0, #Size_Header_Height, \Meas_List_Width, \Meas_List_Height, #SWP_NOREDRAW|#SWP_NOZORDER)
-			\Meas_Body_Width = \Meas_Width - \Meas_List_Width
-			\Meas_Body_Height = \Meas_Height
+			\Meas_Body_Width = GadgetWidth - \Meas_List_Width
 			
-			SetWindowPos_(GadgetID(\Comp_Body), 0, \Meas_List_Width, 0, \Meas_Body_Width, \Meas_Body_Height, #SWP_NOREDRAW|#SWP_NOZORDER)
-			
-			\Meas_Displayed_Lines = Round(\Meas_List_Height / #Size_TL_Height, #PB_Round_Up)
-			
-			If \Meas_Displayed_Lines <= \Cont_Displayed_Line
-				Visible_VScrollbar = #True
-			EndIf
-			
-			\Meas_Displayed_Columns = Round((\Meas_Body_Width - Visible_VScrollbar * #Size_Scrollbar_Thickness)  / \Meas_TL_ColumnWidth, #PB_Round_Up)
-			
-			If \Meas_Displayed_Columns <= \State_Duration
-				Visible_HScrollbar = #True
-				SetGadgetAttribute(\Comp_HScrollBar, #PB_ScrollBar_PageLength, \Meas_Displayed_Columns - 1)
-				ResizeGadget(\Comp_HScrollBar, 0, \Meas_Body_Height - #Size_Scrollbar_Thickness, \Meas_Body_Width - Visible_VScrollbar * #Size_Scrollbar_Thickness, #Size_Scrollbar_Thickness)
-				
-				HideGadget(\Comp_HScrollBar, #False)
-				\Meas_HPosition = GetGadgetState(\Comp_HScrollBar)
-			Else
-				HideGadget(\Comp_HScrollBar, #True)
-				SetGadgetState(\Comp_HScrollBar, 0)
-				SetGadgetAttribute(\Comp_HScrollBar, #PB_ScrollBar_PageLength, 1)
-				\Meas_HPosition = 0
-			EndIf
-			
-			If Visible_VScrollbar
-				ResizeGadget(\Comp_VScrollBar, \Meas_Body_Width - #Size_Scrollbar_Thickness, #Size_Header_Height, #Size_Scrollbar_Thickness, \Meas_List_Height - Visible_HScrollbar * #Size_Scrollbar_Thickness)
-				SetGadgetAttribute(\Comp_VScrollBar, #PB_ScrollBar_PageLength, \Meas_Displayed_Lines - 1)
-				HideGadget(\Comp_VScrollBar, #False)
-				\Meas_VPosition = GetGadgetState(\Comp_VScrollBar)
-			Else
-				HideGadget(\Comp_VScrollBar, #True)
-				SetGadgetState(\Comp_VScrollBar, 0)
-				SetGadgetAttribute(\Comp_VScrollBar, #PB_ScrollBar_PageLength, \Meas_Displayed_Lines - 1)
-				\Meas_VPosition = 0
-			EndIf
+			\Meas_Displayed_Line_Count = Round(\Meas_List_Height / \Meas_TL_LineHeight, #PB_Round_Up) - 1
 			
 		EndWith
+		
 	EndProcedure
 	
 	Procedure RecurciveFold(*GadgetData.GadgetData, *Line.Line)
-		Protected Result
-		
-		ForEach *Line\Childrens()
-			NextElement(*GadgetData\Cont_Displayed_List())
-			*Line\Childrens()\DisplayListAdress = 0
-			*Line\Childrens()\State = #Cold
-			Result + 1
-			
-			If *Line\Childrens()\Folded = #Unfolded
-				Result + RecurciveFold(*GadgetData, *Line\Childrens())
-			EndIf
-			
-			DeleteElement(*GadgetData\Cont_Displayed_List())
-		Next
-		
-		ProcedureReturn Result
 	EndProcedure
 	
 	Procedure RecurciveUnfold(*GadgetData.GadgetData, *Line.Line)
-		Protected Result
-		
-		ForEach *Line\Childrens()
-			AddElement(*GadgetData\Cont_Displayed_List())
-			*GadgetData\Cont_Displayed_List() = *Line\Childrens()
-			*Line\Childrens()\DisplayListAdress = @*GadgetData\Cont_Displayed_List()
-			Result + 1
-			
-			If *Line\Childrens()\Folded = #Unfolded
-				Result + RecurciveUnfold(*GadgetData, *Line\Childrens())
-			EndIf
-		Next
-		
-		ProcedureReturn Result
 	EndProcedure
 	
 	Procedure ToggleFold(Gadget)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), Offset, Position, *Line.Line
-		
-		With *GadgetData
-			Position = ListIndex(\Cont_Displayed_List())
-			
-			If \Cont_Displayed_List()\Folded = #Folded
-				\Cont_Displayed_List()\Folded = #Unfolded
-				
-				If \Cont_Displayed_List()\Type = #Line_Folder
-					\Cont_Displayed_List()\Icon = #FontAwesome_Folder_Open
-				Else
-					\Cont_Displayed_List()\Icon = #FontAwesome_Chevron_Down
-				EndIf
-				
-				Offset = RecurciveUnfold(*GadgetData, \Cont_Displayed_List())
-				
-				If \State_ActiveLine > Position
-					\State_ActiveLine + Offset
-				EndIf
-				
-			Else
-				*Line = \Cont_Displayed_List()
-				\Cont_Displayed_List()\Folded = #Folded
-				
-				If \Cont_Displayed_List()\Type = #Line_Folder
-					\Cont_Displayed_List()\Icon = #FontAwesome_Folder
-				Else
-					\Cont_Displayed_List()\Icon = #FontAwesome_Chevron_Right
-				EndIf
-				
-				Offset = - RecurciveFold(*GadgetData, \Cont_Displayed_List())
-				
-				If \State_ActiveLine > Position
-					If \State_ActiveLine <= Position - Offset
-						\State_ActiveLine = Position
-						*Line\State = #Hot
-					Else
-						\State_ActiveLine + Offset
-					EndIf
-				EndIf
-			EndIf
-			
-			\Cont_Displayed_Line + Offset
-			SetGadgetAttribute(\Comp_VScrollBar, #PB_ScrollBar_Maximum, \Cont_Displayed_Line - 1)
-			\Meas_VPosition = GetGadgetState(\Comp_VScrollBar)
-			Refit(\Comp_Container)
-		EndWith
 	EndProcedure
 	
 	Procedure VerticalFocus(*GadgetData.GadgetData)
-		With *GadgetData
-			If \State_ActiveLine > -1
-				If \State_ActiveLine < \Meas_VPosition
-					SetGadgetState(\Comp_VScrollBar, \State_ActiveLine)
-				ElseIf \State_ActiveLine >= \Meas_VPosition + \Meas_Displayed_Lines - 1
-					SetGadgetState(\Comp_VScrollBar, \State_ActiveLine - \Meas_Displayed_Lines + 2)
-				EndIf
-				
-				\Meas_VPosition = GetGadgetState(\Comp_VScrollBar)
-				PostEvent(#PB_Event_Gadget, 0, \Comp_List, #PB_EventType_MouseMove)
-			EndIf
-		EndWith
 	EndProcedure
 	
 	Procedure HorizontalFocus(*GadgetData.GadgetData)
-		
 	EndProcedure
 	
 	Procedure _UpdateCurrentAssetList(*GadgetData.GadgetData, *Line.Line)
-		AddElement(*GadgetData\CurrentAsset())
-		If *Line\MediaBlocks(*GadgetData\State_PlayerPosition)
-			*GadgetData\CurrentAsset() = *Line\MediaBlocks(*GadgetData\State_PlayerPosition)
-		EndIf
-		
-		ForEach *Line\Childrens()
-			_UpdateCurrentAssetList(*GadgetData, *Line\Childrens())
-		Next
 	EndProcedure
 	
 	Procedure.s SerializeDataPoint(*DataPoint.DataPoint)
-		Protected json = CreateJSON(#PB_Any), Result.s
-		
-		InsertJSONStructure(JSONValue(json), *DataPoint, DataPoint)
-		Result = ComposeJSON(json)
-		FreeJSON(json)
-		
-		ProcedureReturn Result
 	EndProcedure
 	
 	Procedure UnserializeDataPoint(*DataPoint.DataPoint, JsonString.s)
-		Protected json = ParseJSON(#PB_Any, JsonString)
-		
-		ExtractJSONStructure(JSONValue(json), *DataPoint, DataPoint)
-		FreeJSON(json)
-		
 	EndProcedure
 	;}
 	
 	DataSection
 		Corner:
-		Data.b $89,$50,$4E,$47,$0D,$0A,$1A,$0A,$00,$00,$00,$0D,$49,$48,$44,$52
-		Data.b $00,$00,$00,$03,$00,$00,$00,$03,$08,$06,$00,$00,$00,$56,$28,$B5
-		Data.b $BF,$00,$00,$00,$1A,$49,$44,$41,$54,$78,$DA,$63,$90,$54,$B6,$FC
-		Data.b $0F,$C4,$FD,$40,$AC,$C8,$00,$62,$30,$C0,$00,$58,$04,$0A,$00,$81
-		Data.b $E1,$04,$A9,$ED,$11,$40,$C3,$00,$00,$00,$00,$49,$45,$4E,$44,$AE
-		Data.b $42,$60,$82
+		Data.q $0A1A0A0D474E5089,$524448490D000000,$0400000004000000,$9EF1A90000000608,$4144491F0000007E
+		Data.q $FAB6529063017854,$D02612D88047C50F,$00640619200300C2,$340940C100048656,$00000000FE90996A
+		Data.q $826042AE444E4549
 	EndDataSection
 	
 EndModule
@@ -3618,8 +1586,8 @@ EndModule
 
 
 
-; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 3249
-; FirstLine = 585
-; Folding = AAYBigCAAAQAAcMXAAAQICSCA9
+; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
+; CursorPosition = 1239
+; FirstLine = 317
+; Folding = AAqmhhSQCKCYAAAIA+
 ; EnableXP

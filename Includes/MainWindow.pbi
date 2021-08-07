@@ -94,13 +94,15 @@
 	
 	#Size_Timeline_MinimumHeight = 304
 	#Size_AssetContainer_MinimumWidth = 572
+	
+	#Size_RoundedCorner = 4
 	;}
 	
 	;{ Window management stuff
 	#WM_SYSMENU = $313
 	
 	CreateImage(0, 8, 8, 32, General::FixColor($1A233A))
-	Global Margin.RECT, Brush = CreatePatternBrush_(ImageID(0)), CursorSize, DWMEnabled, SplitterCursor, WindowWidth = 1920, EditSplitter = 0, SplitterOrigin, MouseOrigin
+	Global Margin.RECT, Brush = CreatePatternBrush_(ImageID(0)), CursorSize, DWMEnabled, SplitterCursor, WindowWidth = 1920, WindowHeight = 1080, EditSplitter = 0, SplitterOrigin, MouseOrigin
 	FreeImage(0)
 	;}
 	
@@ -345,25 +347,25 @@
 		Protected CornerDR = ROTATE_90(CornerUR)
 		Protected CornerDL = ROTATE_90(CornerDR)
 		
-		Image = CreateImage(#PB_Any, 3, 3, 24, General::FixColor( #Color_Content_Back_Cold))
+		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( #Color_Content_Back_Cold))
 		StartDrawing(ImageOutput(Image))
 		DrawAlphaImage(ImageID(CornerUL), 0, 0)
 		StopDrawing()
 		MediaContainerBorder(0) = GadgetID(ImageGadget(#PB_Any, 0, 0, 0, 0 , ImageID(Image)))
 		
-		Image = CreateImage(#PB_Any, 3, 3, 24, General::FixColor( #Color_Content_Back_Cold))
+		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( #Color_Content_Back_Cold))
 		StartDrawing(ImageOutput(Image))
 		DrawAlphaImage(ImageID(CornerUR), 0, 0)
 		StopDrawing()
-		MediaContainerBorder(1) = GadgetID(ImageGadget(#PB_Any, AssetContainer_Width - 3, 0, 0, 0 , ImageID(Image)))
+		MediaContainerBorder(1) = GadgetID(ImageGadget(#PB_Any, AssetContainer_Width - #Size_RoundedCorner, 0, 0, 0 , ImageID(Image)))
 		
-		Image = CreateImage(#PB_Any, 3, 3, 24, General::FixColor( #Color_Content_Back_Cold))
+		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( #Color_Content_Back_Cold))
 		StartDrawing(ImageOutput(Image))
 		DrawAlphaImage(ImageID(CornerDR), 0, 0)
 		StopDrawing()
-		MediaContainerBorder(2) = GadgetID(ImageGadget(#PB_Any, AssetContainer_Width - 3, 1080 - #Size_TitleBar_ButtonHeight - 25 - Timeline_Height - #Size_Media_Icon, 0, 0 , ImageID(Image)))
+		MediaContainerBorder(2) = GadgetID(ImageGadget(#PB_Any, AssetContainer_Width - #Size_RoundedCorner, 1080 - #Size_TitleBar_ButtonHeight - 25 - Timeline_Height - #Size_Media_Icon, 0, 0 , ImageID(Image)))
 		
-		Image = CreateImage(#PB_Any, 3, 3, 24, General::FixColor( #Color_Content_Back_Cold))
+		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( #Color_Content_Back_Cold))
 		StartDrawing(ImageOutput(Image))
 		DrawAlphaImage(ImageID(CornerDL), 0, 0)
 		StopDrawing()
@@ -639,36 +641,14 @@
 				Else
 					PosY = General::Min(General::Max(SplitterOrigin - PosY + MouseOrigin, #Size_Timeline_MinimumHeight), Height - 360)
 					If Timeline_Height <> PosY
-						Protected Update.RECT
-						
-						If Timeline_Height > PosY
-							Update\top = Height - Timeline_Height - 20
-						Else
-							Update\top = Height - PosY - 20
-						EndIf
-						
-						Update\right = Width
-						Update\bottom = Height
 						
 						Timeline_Height = PosY
-						
 						PosY = Height - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height - #Size_Media_Icon
 						AssetContainer_Width = General::Min(AssetContainer_Width, width - 600)
-						PureTL::ResizeEX(#TimeLine, 10, Height - Timeline_Height - 10, Width - 20, Timeline_Height, hWnd, Update)
-						SetWindowPos_(MediaContainerBorder(1), 0, AssetContainer_Width - 3, 0, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
-						SetWindowPos_(MediaContainerBorder(2), 0, AssetContainer_Width - 3, PosY - 3, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
-						SetWindowPos_(MediaContainerBorder(3), 0, 0, PosY - 3, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
-						SetWindowPos_(AssetContainertID, 0, 0, 0, AssetContainer_Width, PosY, #SWP_NOMOVE | #SWP_NOZORDER)
-						
 						RendererWidth = Width - AssetContainer_Width - 30
 						RendererHeight = PosY + #Size_Media_Icon
 						
-						CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
-							AddElement(General::EventList())
-							General::EventList() = General::#Event_Resize
-						CompilerEndIf
-						
-						SetWindowPos_(Renderer, 0, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, Width - AssetContainer_Width - 30, PosY + #Size_Media_Icon, #SWP_NOZORDER)
+						Refit()
 					EndIf
 				EndIf
 				;}
@@ -729,6 +709,11 @@
 				EndSelect
 				
 				If EditSplitter
+					CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
+						AddElement(General::EventList())
+						General::EventList() = General::#Event_Resize
+					CompilerEndIf
+					
 					EditSplitter = 0
 					ReleaseCapture_()
 				EndIf
@@ -951,7 +936,6 @@
 		Protected Height = WindowHeight(#Window), Width = WindowWidth(#Window), AssetContainerHeight
 		If Height >= 720 ; DOn't resize when the window is smaller than its bound (ie when it's minimized)
 			Timeline_Height = General::Min(Timeline_Height, Height - 360)
-			PureTL::Resize(#TimeLine, 10, Height - Timeline_Height - 10, Width - 20, Timeline_Height)
 			
 			If Width > WindowWidth
 				SetWindowPos_(GadgetID(#CloseButton), 0, Width - #Size_TitleBar_ButtonWidth, #Size_TitleBar_TopMargin, 0, 0, #SWP_NOSIZE|#SWP_NOZORDER)
@@ -965,20 +949,22 @@
 			
 			WindowWidth = Width
 			
+			PureTL::ResizeEX(#TimeLine, 10, Height - Timeline_Height - 10, WindowWidth - 20, Timeline_Height)
+			
 			AssetContainerHeight = Height - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height - #Size_Media_Icon
-			AssetContainer_Width = General::Min(AssetContainer_Width, width - 600)
+			AssetContainer_Width = General::Min(AssetContainer_Width, WindowWidth - 600)
 			AssetButtonScrollBar = RefitAssets(AssetContainer_Width, AssetContainerHeight)
-			RendererWidth = Width - AssetContainer_Width - 30
+			RendererWidth = WindowWidth - AssetContainer_Width - 30
 			RendererHeight = AssetContainerHeight + #Size_Media_Icon
 			SetWindowPos_(Renderer, 0, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, RendererWidth, AssetContainerHeight + #Size_Media_Icon, #SWP_NOZORDER)
 			
-			SetWindowPos_(MediaContainerBorder(1), 0, AssetContainer_Width - 3, 0, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
-			SetWindowPos_(MediaContainerBorder(2), 0, AssetContainer_Width - 3, AssetContainerHeight - 3, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
-			SetWindowPos_(MediaContainerBorder(3), 0, 0, AssetContainerHeight - 3, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
+			SetWindowPos_(MediaContainerBorder(1), 0, AssetContainer_Width - #Size_RoundedCorner, 0, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
+			SetWindowPos_(MediaContainerBorder(2), 0, AssetContainer_Width - #Size_RoundedCorner, AssetContainerHeight - #Size_RoundedCorner, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
+			SetWindowPos_(MediaContainerBorder(3), 0, 0, AssetContainerHeight - #Size_RoundedCorner, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			
 			AssetContainer_Width = AssetContainer_Width - AssetButtonScrollBar * 12
 			
-			ResizeGadget(#Asset_ScrollArea, 3, 0, AssetContainer_Width + AssetButtonScrollBar * ScrollBarWidth - 6, AssetContainerHeight + ScrollBarWidth)
+			ResizeGadget(#Asset_ScrollArea, #Size_RoundedCorner, 0, AssetContainer_Width + AssetButtonScrollBar * ScrollBarWidth - 8, AssetContainerHeight + ScrollBarWidth)
 			SetGadgetAttribute(#Asset_ScrollArea, #PB_ScrollArea3D_InnerWidth, AssetContainer_Width - 6)
 			
 			CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
@@ -994,6 +980,8 @@
 			SetWindowPos_(AssetContainertID, 0, 0, 0, AssetContainer_Width, AssetContainerHeight, #SWP_NOMOVE | #SWP_NOZORDER)
 			
 			AssetContainer_Width = AssetContainer_Width + AssetButtonScrollBar * 12
+			
+			WindowHeight = Height
 		EndIf
 	EndProcedure
 	
@@ -1056,12 +1044,9 @@
 		Data.b $60,$82
 		
 		Corner:
-		Data.b $89,$50,$4E,$47,$0D,$0A,$1A,$0A,$00,$00,$00,$0D,$49,$48,$44,$52
-		Data.b $00,$00,$00,$03,$00,$00,$00,$03,$08,$06,$00,$00,$00,$56,$28,$B5
-		Data.b $BF,$00,$00,$00,$1A,$49,$44,$41,$54,$78,$DA,$63,$90,$54,$B6,$FC
-		Data.b $0F,$C4,$FD,$40,$AC,$C8,$00,$62,$30,$C0,$00,$58,$04,$0A,$00,$81
-		Data.b $E1,$04,$A9,$ED,$11,$40,$C3,$00,$00,$00,$00,$49,$45,$4E,$44,$AE
-		Data.b $42,$60,$82
+		Data.q $0A1A0A0D474E5089,$524448490D000000,$0400000004000000,$9EF1A90000000608,$4144491F0000007E
+		Data.q $FAB6529063017854,$D02612D88047C50F,$00640619200300C2,$340940C100048656,$00000000FE90996A
+		Data.q $826042AE444E4549
 		
 	EndDataSection
 EndModule
@@ -1077,7 +1062,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 493
-; FirstLine = 323
-; Folding = hTf-ABEgw7
+; CursorPosition = 983
+; FirstLine = 274
+; Folding = hXHioGEAw-
 ; EnableXP
