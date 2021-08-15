@@ -243,13 +243,13 @@
 		SetProp_(WindowID, "oldproc", SetWindowLongPtr_(WindowID, #GWL_WNDPROC, @HandlerWindow()))
 		
 		; Title bar
-		CanvasButton::Gadget(#FileButton, 46, #Size_TitleBar_TopMargin, 40, #Size_TitleBar_ButtonHeight, "File", -1, CanvasButton::#DarkTheme | CanvasButton::#Toggle)
+		CanvasButton::Gadget(#FileButton, 36, #Size_TitleBar_TopMargin, 40, #Size_TitleBar_ButtonHeight, "File", -1, CanvasButton::#DarkTheme | CanvasButton::#Toggle)
 		SetMenuButtonAppearence(FileButton)
 		
-		CanvasButton::Gadget(#EditButton, 86, #Size_TitleBar_TopMargin, 40, #Size_TitleBar_ButtonHeight, "Edit", -1, CanvasButton::#DarkTheme | CanvasButton::#Toggle)
+		CanvasButton::Gadget(#EditButton, 76, #Size_TitleBar_TopMargin, 40, #Size_TitleBar_ButtonHeight, "Edit", -1, CanvasButton::#DarkTheme | CanvasButton::#Toggle)
 		SetMenuButtonAppearence(EditButton)
 		
-		CanvasButton::Gadget(#ProjectButton, 126, #Size_TitleBar_TopMargin, 56, #Size_TitleBar_ButtonHeight, "Project", -1, CanvasButton::#DarkTheme | CanvasButton::#Toggle)
+		CanvasButton::Gadget(#ProjectButton, 116, #Size_TitleBar_TopMargin, 56, #Size_TitleBar_ButtonHeight, "Project", -1, CanvasButton::#DarkTheme | CanvasButton::#Toggle)
 		SetMenuButtonAppearence(ProjectButton)
 		
 		CanvasButton::Gadget(#CloseButton, 1920 - #Size_TitleBar_ButtonWidth, #Size_TitleBar_TopMargin, #Size_TitleBar_ButtonWidth, #Size_TitleBar_ButtonHeight, "󰅖", -1, CanvasButton::#DarkTheme)
@@ -265,7 +265,7 @@
 		CanvasButton::Gadget(#MinimizeButton, 1920 - #Size_TitleBar_ButtonWidth * 3, #Size_TitleBar_TopMargin, #Size_TitleBar_ButtonWidth, #Size_TitleBar_ButtonHeight, "󰖰", -1, CanvasButton::#DarkTheme)
 		SetWindowButtonApparence(MinimizeButton)
 		
-		ImageGadget(#PB_Any, #Size_Window_Border, 3, 0 ,0 , ImageID(CatchImage(#PB_Any, ?Logo)))
+		ImageGadget(#PB_Any, 5, 5, 0 ,0 , ImageID(CatchImage(#PB_Any, ?Logo)))
 		
 		; Menus
 		FileMenu = FlatMenu::Create(#Window)
@@ -422,7 +422,6 @@
 			
 			SetParent_(Renderer, WindowID)
  			SetProp_(Renderer, "oldproc", SetWindowLongPtr_(Renderer, #GWL_WNDPROC, @HandlerGMS2Window()))
-			; 			SendMessage_(Renderer, #HKM_SETHOTKEY, #VK_DELETE, 0)
 			
 		CompilerElse
 			UseGadgetList(WindowID)
@@ -906,7 +905,7 @@
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
 		EndSelect
 		
-  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID))
+  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, AssetButton::DragType, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID))
 	EndProcedure
 	
 	Procedure HandlerTimeLine()
@@ -1018,30 +1017,14 @@
 	
 	DataSection
 		Logo:
-		Data.q $0A1A0A0D474E5089,$524448490D000000,$1E0000001E000000,$AE303B0000000608,$41444959030000A2
-		Data.q $00A3051862017854,$5144B6C8C03D5A40,$DB6DB6DB6DB5CE18,$6DB6DB6DB6DB6DB6,$9953A56FFCF8E6DB
-		Data.q $A837C9DBCDCF65D4,$202A7FDD4A57B273,$FFA25D523E96B4BA,$57959C846531669F,$749DEB1A4BFA4DB2
-		Data.q $5DD2CFAEC4FC47B2,$5E061351686BFF82,$9A6DFAEF7F3C7EDE,$38E35E4A929A977E,$F70B063EAC01F170
-		Data.q $97799BE9F073F6C3,$F1F1BC529A12FFD9,$8606B61869D363F5,$37FA3E08765916AC,$9A8F2B1F9F9F84FD
-		Data.q $4C2BC1E0EB9196E7,$B027D92068480E35,$782B7932CCD580F8,$FE330DE8EA82F978,$2E956BA78337E31B
-		Data.q $BF278DC0A1382404,$C16E270BDBCDB236,$454C7D4F7F7F7588,$BB05D760445C1775,$C62C7A12B81BBFC1
-		Data.q $3705DDF9531A78D9,$DEC7C9BFD270D814,$8341EFE2B81EF00B,$341E61D065DF4157,$86BE1C8927F50298
-		Data.q $BF1C087382EE18A9,$EC3CC9FB7EF4DFE9,$5A08BEEAB3F7F538,$75EC0732BF41374C,$F8FAE878B838F640
-		Data.q $868DD396356F5C07,$730E91F4197FD5E2,$4F9A2FFCD364E1A1,$653F7D8075F6F1C7,$0FD8064AB27E95C4
-		Data.q $9C15E1A83D2C0A56,$BD707AA5EB9BD4AF,$F1C675DE61B76748,$DBC7ED969E30EAA1,$58DDEADAD5307BA5
-		Data.q $C4C921E672AEC53C,$6676CCD3F06FC787,$A3923843CADBCBAC,$D7BE02B8C6B51E29,$BA5879834A9BC31C
-		Data.q $569E54E2748AD737,$709BD94388DAC81C,$E38A1ED6EE1B5F2E,$7C15A8243700EDE5,$82B1EB3DBAAB5F89
-		Data.q $779F5CCAEC1BF1CF,$C8575F6CA4F28795,$1731AD9838838AAB,$28BCEE894EE7B60B,$775BE047D5CF803F
-		Data.q $CA0BAE9D769B3402,$FB291C01AC2EBB3A,$0ACB7205901732D3,$CF0B564410BF62CE,$DEA0CD155DE11CB6
-		Data.q $2B2F4668CFACD744,$38744DEBA975FC0C,$3E498649B03A3D72,$FAB584BB25812409,$41DDFF07B2CC129F
-		Data.q $260D0F3EEC7826DB,$340568F63F5CB4F3,$140AFA4C1B835FBB,$FCD9B2F091F45311,$E6763377D49AC7BF
-		Data.q $27D7141C943CA74F,$B5F4CB8F2672D395,$8DD7A3C1F7F32D02,$8A6207EA59826381,$DFE66C6B1A67A6B9
-		Data.q $C20BE82FD93858AE,$C0A68D81DB567D71,$4BCBAE69BA988BEE,$5AEAFD33048A6BB1,$5AD2C0EFDDDD4DE3
-		Data.q $43676D0DBA9C08BE,$4BCEA631F57059AB,$890BF3F7D3F6E902,$21A8CB3D671AF560,$E1E2F812EF1A65F7
-		Data.q $684A5600993FAF38,$22D8A628FD356219,$BEC3CC66038F4D81,$CC1F246CEAFD016A,$E608ECF320497ACC
-		Data.q $3217856C9F2598D0,$F61B749FFF307CEF,$A91C58D3FF8FBD97,$5C9164C1FFCCA126,$D6FFFFDAD8121894
-		Data.q $701D3435A186EF49,$7018000A30188C30,$000009353FFF36E9,$42AE444E45490000
-		Data.b $60,$82
+		Data.q $0A1A0A0D474E5089,$524448490D000000,$1A0000001A000000,$DB28260000000208,$414449CA00000099
+		Data.q $40554AF863017854,$C7F77A3B8D46E355,$6FBBD9E8213FEBCE,$F33C2DBE6F479140,$37BFC3EEEFFF69AB
+		Data.q $05C62923F6F9FD5F,$1D043FF330CBF9AE,$B3029FC5D563F3BE,$DEF7F55EF2046C81,$0FFDB79718E46FCB
+		Data.q $6690FF9B6944C490,$8D3277E9ED74411C,$0F1FEDE0F7F0DE8B,$AAEC7082D8CB7F5E,$DFE57DCE31C93F0B
+		Data.q $77C9F97521A01F37,$271B24DFE1EF78B8,$BD4F08E7CDFFF73B,$0FEDB3952E0DF0FE,$E5F3D142ED95C6C9
+		Data.q $979DD041906057CB,$60DC38D0395D87A4,$BFA3C4DC6A371B44,$7EE7A5A081FD774B,$570038D478D2CD0D
+		Data.q $004A1B11DA4F12EF,$AE444E4549000000
+		Data.b $42,$60,$82
 		
 		Corner:
 		Data.q $0A1A0A0D474E5089,$524448490D000000,$0400000004000000,$9EF1A90000000608,$4144491F0000007E
@@ -1061,8 +1044,8 @@ EndModule
 
 
 
-; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 983
-; FirstLine = 274
-; Folding = hXHioGEAw-
+; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
+; CursorPosition = 251
+; FirstLine = 63
+; Folding = hXngoGAAh+
 ; EnableXP

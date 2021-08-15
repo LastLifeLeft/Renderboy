@@ -229,8 +229,6 @@
 		Result = ComposeJSON(Json)
 		FreeJSON(Json)
 		
-		Debug Result
-		
 		ProcedureReturn Result
 	EndProcedure
 	; Set
@@ -345,8 +343,8 @@
 	;}
 	
 EndModule
-; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 166
-; FirstLine = 36
-; Folding = nDIACQ3
+; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
+; CursorPosition = 230
+; FirstLine = 67
+; Folding = vDIECQ-
 ; EnableXP

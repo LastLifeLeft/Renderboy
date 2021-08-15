@@ -7,12 +7,12 @@
   <section name="data">
     <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2021-07-29 18:19" user="Poshu" host="DESKTOP-RGG8DMG"/>
+    <lastopen date="2021-08-15 09:04" user="Poshu" host="DESKTOP-RGG8DMG"/>
   </section>
   <section name="files">
     <file name="Includes\AssetButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="e090724fb7140d830758eee7459308fb"/>
+      <fingerprint md5="471cd332e8a97a6eb113113709b40004"/>
     </file>
     <file name="Includes\General.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -20,11 +20,11 @@
     </file>
     <file name="Includes\MainWindow.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="59badb5602ee048967861b5ecc25577e"/>
+      <fingerprint md5="77d96e4ad1f5af3264cbf4fc4794b511"/>
     </file>
     <file name="Includes\Project.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="eb9c261e8495fee51bd5454dd29eebbb"/>
+      <fingerprint md5="f18557c1f9aba44b9ba4d15b67aee464"/>
     </file>
     <file name="Libaries\CanvasButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -56,7 +56,7 @@
     </file>
     <file name="Libaries\PureTimeline.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="10b3079aff49e0a2500e5cf8b787a7bf"/>
+      <fingerprint md5="c7a2747fe2220ee295c9f159da2c686a"/>
     </file>
     <file name="Libaries\ScrollBar.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -64,7 +64,7 @@
     </file>
     <file name="Libaries\TaskList.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="9c14b706be8a1f7b36b71139b32d0186"/>
+      <fingerprint md5="1fc020bc95b6f152b65fdca5ec1ad42a"/>
     </file>
     <file name="Libaries\Textbox.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
