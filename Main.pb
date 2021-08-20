@@ -12,8 +12,8 @@ IncludeFile "Textbox.pbi"
 IncludeFile "MaterialVector.pbi"
 IncludeFile "CanvasButton.pbi"
 IncludeFile "ScrollBar.pbi"
-IncludeFile "PureTimeline.pbi"
 IncludeFile "FlatMenu.pbi"
+IncludeFile "PureTimeline.pbi"
 
 IncludePath "Includes"
 IncludeFile "General.pbi"
@@ -113,7 +113,7 @@ CompilerElse
 		WaitWindowEvent()
 	ForEver
 CompilerEndIf
-; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 61
+; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
+; CursorPosition = 14
 ; Folding = RQ-
 ; EnableXP

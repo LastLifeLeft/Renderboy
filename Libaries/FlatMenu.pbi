@@ -14,6 +14,10 @@
 		#colorType_FrontDisabled
 	EndEnumeration
 	
+	Enumeration
+		#Attribute_BorderSize = 1
+	EndEnumeration
+	
 	Declare Create(ParentWindow, Flags = #Default)
 	Declare AddItem(Menu, ItemID, Position, Text.s, Flags = #Default)
 	Declare AddSubMenu(Menu, Position, Text.s)
@@ -29,6 +33,7 @@
 	Declare SetColor(Menu, Colortype, Color)
 	Declare SetFont(Menu, Font)
 	Declare SetItemState(Menu, Position, State)
+	Declare SetAttribute(Menu, Attribute, Value)
 EndDeclareModule
 
 Module FlatMenu
@@ -69,6 +74,7 @@ Module FlatMenu
 		LineColor.l
 		
 		MenuWidth.l
+		MenuHeight.l
 		ItemHeight.l
 		VMargin.l
 		
@@ -87,6 +93,8 @@ Module FlatMenu
 		
 		Flags.i
 		
+		BorderWidth.i
+		
 		*ParentMenu.MenuData
 		*ChildMenu.MenuData
 		
@@ -97,7 +105,7 @@ Module FlatMenu
 	#Style_MinimumWidth = 200
 	#Style_ItemHeight = 36
 	#Style_HMargin = 23
-	#Style_Border = 0
+	#Style_DefaultBorder = 0
 	
 	#Style_Dark_BackCold = $2F3136
 	#Style_Dark_BackHot = $393C43
@@ -147,7 +155,7 @@ Module FlatMenu
 	
 	;{ Public procedures
 	Procedure Create(ParentWindow, Flags = #Default)
-		Protected *MenuData.MenuData, Result = OpenWindow(#PB_Any, 0, 0, #Style_MinimumWidth, #Style_ItemHeight + 2 * #Style_Border, "", #PB_Window_BorderLess | #PB_Window_Invisible, WindowID(ParentWindow))
+		Protected *MenuData.MenuData, Result = OpenWindow(#PB_Any, 0, 0, #Style_MinimumWidth, #Style_ItemHeight + 2 * #Style_DefaultBorder, "", #PB_Window_BorderLess | #PB_Window_Invisible, WindowID(ParentWindow))
 		Protected ItemHeight
 			
 		If Result
@@ -177,7 +185,8 @@ Module FlatMenu
 				\Flags = Flags
 				\MenuWindow = Result
 				\ParentWindow = ParentWindow
-				\MenuCanvas = CanvasGadget(#PB_Any, #Style_Border, #Style_Border, #Style_MinimumWidth - 2 * #Style_Border, #Style_ItemHeight, #PB_Canvas_Keyboard)
+				\BorderWidth = #Style_DefaultBorder
+				\MenuCanvas = CanvasGadget(#PB_Any, \BorderWidth, \BorderWidth, #Style_MinimumWidth - 2 * \BorderWidth, #Style_ItemHeight, #PB_Canvas_Keyboard)
 				\Font = DefaultFont
 				
 				\State = - 1
@@ -192,7 +201,7 @@ Module FlatMenu
 				
 				\MenuWidth = #Style_MinimumWidth
 				\ItemHeight = ItemHeight * 1.8
-				\VMargin = Round((\ItemHeight - ItemHeight) * 0.5, #PB_Round_Down)
+				\VMargin = Round((\ItemHeight - ItemHeight) * 0.5, #PB_Round_Up)
 				
 				SetWindowColor(\MenuWindow, \LineColor)
 				
@@ -240,8 +249,10 @@ Module FlatMenu
 				\MenuWidth = TextWidth
 			EndIf
 			
-			ResizeWindow(\MenuWindow, #PB_Ignore, #PB_Ignore, \MenuWidth, ListSize(\MenuItems()) * \ItemHeight + 2 * #Style_Border)
-			ResizeGadget(\MenuCanvas, #PB_Ignore, #PB_Ignore, \MenuWidth - 2 * #Style_Border, ListSize(\MenuItems()) * \ItemHeight)
+			\MenuHeight = ListSize(\MenuItems()) * \ItemHeight + \BorderWidth * 2
+			
+			ResizeWindow(\MenuWindow, #PB_Ignore, #PB_Ignore, \MenuWidth + \BorderWidth * 2, \MenuHeight)
+			ResizeGadget(\MenuCanvas, \BorderWidth, \BorderWidth, \MenuWidth, \MenuHeight - \BorderWidth * 2)
 			Redraw(\MenuWindow)
 		EndWith
 	
@@ -288,6 +299,12 @@ Module FlatMenu
 			Y = DesktopMouseY()
 		EndIf
 		
+		ExamineDesktops()
+		
+		If Y + *MenuData\MenuHeight > DesktopHeight(0)
+			Y - *MenuData\MenuHeight + Bool(*MenuData\ParentMenu) * *MenuData\ItemHeight
+		EndIf
+		
 		*MenuData\Visible = #True
 		
 		ResizeWindow(*MenuData\MenuWindow, X, Y, #PB_Ignore, #PB_Ignore)
@@ -330,8 +347,10 @@ Module FlatMenu
 			Next
 			StopDrawing()
 			
-			ResizeWindow(\MenuWindow, #PB_Ignore, #PB_Ignore, \MenuWidth, ListSize(\MenuItems()) * \ItemHeight + 2 * #Style_Border)
-			ResizeGadget(\MenuCanvas, #PB_Ignore, #PB_Ignore, \MenuWidth - 2 * #Style_Border, ListSize(\MenuItems()) * \ItemHeight)
+			 \MenuHeight = ListSize(\MenuItems()) * \ItemHeight + \BorderWidth * 2
+			
+			ResizeWindow(\MenuWindow, #PB_Ignore, #PB_Ignore, \MenuWidth + \BorderWidth * 2, \MenuHeight )
+			ResizeGadget(\MenuCanvas, \BorderWidth, \BorderWidth, \MenuWidth, \MenuHeight - \BorderWidth * 2)
 			Redraw(\MenuWindow)
 		EndWith
 	EndProcedure
@@ -416,7 +435,7 @@ Module FlatMenu
 			
 			\MenuWidth = #Style_MinimumWidth
 			\ItemHeight = ItemHeight * 1.8
-			\VMargin = Round((\ItemHeight - ItemHeight) * 0.5, #PB_Round_Down)
+			\VMargin = Round((\ItemHeight - ItemHeight) * 0.5, #PB_Round_Up)
 			\MenuWidth = #Style_MinimumWidth
 			
 			ForEach \MenuItems()
@@ -428,8 +447,10 @@ Module FlatMenu
 			Next
 			StopDrawing()
 			
-			ResizeWindow(\MenuWindow, #PB_Ignore, #PB_Ignore, \MenuWidth, ListSize(\MenuItems()) * \ItemHeight + 2 * #Style_Border)
-			ResizeGadget(\MenuCanvas, #PB_Ignore, #PB_Ignore, \MenuWidth - 2 * #Style_Border, ListSize(\MenuItems()) * \ItemHeight)
+			\MenuHeight = ListSize(\MenuItems()) * \ItemHeight + \BorderWidth * 2
+			
+			ResizeWindow(\MenuWindow, #PB_Ignore, #PB_Ignore, \MenuWidth, \MenuHeight)
+			ResizeGadget(\MenuCanvas, #PB_Ignore, #PB_Ignore, \MenuWidth - \BorderWidth * 2, \MenuHeight - \BorderWidth * 2)
 			Redraw(\MenuWindow)
 		EndWith
 	EndProcedure
@@ -449,6 +470,20 @@ Module FlatMenu
 				Redraw(*MenuData\MenuWindow)
 			EndIf
 		EndIf
+	EndProcedure
+	
+	Procedure SetAttribute(Menu, Attribute, Value)
+		Protected *MenuData.MenuData = GetWindowData(Menu)
+		With *MenuData
+			Select Attribute
+				Case #Attribute_BorderSize
+					\BorderWidth = Value
+					\MenuHeight = ListSize(\MenuItems()) * \ItemHeight + \BorderWidth * 2
+					
+					ResizeWindow(\MenuWindow, #PB_Ignore, #PB_Ignore, \MenuWidth, \MenuHeight)
+					ResizeGadget(\MenuCanvas, \BorderWidth, \BorderWidth, \MenuWidth - \BorderWidth * 2, \MenuHeight - \BorderWidth * 2)
+			EndSelect
+		EndWith
 	EndProcedure
 	;}
 	
@@ -479,11 +514,11 @@ Module FlatMenu
 					Select \MenuItems()\Type
 						Case #SubMenu
 							DrawingFont(#PB_Default )
-							DrawText(Width - #Style_HMargin + #Style_Border, Item * \ItemHeight + (\ItemHeight - TextHeight(">")) * 0.5, ">", \FrontColor[#Hot], \BackColor[#Hot])
+							DrawText(Width - #Style_HMargin, Item * \ItemHeight + (\ItemHeight - TextHeight(">")) * 0.5, ">", \FrontColor[#Hot], \BackColor[#Hot])
 							DrawingFont(\Font)
 						Case #ToggleOn
 							DrawingFont(#PB_Default )
-							DrawText(Width - #Style_HMargin + #Style_Border, Item * \ItemHeight + (\ItemHeight - TextHeight("✓")) * 0.5, "✓", \FrontColor[#Hot], \BackColor[#Hot])
+							DrawText(Width - #Style_HMargin, Item * \ItemHeight + (\ItemHeight - TextHeight("✓")) * 0.5, "✓", \FrontColor[#Hot], \BackColor[#Hot])
 							DrawingFont(\Font)
 					EndSelect
 					
@@ -498,11 +533,11 @@ Module FlatMenu
 					Select \MenuItems()\Type
 						Case #SubMenu
 							DrawingFont(#PB_Default )
-							DrawText(Width - #Style_HMargin + #Style_Border, Item * \ItemHeight + (\ItemHeight - TextHeight(">")) * 0.5, ">")
+							DrawText(Width - #Style_HMargin, Item * \ItemHeight + (\ItemHeight - TextHeight(">")) * 0.5, ">")
 							DrawingFont(\Font)
 						Case #ToggleOn
 							DrawingFont(#PB_Default )
-							DrawText(Width - #Style_HMargin + #Style_Border, Item * \ItemHeight + (\ItemHeight - TextHeight("✓")) * 0.5, "✓")
+							DrawText(Width - #Style_HMargin, Item * \ItemHeight + (\ItemHeight - TextHeight("✓")) * 0.5, "✓")
 							DrawingFont(\Font)
 					EndSelect
 					
@@ -725,13 +760,13 @@ Module FlatMenu
 						SelectElement(\MenuItems(), \SubMenuItem)
 						\SubMenuWindow = \MenuItems()\SubMenu\MenuWindow
 						\ChildMenu = \MenuItems()\SubMenu
-						Show(\SubMenuWindow, WindowX(\MenuWindow) + \MenuWidth - #Style_Border, WindowY(\MenuWindow) + \ItemHeight * \SubMenuItem)
+						Show(\SubMenuWindow, WindowX(\MenuWindow) + \MenuWidth - \BorderWidth, WindowY(\MenuWindow) + \ItemHeight * \SubMenuItem)
 					EndIf
 				Case #CloseMenuTimer
 					RemoveWindowTimer(Window, #CloseMenuTimer)
 					
 					If \CloseMenuTimer <> \State
-						If \ChildMenu\State = -1
+						If \ChildMenu And \ChildMenu\State = -1
 							Hide(\SubMenuWindow)
 						EndIf
 					EndIf
@@ -817,8 +852,8 @@ CompilerIf #PB_Compiler_IsMainFile
 		EndSelect
 	ForEver
 CompilerEndIf
-; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 398
-; FirstLine = 85
-; Folding = HACAZAAy
+; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
+; CursorPosition = 203
+; FirstLine = 37
+; Folding = CgBgAAA5
 ; EnableXP

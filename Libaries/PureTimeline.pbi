@@ -401,7 +401,7 @@ DeclareModule PureTL
 	; Media block
 	Declare AddMediaBlock(Gadget, LineID, Position, Duration, Type, Icon.s, Text.s, Color, AssetUUID.s, DefaultState.s)
 	Declare DeleteMediaBlock(Gadget, MediaBlockID)
-	Declare MoveMediaBlock(Gadget, MediaBlockID, Offset)
+	Declare MoveMediaBlock(Gadget, *MediaBlock, *NewLine, NewPosition, ParentXMLNode = 0)
 	Declare.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
 	Declare ResizeMediaBlock(Gadget, *MediaBlock, NewStart, NewEnd)
 	Declare UpdateMediaBlockState(Gadget, Line, Json.s)
@@ -452,6 +452,20 @@ Module PureTL
 			Color << 8 + Alpha
 		EndMacro
 	CompilerEndIf
+	
+	Macro SetMenuAppearance(MenuName)
+		FlatMenu::SetFont(*GadgetData\Comp_Menu_#MenuName, Font)
+		FlatMenu::SetAttribute(*GadgetData\Comp_Menu_#MenuName, FlatMenu::#Attribute_BorderSize, 1)
+		FlatMenu::SetColor(*GadgetData\Comp_Menu_#MenuName, FlatMenu::#ColorType_LineColor, FixColor($202020))
+		FlatMenu::SetColor(*GadgetData\Comp_Menu_#MenuName, FlatMenu::#colorType_BackCold, FixColor(#Color_MediaBlock_Back_Warm))
+		FlatMenu::SetColor(*GadgetData\Comp_Menu_#MenuName, FlatMenu::#colorType_BackHot, FixColor(#Color_MediaBlock_Back_Hot))
+		FlatMenu::SetColor(*GadgetData\Comp_Menu_#MenuName, FlatMenu::#colorType_FrontCold, FixColor(#Color_MediaBlock_Front_Cold))
+		FlatMenu::SetColor(*GadgetData\Comp_Menu_#MenuName, FlatMenu::#colorType_FrontHot, FixColor(#Color_MediaBlock_Front_Hot))
+		FlatMenu::SetColor(*GadgetData\Comp_Menu_#MenuName, FlatMenu::#colorType_FrontDisabled, FixColor($909090))
+		SetProp_(WindowID(*GadgetData\Comp_Menu_#MenuName), "gadget", *GadgetData\Comp_Body)
+; 		BindEvent(#PB_Event_DeactivateWindow, @HandlerCloseMenu(), MenuName#Menu)
+; 		SetProp_(WindowID(MenuName#Menu), "gadget", #MenuName#Button)
+	EndMacro
 	;}
 	
 	;{ Private variables, structures, constants...
@@ -517,6 +531,7 @@ Module PureTL
 		Drag.b
 		Text.s
 		*Line.Line
+		*ListAdress
 		
 		Array DataPoints.DataPoint(1)
 		Array DataPointState.DataPoint(1)
@@ -538,8 +553,17 @@ Module PureTL
 		*DisplayListAdress
 		*ParentListAdress
 		
-		Array *MediaBlocks.MediaBlock(1)
+		List *MediaBlock.MediaBlock()
+		
 		Array UsedDataPoints.DataPoint(1)
+	EndStructure
+	
+	Structure SubArray
+		Array Column.i(1)
+	EndStructure
+	
+	Structure MBAdress				; Dirty workaround for the structured list sorting procedures
+		*Object.MediaBlock
 	EndStructure
 	
 	Structure GadgetData
@@ -556,6 +580,8 @@ Module PureTL
 		Comp_Button_Remove.i
 		Comp_Button_Up.i
 		Comp_Button_Down.i
+		Comp_Menu_Image.i
+		Comp_Menu_Audio.i
 		
 		; Measurement
 		Meas_List_Height.i
@@ -609,12 +635,13 @@ Module PureTL
 		*State_WarmLine.Line
 		State_List_Line.i
 		
+		Array State_Collision_Line.SubArray(1)
+		
 		_Action.i
 		*State_AssetDropLine
 		State_AssetDropPosition.i
 		
 		List *State_Selected_MediaBlocks.MediaBlock()
-		
 		
 		; Content
 		List *Cont_Displayed_List.Line()
@@ -705,15 +732,36 @@ Module PureTL
 	#Color_Scrollbar_FrontWarm = $656873
 	#Color_Scrollbar_FrontHot = $434651
 	
-	#Color_MediaBlock_Back_Cold = $353D52
-	#Color_MediaBlock_Back_Warm = $3F475B
-	#Color_MediaBlock_Back_Hot = $495063
+	; backup
+; 	#Color_MediaBlock_Back_Cold = $353D52
+; 	#Color_MediaBlock_Back_Warm = $3F475B
+; 	#Color_MediaBlock_Back_Hot = $495063
+; 	#Color_MediaBlock_Front_Cold = $8A99B5
+; 	#Color_MediaBlock_Front_Warm = $8A99B5
+; 	#Color_MediaBlock_Front_Hot = $BDD1F8
 	
-	#Color_MediaBlock_Front_Cold = $8A99B5
-	#Color_MediaBlock_Front_Warm = $8A99B5
-	#Color_MediaBlock_Front_Hot = $BDD1F8
+	#Color_MediaBlock_Back_Cold = $3B445B
+	#Color_MediaBlock_Back_Warm = $454E63
+	#Color_MediaBlock_Back_Hot = $4F576B
+	
+	#Color_MediaBlock_Front_Cold = $91A0BC
+	#Color_MediaBlock_Front_Warm = $91A0BC
+	#Color_MediaBlock_Front_Hot = $C4D8FF
 	
 	#Colors_General_Line = $1A233A
+	
+	#Color_Window_Back_Cold = $1A233A
+	#Color_Window_Back_Warm = $293658
+	#Color_Window_Back_Hot = $5A8DEE
+	
+	#Color_Window_Front_Cold = $D0D0D0
+	#Color_Window_Front_Warm = $FFFFFF
+	
+	#Color_Content_Back_Cold = $272E48
+	
+	#Color_Scrollbar_FrontCold = $787B86
+	#Color_Scrollbar_FrontWarm = $656873
+	#Color_Scrollbar_FrontHot = $434651
 	
 	; Fonts
 	Global FontBold = FontID(LoadFont(#PB_Any, "Rubik Medium", 12, #PB_Font_HighQuality))
@@ -724,6 +772,7 @@ Module PureTL
 	Global Icon = FontID(LoadFont(#PB_Any, "Font Awesome 5 Pro Regular", 16, #PB_Font_HighQuality))
 	Global MaterialIcon = FontID(LoadFont(#PB_Any, "Material Design Icons Desktop", 16, #PB_Font_HighQuality))
 	
+; 	Global %enuFont = FontID(LoadFont(#PB_Any, "Rubik", 10, #PB_Font_HighQuality))
 	; FontAwesome shortcut
 	#FontAwesome_Folder_Open = ""
 	#FontAwesome_Folder = ""
@@ -731,6 +780,7 @@ Module PureTL
 	#FontAwesome_Chevron_Down = ""
 	
 	; Misc
+	
 	
 	;}
 	
@@ -820,6 +870,7 @@ Module PureTL
 	
 	; Mediablock stuff
 	Declare _AddMediaBlock(*GadgetData.GadgetData, XMLNode)
+	Declare _MoveMediaBlock(*GadgetData.GadgetData, *Mediablock.Mediablock, *Line.Line, Position)
 	
 	; Handler
 	Declare Handler_Body()
@@ -835,8 +886,9 @@ Module PureTL
 	Declare Handler_RenameString(hWnd, uMsg, wParam, lParam)
 	
 	; Redraw
-	Declare Redraw(*GadgetData.GadgetData)
+	Declare Redraw(*GadgetData.GadgetData, UpdateCollisionData = #False)
 	Declare Redraw_MediaBlock(*GadgetData.GadgetData, yPos, *Block.MediaBlock)
+	Declare Redraw_Line(*GadgetData.GadgetData, YPos, OddLine, CollisionDataLine, UpdateCollisionData = #False)
 	
 	; Misc
 	Declare Refit(Gadget, GadgetWidth, GadgetHeight)
@@ -846,6 +898,10 @@ Module PureTL
 	Declare _UpdateCurrentAssetList(*GadgetData.GadgetData, *Line.Line)
 	Declare.s SerializeDataPoint(*DataPoint.DataPoint)
 	Declare UnserializeDataPoint(*DataPoint.DataPoint, JsonString.s)
+	Declare CompareAscending(*a.MBAdress, *b.MBAdress)
+	
+	Prototype Proto_SortMediaBlocks(List LinkedList.MediaBlock(), *Compare, First=0, Last=-1)
+	Global SortMediaBlocks.Proto_SortMediaBlocks = SortLinkedList::@_SortLinkedList_()
 	;}
 	
 	;{ Public procedures
@@ -985,7 +1041,6 @@ Module PureTL
 				SetGadgetColor(\Comp_Button_Down, CanvasButton::#FrontColor_Warm, SetAlpha($FF ,\Color_Primary_Front[#Warm]))
 				SetGadgetColor(\Comp_Button_Down, CanvasButton::#FrontColor_Hot, SetAlpha($FF , \Color_Primary_Front[#Hot]))
 				
-				
 				SetGadgetData(\Comp_Button_Down, *GadgetData)
 				BindGadgetEvent(\Comp_Button_Down, @Handler_Button_Down(), #PB_EventType_Change)
 				
@@ -1003,11 +1058,40 @@ Module PureTL
 				BindGadgetEvent(\Comp_Body, @Handler_Body())
 				
 				DragWindow = OpenWindow(#PB_Any, 0, 0, \Meas_List_Width, \Meas_TL_LineHeight, "", #PB_Window_BorderLess | #PB_Window_Invisible, WindowID(0))
+				SetWindowColor(DragWindow, #Colors_List_Back_Hot)
 				DragList = CanvasGadget(#PB_Any, 0, 0, \Meas_List_Width, \Meas_TL_LineHeight)
+				StartDrawing(CanvasOutput(DragList))
+				Box(0, 0, OutputWidth(), OutputHeight(), #Colors_List_Back_Hot)
+				StopDrawing()
 				DragBody = CanvasGadget(#PB_Any,\Meas_List_Width, 0, \Meas_Body_Width, \Meas_TL_LineHeight)
+				StartDrawing(CanvasOutput(DragBody))
+				Box(0, 0, OutputWidth(), OutputHeight(), #Colors_List_Back_Hot)
+				StopDrawing()
 				
 				SetWindowLongPtr_(WindowID(DragWindow),#GWL_EXSTYLE,#WS_EX_LAYERED)
 				SetLayeredWindowAttributes_(WindowID(DragWindow),0,140,#LWA_ALPHA)
+				
+				\Comp_Menu_Image= FlatMenu::Create(0)
+				FlatMenu::AddItem(\Comp_Menu_Image, 51, -1, "Complex object", FlatMenu::#Toggle)
+				FlatMenu::AddItem(\Comp_Menu_Image, 52, -1, "Container", FlatMenu::#Toggle)
+				FlatMenu::AddItem(\Comp_Menu_Image, 41, -1, "Cut")
+				FlatMenu::AddItem(\Comp_Menu_Image, 42, -1, "Copy")
+				FlatMenu::AddItem(\Comp_Menu_Image, 43, -1, "Delete")
+				
+; 				FlatMenu::SetFont(\Comp_Menu_Image, Font)
+; 				FlatMenu::SetAttribute(\Comp_Menu_Image, FlatMenu::#Attribute_BorderSize, 1)
+;  				FlatMenu::SetColor(\Comp_Menu_Image, FlatMenu::#ColorType_LineColor, FixColor($202020))
+; 				FlatMenu::SetColor(\Comp_Menu_Image, FlatMenu::#colorType_BackCold, FixColor(#Color_MediaBlock_Back_Warm))
+; 				FlatMenu::SetColor(\Comp_Menu_Image, FlatMenu::#colorType_BackHot, FixColor(#Color_MediaBlock_Back_Hot))
+; 				FlatMenu::SetColor(\Comp_Menu_Image, FlatMenu::#colorType_FrontCold, FixColor(#Color_MediaBlock_Front_Cold))
+; 				FlatMenu::SetColor(\Comp_Menu_Image, FlatMenu::#colorType_FrontHot, FixColor(#Color_MediaBlock_Front_Hot))
+; 				FlatMenu::SetColor(\Comp_Menu_Image, FlatMenu::#colorType_FrontDisabled, FixColor($909090))
+; 				SetProp_(WindowID(\Comp_Menu_Image), "gadget", #MenuName#Button)
+				
+				SetMenuAppearance(Image)
+				
+				UseGadgetList(WindowID(0))
+				
 			EndWith
 		EndIf
 		ProcedureReturn Result
@@ -1029,7 +1113,7 @@ Module PureTL
 			SetWindowPos_(GadgetID(\Comp_List), 0, 0, 0, \Meas_List_Width, \Meas_List_Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			SetWindowPos_(GadgetID(\Comp_Body), 0, 0, 0, \Meas_Body_Width, Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			
-			Redraw(*GadgetData)
+			Redraw(*GadgetData, #True)
 		EndWith
 		
 	EndProcedure
@@ -1047,7 +1131,7 @@ Module PureTL
 			SetWindowPos_(GadgetID(\Comp_List), 0, 0, 0, \Meas_List_Width, \Meas_List_Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			SetWindowPos_(GadgetID(\Comp_Body), 0, 0, 0, \Meas_Body_Width, Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			
-			Redraw(*GadgetData)
+			Redraw(*GadgetData, #True)
 			SetWindowPos_(GadgetID(Gadget), 0, X, Y, Width, Height, #SWP_NOZORDER)
 			SendMessage_(GadgetID(\Comp_List), #WM_SETREDRAW, #True, 0)
 			SendMessage_(GadgetID(\Comp_Body), #WM_SETREDRAW, #True, 0)
@@ -1144,10 +1228,18 @@ Module PureTL
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 	EndProcedure
 	
-	Procedure RenameLine(Gadget, *Line.Line, XML = 0)
+	Procedure RenameLine(Gadget, *Line.Line, XML = -1)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget),Y
+		Protected XMLNode
 		
 		With *GadgetData
+			
+			If XML = -1
+				XML = CreateXML(#PB_Any)
+				XMLNode = CreateXMLNode(RootXMLNode(XML), "Task")
+				SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
+			EndIf
+			
  			SetActiveLine(Gadget, *Line)
  			Y = (_Display_GetLinePosition(*GadgetData, *Line) - \Meas_VPosition) * \Meas_TL_LineHeight
 			
@@ -1171,7 +1263,9 @@ Module PureTL
 	Procedure AddLine(Gadget, Position, Text.s, *Parent.Line = 0, Flags = #Line_Asset)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), UUID.s
 		Protected *Task.Task, XML = CreateXML(#PB_Any)
- 		Protected XMLNode = CreateXMLNode(CreateXMLNode(RootXMLNode(XML), "Task"), #CreateLine)
+		Protected XMLNode = CreateXMLNode(RootXMLNode(XML), "Task")
+		SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
+		XMLNode = CreateXMLNode(XMLNode, #CreateLine)
 		
 		With *GadgetData
 			UUID = UUID()
@@ -1180,7 +1274,6 @@ Module PureTL
 				UUID = UUID()
 			Wend
 			
-			SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
 			SetXMLAttribute(XMLNode, "Position", Str(Position))
 			SetXMLAttribute(XMLNode, "UUID", UUID)
 			
@@ -1210,7 +1303,9 @@ Module PureTL
 	Procedure MoveLine(Gadget, *Line.Line, Position)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 		Protected *Task.Task = AllocateStructure(Task), XML = CreateXML(#PB_Any)
- 		Protected XMLNode = CreateXMLNode(CreateXMLNode(RootXMLNode(XML), "Task"), #MoveLine)
+		Protected XMLNode = CreateXMLNode(RootXMLNode(XML), "Task")
+		SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
+		XMLNode = CreateXMLNode(XMLNode, #MoveLine)
 		
  		With *GadgetData
  			ChangeCurrentElement(\Cont_Displayed_List(), *Line\DisplayListAdress)
@@ -1246,7 +1341,9 @@ Module PureTL
 	Procedure AddMediaBlock(Gadget, *Line.Line, Position, Duration, Type, Icon.s, Text.s, Color, AssetUUID.s, DefaultState.s)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Task.Task
 		Protected UUID.s, XML = CreateXML(#PB_Any)
-		Protected XMLNode = CreateXMLNode(CreateXMLNode(RootXMLNode(XML), "Task"), #CreateMediaBlock)
+		Protected XMLNode = CreateXMLNode(RootXMLNode(XML), "Task")
+		SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
+		XMLNode = CreateXMLNode(XMLNode, #CreateMediaBlock)
 		Duration - 1
 		
 		With *GadgetData
@@ -1256,7 +1353,6 @@ Module PureTL
 				UUID = UUID()
 			Wend
 			
-			SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
 			SetXMLAttribute(XMLNode, "Line", *Line\UUID)
 			SetXMLAttribute(XMLNode, "UUID", UUID)
 			SetXMLAttribute(XMLNode, "Duration", Str(Duration))
@@ -1281,19 +1377,45 @@ Module PureTL
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 	EndProcedure
 	
-	Procedure MoveMediaBlock(Gadget, *MediaBlock.Mediablock, Offset)
+	Procedure MoveMediaBlock(Gadget, *MediaBlock.Mediablock, *NewLine.Line, NewPosition, ParentXMLNode = 0)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Task.Task, XMLNode, XML
+		
+		If ParentXMLNode = 0
+			XML = CreateXML(#PB_Any)
+			XMLNode = CreateXMLNode(RootXMLNode(XML), "Task")
+			SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
+			XMLNode = CreateXMLNode(XMLNode, #MoveMediaBlock)
+		Else
+			XMLNode = CreateXMLNode(ParentXMLNode, #MoveMediaBlock)
+		EndIf
+		
+		SetXMLAttribute(XMLNode, "UUID", *MediaBlock\UUID)
+		SetXMLAttribute(XMLNode, "NewPosition", Str(NewPosition))
+		SetXMLAttribute(XMLNode, "OldPosition", Str(*MediaBlock\BlockStart))
+		SetXMLAttribute(XMLNode, "NewLine", *NewLine\UUID)
+		SetXMLAttribute(XMLNode, "OldLine", *MediaBlock\Line\UUID)
+		
+ 		_MoveMediaBlock(*GadgetData, *MediaBlock, *NewLine, NewPosition)
+		
+		If ParentXMLNode = 0
+			*Task = AllocateStructure(Task)
+			*Task\XML = ComposeXML(XML, #PB_XML_NoDeclaration)
+			FreeXML(XML)
+			TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
+			Redraw(*GadgetData)
+		EndIf
 	EndProcedure
 	
 	Procedure ResizeMediaBlock(Gadget, *MediaBlock.Mediablock, NewStart, NewEnd)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 	EndProcedure
 	
-	Procedure.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
-	EndProcedure
-	
 	Procedure UpdateMediaBlockState(Gadget, Line, Json.s)
 		Protected Loop, *MediaBlock.Mediablock
+	EndProcedure
+	
+	Procedure.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
+		Debug "?"
 	EndProcedure
 	;}
 	
@@ -1335,8 +1457,6 @@ Module PureTL
 		*NewLine\Type = #Line_Asset
 		*NewLine\HorizontalOffset = *GadgetData\Meas_TL_TextHorizontaOffset
 		
- 		ReDim *NewLine\MediaBlocks(*GadgetData\Cont_Duration)
-		
 		_Display_InsertLine(*GadgetData, *NewLine, Val(GetXMLAttribute(XMLNode, "Position")), *NewLine\Parent)
 		
 		ProcedureReturn *NewLine
@@ -1371,7 +1491,7 @@ Module PureTL
 				MoveElement(\Cont_Displayed_List(), #PB_List_Before, *Element)
 			EndIf
 			
-			Redraw(*GadgetData)
+			Redraw(*GadgetData, #True)
 		EndWith
 	EndProcedure
 	
@@ -1392,7 +1512,7 @@ Module PureTL
 			*GadgetData\Cont_Displayed_List() = *Line
 			*Line\DisplayListAdress = @*GadgetData\Cont_Displayed_List()
 			
-			Redraw(*GadgetData)
+			Redraw(*GadgetData, #True)
 		EndIf
 		
 	EndProcedure
@@ -1413,7 +1533,7 @@ Module PureTL
 			EndIf
 		EndIf
 		
-		Redraw(*GadgetData)
+		Redraw(*GadgetData, #True)
 	EndProcedure
 	 
 	Procedure _Display_GetLinePosition(*GadgetData.GadgetData, *Line.Line) ; Returns the position of the line
@@ -1435,7 +1555,7 @@ Module PureTL
 	
 	; Media block stuff
 	Procedure _AddMediaBlock(*GadgetData.GadgetData, XMLNode)
-		Protected *NewMediaBlock.MediaBlock, Loop, Json
+		Protected *NewMediaBlock.MediaBlock, Loop, Json, *Adress, BlockEnd
 		
 		With *GadgetData
 			*NewMediaBlock.MediaBlock = AddMapElement(\Cont_MediaBlocks(), GetXMLAttribute(XMLNode, "UUID"))
@@ -1455,7 +1575,6 @@ Module PureTL
 			ReDim *NewMediaBlock\DataPointState(*NewMediaBlock\Duration)
 			
 			For Loop = 0 To *NewMediaBlock\Duration
-				*NewMediaBlock\Line\MediaBlocks(*NewMediaBlock\BlockStart + Loop) = *NewMediaBlock
 				ExtractJSONStructure(JSONValue(json), *NewMediaBlock\DataPoints(Loop), DataPoint)
 			Next
 			
@@ -1468,10 +1587,25 @@ Module PureTL
 			
 			FreeJSON(Json)
 			
-			Redraw(*GadgetData)
+			LastElement(*NewMediaBlock\Line\MediaBlock())
+			AddElement(*NewMediaBlock\Line\MediaBlock())
+			*NewMediaBlock\Line\MediaBlock() = *NewMediaBlock
+			*NewMediaBlock\ListAdress = @*NewMediaBlock\Line\MediaBlock()
+			SortMediaBlocks(*NewMediaBlock\Line\MediaBlock(), @CompareAscending())
+			
+			Redraw(*GadgetData, #True)
 			
 		EndWith
-		
+	EndProcedure
+	
+	Procedure _DeleteMediaBlock(*GadgetData.GadgetData, XMLNode)
+		Protected *Mediablock.Mediablock
+		With *GadgetData
+			*Mediablock = FindMapElement(\Cont_MediaBlocks(), GetXMLAttribute(XMLNode, "UUID"))
+			ChangeCurrentElement(*Mediablock\Line\MediaBlock(), *Mediablock\ListAdress)
+			DeleteElement(*Mediablock\Line\MediaBlock())
+			DeleteMapElement(\Cont_MediaBlocks())
+		EndWith
 	EndProcedure
 	
 	Procedure _HoverMediaBlock(*GadgetData.GadgetData, X, Y)
@@ -1481,13 +1615,7 @@ Module PureTL
 			
 			If Line > -1 And Line < \Cont_Displayed_List_Size
 				Position = Round(X / \Meas_TL_ColumnWidth, #PB_Round_Down) + \Meas_HPosition
-				SelectElement(\Cont_Displayed_List(), Line)
-				If \Cont_Displayed_List()\MediaBlocks(Position)
-					Y % \Meas_TL_LineHeight
-					If Y > 8 And Y < \Meas_TL_LineHeight - 6
-						*Result = \Cont_Displayed_List()\MediaBlocks(Position)
-					EndIf
-				EndIf
+				*Result = \State_Collision_Line(Line)\Column(Position)
 			EndIf
 		EndWith
 		
@@ -1506,10 +1634,28 @@ Module PureTL
 		ProcedureReturn Result
 	EndProcedure
 	
+	Procedure _MoveMediaBlock(*GadgetData.GadgetData, *Mediablock.Mediablock, *Line.Line, Position)
+		With *GadgetData
+			ChangeCurrentElement(*Mediablock\Line\MediaBlock(), *Mediablock\ListAdress)
+			DeleteElement(*Mediablock\Line\MediaBlock())
+			
+			*Mediablock\BlockEnd = Position + *Mediablock\BlockEnd - *Mediablock\BlockStart
+			*Mediablock\BlockStart = Position
+			
+			LastElement(*Line\MediaBlock())
+			AddElement(*Line\MediaBlock())
+			*Mediablock\Line = *Line
+			*Mediablock\Line\MediaBlock() = *Mediablock
+			*Mediablock\ListAdress = @*Mediablock\Line\MediaBlock()
+			SortMediaBlocks(*Mediablock\Line\MediaBlock(), @CompareAscending())
+		EndWith
+	EndProcedure
+	
 	; Handler
 	Procedure Handler_Body()
 		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget), Y = GetGadgetAttribute(*GadgetData\Comp_Body, #PB_Canvas_MouseY) - #Size_Header_Height, X = GetGadgetAttribute(*GadgetData\Comp_Body, #PB_Canvas_MouseX)
 		Protected *Mediablock.MediaBlock, Redraw, VOffset, HOffset
+		Protected *Task.Task, XMLNode, XML
 		
 		With *GadgetData
 			Select EventType()
@@ -1566,11 +1712,11 @@ Module PureTL
 					EndIf
 					;}
 				Case #PB_EventType_MouseLeave ;{
-					If \State_WarmMediaBlock
+					If \State_WarmMediaBlock And \State_WarmMediaBlock\State = #Warm
 						\State_WarmMediaBlock\State = #Cold
 						\State_WarmMediaBlock = 0
+						Redraw(*GadgetData)
 					EndIf
-					Redraw(*GadgetData)
 					;}
 				Case #PB_EventType_LeftButtonDown ;{
 					If \State_WarmMediaBlock
@@ -1584,8 +1730,12 @@ Module PureTL
 								Redraw = #True
 							EndIf
 						Else
-								
 							If \State_WarmMediaBlock\State = #Warm
+								ForEach \State_Selected_MediaBlocks()
+									\State_Selected_MediaBlocks()\State = #Cold
+								Next
+								ClearList(\State_Selected_MediaBlocks())
+								
 								AddElement(\State_Selected_MediaBlocks())
 								\State_Selected_MediaBlocks() = \State_WarmMediaBlock
 								\State_WarmMediaBlock\State = #Hot
@@ -1606,8 +1756,12 @@ Module PureTL
 					If \State_Body = #Action_Body_InitDrag ;{
 						If GetGadgetAttribute(\Comp_Body, #PB_Canvas_Modifiers) & #PB_Canvas_Control
 							If \State_WarmMediaBlock
-								Debug _FindMediaBlock(*GadgetData, \State_WarmMediaBlock)
 								\State_WarmMediaBlock\State = #Cold
+								ForEach \State_Selected_MediaBlocks()
+									If \State_Selected_MediaBlocks() = \State_WarmMediaBlock
+										Break
+									EndIf
+								Next
 								DeleteElement(\State_Selected_MediaBlocks())
 								\State_WarmMediaBlock = _HoverMediaBlock(*GadgetData, X, Y)
 								If \State_WarmMediaBlock And \State_WarmMediaBlock\State = #Cold
@@ -1638,20 +1792,89 @@ Module PureTL
 						\State_Body = #Action_Hover
 						;}
 					ElseIf \State_Body = #Action_Body_Drag ;{
+						XML = CreateXML(#PB_Any)
+						XMLNode = CreateXMLNode(RootXMLNode(XML), "Task")
+						SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
 						ForEach \State_Selected_MediaBlocks()
 							\State_Selected_MediaBlocks()\Drag = #False
+							
+							ChangeCurrentElement(\Cont_Displayed_List(), \State_Selected_MediaBlocks()\Line\DisplayListAdress)
+							SelectElement(\Cont_Displayed_List(), Min(max(ListIndex(\Cont_Displayed_List()) + \State_Drag_VOffset, 0), \Cont_Displayed_List_Size - 1))
+							MoveMediaBlock(Gadget, \State_Selected_MediaBlocks(), \Cont_Displayed_List(), Max(\State_Selected_MediaBlocks()\BlockStart + \State_Drag_HOffset, 0), XMLNode)
 						Next
+						
+						Redraw(*GadgetData)
+						
+						\State_Drag_HOffset = 0
+						\State_Drag_VOffset = 0
+						\State_Body = #Action_Hover
+						\State_Action = #Action_Hover
+						
+						*Task = AllocateStructure(Task)
+						*Task\XML = ComposeXML(XML, #PB_XML_NoDeclaration)
+						FreeXML(XML)
+						TaskList::NewTask(*GadgetData\State_TaskList, *Task, @Handler_UndoRedo())
 						
 						Redraw = #True
 					EndIf ;}
 					
 					If Redraw
-						Redraw(*GadgetData)
+						Redraw(*GadgetData, #True)
 					EndIf
 					
 					;}
 				Case #PB_EventType_RightClick ;{
-					
+					If \State_WarmMediaBlock
+						If \State_WarmMediaBlock\State = #Hot And ListSize(\State_Selected_MediaBlocks()) > 1
+							
+						Else
+							If \State_WarmMediaBlock\State = #Warm
+								ForEach \State_Selected_MediaBlocks()
+									\State_Selected_MediaBlocks()\State = #Cold
+								Next
+								ClearList(\State_Selected_MediaBlocks())
+								
+								AddElement(\State_Selected_MediaBlocks())
+								\State_Selected_MediaBlocks() = \State_WarmMediaBlock
+								\State_WarmMediaBlock\State = #Hot
+								Redraw(*GadgetData)
+							EndIf
+							
+							Select \State_WarmMediaBlock\Type
+								Case #Asset_Type_Image
+									FlatMenu::Show(\Comp_Menu_Image)
+								Case #Asset_Type_Video
+									
+								Case #Asset_Type_Sound
+									
+								Case #Asset_Type_Music
+									
+								Case #Asset_Type_Voice
+									
+								Case #Asset_Type_Character
+									
+								Case #Asset_Type_Model
+									
+							EndSelect
+						EndIf
+					Else
+						
+						
+					EndIf
+					;}
+				Case #PB_EventType_KeyDown ;{
+					Select GetGadgetAttribute(Gadget, #PB_Canvas_Key)
+						Case #PB_Shortcut_Z ;{ Undo
+							If GetGadgetAttribute(Gadget, #PB_Canvas_Modifiers) & #PB_Canvas_Control
+								TaskList::Undo(\State_TaskList)
+							EndIf
+							;}
+						Case #PB_Shortcut_Y ;{ Redo
+							If GetGadgetAttribute(Gadget, #PB_Canvas_Modifiers) & #PB_Canvas_Control
+								TaskList::Redo(\State_TaskList)
+							EndIf
+							;}
+					EndSelect
 					;}
 			EndSelect
 		EndWith	
@@ -1678,16 +1901,10 @@ Module PureTL
 							;}
 						Case #Action_List_InitDrag ;{
 							If Abs(\State_Drag_X - GetGadgetAttribute(Gadget, #PB_Canvas_MouseX)) + Abs(\State_Drag_Y - Y) > #Size_DragInit_Distance
-								\State_List = #Action_List_Drag
-								\State_Action = #Action_List_Drag
-								\State_SelectedLine\State = #Draged
-								
-								\State_Drag_X = GetGadgetAttribute(Gadget, #PB_Canvas_MouseX)
-								\State_Drag_Y = y % \Meas_TL_LineHeight
-								
 								ResizeWindow(DragWindow, GadgetX(\Comp_List, #PB_Gadget_ScreenCoordinate), DesktopMouseY() - \State_Drag_Y, \Meas_Width, \Meas_TL_LineHeight)
-								ResizeGadget(DragList, 0, 0, \Meas_List_Width, \Meas_TL_LineHeight)
-								ResizeGadget(DragBody, \Meas_List_Width, 0, \Meas_Body_Width, \Meas_TL_LineHeight)
+								
+								SetWindowPos_(GadgetID(DragList), 0, 0, 0, \Meas_List_Width, \Meas_TL_LineHeight, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
+								SetWindowPos_(GadgetID(DragList), 0, \Meas_List_Width, 0, \Meas_Body_Width, \Meas_TL_LineHeight, #SWP_NOZORDER | #SWP_NOREDRAW)
 								
 								StartDrawing(CanvasOutput(DragList))
 								Box(0, 0,  \Meas_List_Width, \Meas_TL_LineHeight, \Color_List_Back[#Hot])
@@ -1699,10 +1916,16 @@ Module PureTL
 								StopDrawing()
 								
 								StartVectorDrawing(CanvasVectorOutput(DragBody))
-								AddPathBox(0, 0, \Meas_Body_Width, VectorOutputHeight())
-								VectorSourceColor(SetAlpha($FF, \Color_List_Back[#Hot]))
+								ChangeCurrentElement(\Cont_Displayed_List(), \State_SelectedLine\DisplayListAdress)
+								Redraw_Line(*GadgetData, 0, #True, 0)
 								FillPath()
 								StopVectorDrawing()
+								
+								\State_SelectedLine\State = #Draged
+								\State_List = #Action_List_Drag
+								\State_Action = #Action_List_Drag
+								\State_Drag_X = GetGadgetAttribute(Gadget, #PB_Canvas_MouseX)
+								\State_Drag_Y = y % \Meas_TL_LineHeight
 								
 								Redraw(*GadgetData)
 								HideWindow(DragWindow, #False)
@@ -1881,7 +2104,6 @@ Module PureTL
 						SetXMLAttribute(XMLNode, "UUID", *GadgetData\State_SelectedLine\UUID)
 						SetXMLAttribute(XMLNode, "OldName", *GadgetData\State_SelectedLine\Name)
 						SetXMLAttribute(XMLNode, "NewName", NewName)
-						SetXMLAttribute(XMLNode, "Gadget", Str(*GadgetData\Comp_Container))
 						
 						*Task = AllocateStructure(Task)
 						*Task\XML = ComposeXML(XML, #PB_XML_NoDeclaration)
@@ -1902,18 +2124,19 @@ Module PureTL
 	EndProcedure
 	
 	Procedure Handler_UndoRedo(*Task.Task, Redo)
-		Protected *GadgetData.GadgetData, XML = ParseXML(#PB_Any, *Task\XML), Loop, TaskCount, MainNode = ChildXMLNode(RootXMLNode(XML)), Task, *Line.Line, *MediaBlock.MediaBlock
+		Protected *GadgetData.GadgetData, XML = ParseXML(#PB_Any, *Task\XML), Loop, TaskCount, MainNode = ChildXMLNode(RootXMLNode(XML)), Task, *Line.Line, *MediaBlock.MediaBlock, Redraw
+		
+		*GadgetData = GetGadgetData(Val(GetXMLAttribute(MainNode, "Gadget")))
+		
+		If *GadgetData\State_Action <> #Action_Hover
+			ProcedureReturn #False
+		EndIf
 		
 		TaskCount = XMLChildCount(MainNode)
 		
 		If Redo ;{ Redo
 			For Loop = 1 To TaskCount
 				Task = ChildXMLNode(MainNode, Loop)
-				*GadgetData = GetGadgetData(Val(GetXMLAttribute(Task, "Gadget")))
-				
-				If *GadgetData\State_Action <> #Action_Hover
-					ProcedureReturn #False
-				EndIf
 				
 				Select GetXMLNodeName(Task)
 					Case #CreateLine
@@ -1922,40 +2145,59 @@ Module PureTL
 						_RenameLine( *GadgetData, FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(Task, "UUID")), GetXMLAttribute(Task, "NewName"))
 					Case #MoveLine
 						_MoveLine( *GadgetData, FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "NewPosition")))
+					Case #MoveMediaBlock
+						_MoveMediaBlock(*GadgetData, FindMapElement(*GadgetData\Cont_MediaBlocks(), GetXMLAttribute(Task, "UUID")), FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(Task, "NewLine")), Val(GetXMLAttribute(Task, "NewPosition")))
+						Redraw = #True
+					Case #CreateMediaBlock
+						_AddMediaBlock(*GadgetData, Task)
 				EndSelect
-				
 			Next
 			;}
 		Else ;{ Undo
 			For Loop = TaskCount To 1 Step -1
 				Task = ChildXMLNode(MainNode, Loop)
-				*GadgetData = GetGadgetData(Val(GetXMLAttribute(Task, "Gadget")))
-				
-				If *GadgetData\State_Action <> #Action_Hover
-					ProcedureReturn #False
-				EndIf
 				
 				Select GetXMLNodeName(Task)
 					Case #CreateLine
 						_RemoveLine(*GadgetData, Task)
 					Case #RenameLine
-						_RenameLine( *GadgetData, FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(Task, "UUID")), GetXMLAttribute(Task, "OldName"))
+						_RenameLine(*GadgetData, FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(Task, "UUID")), GetXMLAttribute(Task, "OldName"))
 					Case #MoveLine
-						_MoveLine( *GadgetData, FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "OldPosition")))
+						_MoveLine(*GadgetData, FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(Task, "UUID")), Val(GetXMLAttribute(Task, "OldPosition")))
+					Case #MoveMediaBlock
+						_MoveMediaBlock(*GadgetData, FindMapElement(*GadgetData\Cont_MediaBlocks(), GetXMLAttribute(Task, "UUID")), FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(Task, "OldLine")), Val(GetXMLAttribute(Task, "OldPosition")))
+						Redraw = #True
+					Case #CreateMediaBlock
+						_DeleteMediaBlock(*GadgetData, Task)
+						Redraw = #True
 				EndSelect
 			Next
-		EndIf ;}
+		EndIf
+		;}
+		
+		If Redraw
+			Redraw(*GadgetData)
+		EndIf
 		
 		ProcedureReturn #True
 	EndProcedure
 	
 	; Redraw
-	Procedure Redraw(*GadgetData.GadgetData)
-		Protected Loop, LoopEnd, BodyYPos, YPos, OddLine, ColumnLoop, ColumnLoopEnd, ListIndex
+	Procedure Redraw(*GadgetData.GadgetData, UpdateCollisionData = #False)
+		Protected Loop, LoopEnd, BodyYPos, YPos, OddLine, ListIndex
 		
 		With *GadgetData
 			StartDrawing(CanvasOutput(\Comp_List))
 			StartVectorDrawing(CanvasVectorOutput(\Comp_Body))
+			
+			;{ Collision Data
+			If UpdateCollisionData
+				For Loop = 0 To \Meas_Displayed_Line_Count 
+					FreeArray(\State_Collision_Line(Loop)\Column()) 
+					Dim \State_Collision_Line(Loop)\Column(\Meas_Displayed_Column_Count)
+				Next
+			EndIf
+			;}
 			
 			;{ Background color
 			Box(0, 0, \Meas_List_Width, \Meas_List_Height, \Color_List_Back[#cold])
@@ -1981,13 +2223,11 @@ Module PureTL
 				LoopEnd = \Meas_VPosition + \Meas_Displayed_Line_Count
 				OddLine = \Meas_VPosition % 2
 				BodyYPos = #Size_Header_Height
-				ColumnLoopEnd = \Meas_HPosition + \Meas_Displayed_Column_Count
 				
 				For Loop = \Meas_VPosition To LoopEnd
 					If \Cont_Displayed_List()\State = #Draged
 						Loop - 1
 					Else
-						
 						;{ Line reordering effect
 						If \State_Action = #Action_List_Drag And Loop = \State_List_Line
 							If Not OddLine
@@ -2010,24 +2250,8 @@ Module PureTL
 						DrawText(\Cont_Displayed_List()\HorizontalOffset, YPos + \Meas_TL_TextVericalOffset,  \Cont_Displayed_List()\Name)
 						;}
 						
-						;{ Body
-						If Not OddLine
-							AddPathBox(0, BodyYPos, \Meas_Body_Width, \Meas_TL_LineHeight)
-							VectorSourceColor(SetAlpha($FF, \Color_List_Back_Alternate[\Cont_Displayed_List()\State]))
-							FillPath()
-						ElseIf \Cont_Displayed_List()\State
-							AddPathBox(0, BodyYPos, \Meas_Body_Width, \Meas_TL_LineHeight)
-							VectorSourceColor(SetAlpha($FF, \Color_List_Back[\Cont_Displayed_List()\State]))
-							FillPath()
-						EndIf
+						Redraw_Line(*GadgetData, BodyYPos, OddLine, Loop, UpdateCollisionData)
 						
-						For ColumnLoop = \Meas_HPosition To ColumnLoopEnd
-							If \Cont_Displayed_List()\MediaBlocks(ColumnLoop)
-								ColumnLoop + Redraw_MediaBlock(*GadgetData, BodyYPos + #Size_MediaBlock_VerticalMargin, \Cont_Displayed_List()\MediaBlocks(ColumnLoop))
-							EndIf
-						Next
-						;}
-												
 						YPos + \Meas_TL_LineHeight
 						BodyYPos + \Meas_TL_LineHeight
 						OddLine = Bool(Not OddLine)
@@ -2043,7 +2267,6 @@ Module PureTL
 						EndIf
 						Break
 					EndIf
-					
 				Next
 				
 				If \State_Action = #Action_Body_Drag ; Draw drag marker.
@@ -2053,15 +2276,15 @@ Module PureTL
 						ListIndex = Min(max(ListIndex(\Cont_Displayed_List()) + \State_Drag_VOffset, 0), \Cont_Displayed_List_Size - 1)
 						
 						If ListIndex >= \Meas_VPosition And ListIndex <= LoopEnd
-							MaterialVector::AddPathRoundedBox((Min(Max((\State_Selected_MediaBlocks()\BlockStart + \State_Drag_HOffset), 0), \Cont_Duration - \State_Selected_MediaBlocks()\Duration) - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5,
+							MaterialVector::AddPathRoundedBox((Max(\State_Selected_MediaBlocks()\BlockStart + \State_Drag_HOffset, 0) - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5,
 							                                  #Size_Header_Height + ListIndex * \Meas_TL_LineHeight + #Size_MediaBlock_VerticalMargin + 0.5,
 							                                  \State_Selected_MediaBlocks()\Duration * \Meas_TL_ColumnWidth + \Meas_TL_ColumnWidth, #Size_MediaBlock_Height, 2)
 						EndIf
 					Next
 				EndIf
+				
 				VectorSourceColor($FFFFFFFF)
 				StrokePath(1)
-				
 			EndIf
 			;}
 			
@@ -2106,7 +2329,7 @@ Module PureTL
 			AddPathArc(Width - 3, 0, Width - 3, - Height, 3, #PB_Path_Relative)
 			AddPathLine(0, 2 * 3 - Height, #PB_Path_Relative)
 			ClosePath()
-			VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Back[#Cold]))
+			VectorSourceColor(SetAlpha(Alpha, $FF202020))
 			FillPath()
 			
 			Height = #Size_MediaBlock_Height - 4
@@ -2141,9 +2364,44 @@ Module PureTL
 		ProcedureReturn *Block\BlockEnd
 	EndProcedure
 	
+	Procedure Redraw_Line(*GadgetData.GadgetData, YPos, OddLine, CollisionDataLine, UpdateCollisionData = #False)
+		Protected Loop, LoopEnd 
+		
+		With *GadgetData
+			Protected ColumnLoop, ColumnLoopEnd = \Meas_HPosition + \Meas_Displayed_Column_Count
+			
+			If Not OddLine
+				AddPathBox(0, YPos, \Meas_Body_Width, \Meas_TL_LineHeight)
+				VectorSourceColor(SetAlpha($FF, \Color_List_Back_Alternate[\Cont_Displayed_List()\State]))
+				FillPath()
+			ElseIf \Cont_Displayed_List()\State
+				AddPathBox(0, YPos, \Meas_Body_Width, \Meas_TL_LineHeight)
+				VectorSourceColor(SetAlpha($FF, \Color_List_Back[\Cont_Displayed_List()\State]))
+				FillPath()
+			EndIf
+			
+			ForEach \Cont_Displayed_List()\MediaBlock()
+				If \Cont_Displayed_List()\MediaBlock()\BlockStart > ColumnLoopEnd
+					Break
+				ElseIf \Cont_Displayed_List()\MediaBlock()\BlockEnd > \Meas_HPosition
+					
+					If UpdateCollisionData
+						LoopEnd = Min(\Cont_Displayed_List()\MediaBlock()\BlockEnd, \Meas_HPosition + \Meas_Displayed_Column_Count)
+						For Loop = Max(\Cont_Displayed_List()\MediaBlock()\BlockStart, \Meas_HPosition) To LoopEnd
+							\State_Collision_Line(CollisionDataLine)\Column(Loop) = \Cont_Displayed_List()\MediaBlock()
+						Next
+					EndIf
+					
+					Redraw_MediaBlock(*GadgetData, YPos + #Size_MediaBlock_VerticalMargin, \Cont_Displayed_List()\MediaBlock())
+				EndIf
+			Next
+			
+		EndWith
+	EndProcedure
+	
 	; Misc
 	Procedure Refit(Gadget, GadgetWidth, GadgetHeight)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), Loop
 		
 		With *GadgetData
 			GadgetHeight - #Size_Header_Height
@@ -2154,6 +2412,9 @@ Module PureTL
 			
 			\Meas_Displayed_Line_Count = Round(\Meas_List_Height / \Meas_TL_LineHeight, #PB_Round_Up) - 1
 			\Meas_Displayed_Column_Count = Round(\Meas_Body_Width / \Meas_TL_ColumnWidth, #PB_Round_Up)
+			
+			ReDim \State_Collision_Line(\Meas_Displayed_Line_Count)
+			
 		EndWith
 		
 	EndProcedure
@@ -2180,6 +2441,10 @@ Module PureTL
 	EndProcedure
 	
 	Procedure UnserializeDataPoint(*DataPoint.DataPoint, JsonString.s)
+	EndProcedure
+	
+	Procedure CompareAscending(*a.MBAdress, *b.MBAdress)
+		ProcedureReturn *a\Object\BlockStart - *b\Object\BlockStart
 	EndProcedure
 	;}
 	
@@ -2237,7 +2502,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 1365
-; FirstLine = 506
-; Folding = AAqmzBCYECEIABCBAA5FAg
+; CursorPosition = 464
+; FirstLine = 80
+; Folding = AB7mnHEgAEIAAAQFAUAABAA+
 ; EnableXP
