@@ -963,7 +963,7 @@
 			
 			AssetContainer_Width = AssetContainer_Width - AssetButtonScrollBar * 12
 			
-			ResizeGadget(#Asset_ScrollArea, #Size_RoundedCorner, 0, AssetContainer_Width + AssetButtonScrollBar * ScrollBarWidth - 8, AssetContainerHeight + ScrollBarWidth)
+			ResizeGadget(#Asset_ScrollArea, #Size_RoundedCorner, 0, AssetContainer_Width + AssetButtonScrollBar * ScrollBarWidth - 7, AssetContainerHeight + ScrollBarWidth)
 			SetGadgetAttribute(#Asset_ScrollArea, #PB_ScrollArea3D_InnerWidth, AssetContainer_Width - 6)
 			
 			CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
@@ -1045,7 +1045,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 251
-; FirstLine = 63
-; Folding = hXngoGAAh+
+; CursorPosition = 965
+; FirstLine = 103
+; Folding = hXlgoGAAg+
 ; EnableXP

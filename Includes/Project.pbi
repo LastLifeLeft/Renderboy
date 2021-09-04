@@ -215,6 +215,7 @@
 				State\y = Round(AssetLibrary()\Height * 0.5, #PB_Round_Down)
 				State\width = AssetLibrary()\Width
 				State\height = AssetLibrary()\height
+				State\Transparency = 1
 			Case #Asset_Type_Video
 			Case #Asset_Type_Sound
 			Case #Asset_Type_Music
@@ -344,7 +345,7 @@
 	
 EndModule
 ; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 230
-; FirstLine = 67
+; CursorPosition = 217
+; FirstLine = 72
 ; Folding = vDIECQ-
 ; EnableXP

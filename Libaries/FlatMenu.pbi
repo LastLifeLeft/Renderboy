@@ -726,11 +726,13 @@ Module FlatMenu
 								EndIf
 							Case #ToggleOn
 								\MenuItems()\Type = #ToggleOff
-								PostEvent(#PB_Event_Menu, \ParentWindow, \MenuItems()\ItemID)
+								PostEvent(#PB_Event_Menu, \ParentWindow, \MenuItems()\ItemID, #PB_EventType_Change, #False)
+								Hide(\MenuWindow, #True)
 								Redraw(\MenuWindow)
 							Case #ToggleOff
 								\MenuItems()\Type = #ToggleOn
-								PostEvent(#PB_Event_Menu, \ParentWindow, \MenuItems()\ItemID)
+								PostEvent(#PB_Event_Menu, \ParentWindow, \MenuItems()\ItemID, #PB_EventType_Change, #True)
+								Hide(\MenuWindow, #True)
 								Redraw(\MenuWindow)
 						EndSelect
 					EndIf
@@ -853,7 +855,7 @@ CompilerIf #PB_Compiler_IsMainFile
 	ForEver
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 203
-; FirstLine = 37
-; Folding = CgBgAAA5
+; CursorPosition = 733
+; FirstLine = 88
+; Folding = CgBAUAE5
 ; EnableXP
