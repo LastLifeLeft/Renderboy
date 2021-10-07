@@ -18,7 +18,7 @@ enum UI_EAssetType
 	Model
 }
 
-show_debug_overlay(true);
+show_debug_overlay(false);
 display_reset(0, true);
 game_set_speed(30, gamespeed_fps);
 

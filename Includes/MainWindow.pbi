@@ -214,6 +214,7 @@
 	Declare HandlerDrop(TargetHandle, State, Format, Action, x, y)
 	Declare HandlerDrag(Action)
 	Declare HandlerTimeLineDrop()
+	Declare HandlerTimeLineChildrenDrop()
 	Declare HandlerTimeLine()
 	
 	; Misc
@@ -391,6 +392,7 @@
 		SetProp_(GadgetID(#TimeLine), "oldproc", SetWindowLongPtr_(GadgetID(#TimeLine), #GWL_WNDPROC, @HandlerShortcutWorkAround()))
 		
 		BindEvent(#PB_Event_GadgetDrop, @HandlerTimeLineDrop(), #Window, #TimeLine)
+		BindEvent(PureTL::#Event_ParentDrop, @HandlerTimeLineChildrenDrop(), #Window, #TimeLine)
 		BindGadgetEvent(#TimeLine,@HandlerTimeLine())
 		
 		; Misc
@@ -906,7 +908,31 @@
 		EndSelect
 		
   		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, AssetButton::DragType, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID))
-	EndProcedure
+  	EndProcedure
+  	
+  	Procedure HandlerTimeLineChildrenDrop()
+		Protected Color, Icon.s
+		
+		Select AssetButton::DragType
+			Case Project::#Asset_Type_Image
+				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Media))
+				Icon = ""
+			Case Project::#Asset_Type_Video
+				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Media))
+			Case Project::#Asset_Type_Sound
+				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
+			Case Project::#Asset_Type_Music
+				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
+			Case Project::#Asset_Type_Voice
+				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
+			Case Project::#Asset_Type_Character
+				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
+			Case Project::#Asset_Type_Model
+				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
+		EndSelect
+		
+  		PureTL::AddMediaBlock(#TimeLine, 0, EventData(), 30, AssetButton::DragType, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID), EventType())
+  	EndProcedure
 	
 	Procedure HandlerTimeLine()
 		
@@ -1044,8 +1070,8 @@ EndModule
 
 
 
-; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 965
-; FirstLine = 103
-; Folding = hXlgoGAAg+
+; IDE Options = PureBasic 6.00 Alpha 4 (Windows - x64)
+; CursorPosition = 933
+; FirstLine = 359
+; Folding = h4ngoGAAD0
 ; EnableXP
