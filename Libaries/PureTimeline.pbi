@@ -1,6 +1,6 @@
-﻿CompilerIf Not Defined(MaterialVector, #PB_Module)
-	IncludeFile "MaterialVector\MaterialVector.pbi"
-CompilerEndIf
+﻿; CompilerIf Not Defined(MaterialVector, #PB_Module)
+; 	IncludeFile "MaterialVector\MaterialVector.pbi"
+; CompilerEndIf
 
 CompilerIf Not Defined(CanvasButton, #PB_Module)
 	IncludeFile "CanvasButton\CanvasButton.pbi"
@@ -638,6 +638,8 @@ Module PureTL
 		Meas_Height.i
 		Meas_Width.i
 		
+		Meas_Displayed_Height.i
+		
 		; Colors
 		Color_List_Back_Alternate.l[3]
 		Color_List_Back.l[3]
@@ -702,6 +704,7 @@ Module PureTL
 	
 	;{ Default Setting
 	#Default_Duration = 300
+	#Duration_Extension = 50
 	#Size_DragInit_Distance = 10
 	;}
 	
@@ -800,10 +803,7 @@ Module PureTL
 	; Fonts
 	Global FontBold = FontID(LoadFont(#PB_Any, "Rubik Medium", 12, #PB_Font_HighQuality))
 	Global Font = FontID(LoadFont(#PB_Any, "Rubik", 12, #PB_Font_HighQuality))
-
-	Global IconSolid = FontID(LoadFont(#PB_Any, "Font Awesome 5 Pro Solid", 16, #PB_Font_HighQuality))
-	Global Icon = FontID(LoadFont(#PB_Any, "Font Awesome 5 Pro Regular", 16, #PB_Font_HighQuality))
-	Global MaterialIcon = FontID(LoadFont(#PB_Any, "Material Design Icons Desktop", 16, #PB_Font_HighQuality))
+	Global FontIcon = FontID(LoadFont(#PB_Any, "Font Awesome 5 Pro Regular", 16, #PB_Font_HighQuality))
 	
 	; FontAwesome shortcut
 	#FontAwesome_Chevron_Right = ""
@@ -933,7 +933,6 @@ Module PureTL
 	Declare Redraw_Line(*GadgetData.GadgetData, YPos, OddLine, CollisionDataLine, UpdateCollisionData = #False)
 	
 	; Misc
-	Declare Refit(Gadget, GadgetWidth, GadgetHeight)
 	Declare VerticalFocus(*GadgetData.GadgetData)
 	Declare HorizontalFocus(*GadgetData.GadgetData)
 	Declare _UpdateCurrentAssetList(*GadgetData.GadgetData, *Line.Line)
@@ -1015,6 +1014,24 @@ Module PureTL
 				\Color_MediaBlock_Front[#Hot] =  FixColor(#Color_MediaBlock_Front_Hot)
 				
 				;Components
+				\Comp_HScrollBar = ScrollBar::Gadget(#PB_Any, 0, 110, 300, #Size_Scrollbar_Thickness, 0, \Cont_Duration, 10)
+				SetGadgetColor(\Comp_HScrollBar, #PB_Gadget_BackColor, SetAlpha($FF, \Color_List_Back[#Cold]))
+				SetGadgetColor(\Comp_HScrollBar, #PB_Gadget_LineColor, SetAlpha($FF, FixColor(#Color_Scrollbar_Back)))
+				SetGadgetColor(\Comp_HScrollBar, #PB_Gadget_FrontColor, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontCold)))
+				SetGadgetColor(\Comp_HScrollBar, ScrollBar::#Color_FrontWarm, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontWarm)))
+				SetGadgetColor(\Comp_HScrollBar, ScrollBar::#Color_FrontHot, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontHot)))
+				SetGadgetData(\Comp_HScrollBar, *GadgetData)
+				BindGadgetEvent(\Comp_HScrollBar, @Handler_HScrollBar(), #PB_EventType_Change)
+				
+				\Comp_vScrollBar = ScrollBar::Gadget(#PB_Any, \Meas_Body_Width - #Size_Scrollbar_Thickness, #Size_Header_Height, #Size_Scrollbar_Thickness, \Meas_List_Height, 0, 9, 10, ScrollBar::#Vertical)
+				SetGadgetColor(\Comp_VScrollBar, #PB_Gadget_BackColor, SetAlpha($FF, \Color_List_Back[#Cold]))
+				SetGadgetColor(\Comp_VScrollBar, #PB_Gadget_LineColor, SetAlpha($FF, FixColor(#Color_Scrollbar_Back)))
+				SetGadgetColor(\Comp_VScrollBar, #PB_Gadget_FrontColor, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontCold)))
+				SetGadgetColor(\Comp_VScrollBar, ScrollBar::#Color_FrontWarm, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontWarm)))
+				SetGadgetColor(\Comp_VScrollBar, ScrollBar::#Color_FrontHot, SetAlpha($FF, FixColor(#Color_Scrollbar_FrontHot)))
+				SetGadgetData(\Comp_VScrollBar, *GadgetData)
+				BindGadgetEvent(\Comp_VScrollBar, @Handler_VScrollBar(), #PB_EventType_Change)
+				
 				SetGadgetColor(\Comp_Container, #PB_Gadget_BackColor, \Color_Primary_Back[#Cold])
 				
 				\Comp_Body = CanvasBody
@@ -1026,6 +1043,7 @@ Module PureTL
 				Margin = ((\Meas_List_Width - 5 * #Size_Header_ButtonSize + 4)) / 2
 				
 				\Comp_Button_AddFolder = CanvasButton::Gadget(#PB_Any, Margin, #Size_Header_VerticalMargin, #Size_Header_ButtonSize, #Size_Header_ButtonSize, "", MaterialVector::#Folder, CanvasButton::#MaterialVector | MaterialVector::#Style_Outline | CanvasButton::#Rounded_Left | CanvasButton::#Outline)
+				SetGadgetFont(\Comp_Button_AddFolder, FontIcon)
 				SetGadgetColor(\Comp_Button_AddFolder, CanvasButton::#BackColor_Cold, SetAlpha($FF ,\Color_Primary_Back[#Cold]))
 				SetGadgetColor(\Comp_Button_AddFolder, CanvasButton::#BackColor_Warm, SetAlpha($FF ,\Color_Primary_Back[#Warm]))
 				SetGadgetColor(\Comp_Button_AddFolder, CanvasButton::#BackColor_Hot, SetAlpha($FF ,\Color_Primary_Back[#Hot]))
@@ -1089,8 +1107,7 @@ Module PureTL
 				
 				SetGadgetData(Gadget, *GadgetData)
 				
-				Refit(*GadgetData\Comp_Container, Width, Height)
-				Redraw(*GadgetData)
+				Redraw(*GadgetData, #True)
 				
 				SetGadgetData(\Comp_List, *GadgetData)
 				BindGadgetEvent(\Comp_List, @Handler_List())
@@ -1143,8 +1160,6 @@ Module PureTL
 	Procedure Resize(Gadget, X, Y, Width, Height)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
 		
-		Refit(Gadget, Width, Height)
-		
 		With *GadgetData
 			\Meas_Width = Width
 			\Meas_Height = Height
@@ -1166,16 +1181,15 @@ Module PureTL
 			\Meas_Height = Height
 			SendMessage_(GadgetID(\Comp_List), #WM_SETREDRAW, #False, 0)
 			SendMessage_(GadgetID(\Comp_Body), #WM_SETREDRAW, #False, 0)
-			Refit(Gadget, Width, Height)
 			
 			SetWindowPos_(GadgetID(\Comp_List), 0, 0, 0, \Meas_List_Width, \Meas_List_Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			SetWindowPos_(GadgetID(\Comp_Body), 0, 0, 0, \Meas_Body_Width, Height, #SWP_NOMOVE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			
-			Redraw(*GadgetData, #True)
 			SetWindowPos_(GadgetID(Gadget), 0, X, Y, Width, Height, #SWP_NOZORDER)
 			SendMessage_(GadgetID(\Comp_List), #WM_SETREDRAW, #True, 0)
 			SendMessage_(GadgetID(\Comp_Body), #WM_SETREDRAW, #True, 0)
 			
+			Redraw(*GadgetData, #True)
 			RedrawWindow_(GadgetID(\Comp_List), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
 			RedrawWindow_(GadgetID(\Comp_Body), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
 		EndWith
@@ -1223,6 +1237,8 @@ Module PureTL
 				Case #PB_Drag_Leave
 					\State_Action = #Action_Hover
 			EndSelect
+			
+			\State_AssetDropPosition = 0
 			
 			If \State_AssetDropLine
 				\State_AssetDropLine = 0
@@ -1294,7 +1310,7 @@ Module PureTL
 	EndProcedure
 	
 	Procedure RenameLine(Gadget, *Line.Line, XML = -1)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget),Y
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), Y = -1
 		Protected XMLNode
 		
 		With *GadgetData
@@ -1305,8 +1321,16 @@ Module PureTL
 				SetXMLAttribute(XMLNode, "Gadget", Str(Gadget))
 			EndIf
 			
- 			SetActiveLine(Gadget, *Line)
- 			Y = (_Display_GetLinePosition(*GadgetData, *Line) - \Meas_VPosition) * \Meas_TL_LineHeight
+			SetActiveLine(Gadget, *Line)
+			
+			Y = (_Display_GetLinePosition(*GadgetData, *Line) - \Meas_VPosition) * \Meas_TL_LineHeight ; Temporary fix because there is no vertical scrolling yet.
+			
+			ForEach \State_LineIndex()
+				If \State_LineIndex()\Line = *Line
+					Y = \State_LineIndex()\Position - \Meas_TL_LineHeight
+					Break
+				EndIf
+			Next
 			
 			OpenGadgetList(*GadgetData\Comp_List)
 			*GadgetData\Comp_Rename = StringGadget(#PB_Any, *Line\HorizontalOffset - 4, Y + *GadgetData\Meas_TL_TextVericalOffset - 2, *GadgetData\Meas_List_Width - *Line\HorizontalOffset - 15, 25, *Line\Name)
@@ -1538,12 +1562,11 @@ Module PureTL
 	Procedure.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
 		Debug "?"
 	EndProcedure
-	
 	;}
 	;}
 	
 	;{ Private procedures
-	; Non specific
+	;{ Non specific
 	Procedure Min(a, b)
 		If b < a
 			ProcedureReturn b
@@ -1567,8 +1590,14 @@ Module PureTL
 		
 		ProcedureReturn GUID
 	EndProcedure
+	;}
 	
-	; Line Stuff
+	;{ Line Stuff
+	Procedure Update_Displayed_Height(*GadgetData.GadgetData, NewValue)
+		*GadgetData\Meas_Displayed_Height + NewValue
+		SetGadgetAttribute(*GadgetData\Comp_VScrollBar, #PB_ScrollBar_Maximum, *GadgetData\Meas_Displayed_Height)
+	EndProcedure
+	
 	Procedure _AddLine(*GadgetData.GadgetData, XMLNode)
 		Protected *NewLine.Line = AddMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(XMLNode, "UUID"))
 		
@@ -1580,16 +1609,18 @@ Module PureTL
 		
 		_Display_InsertLine(*GadgetData, *NewLine, Val(GetXMLAttribute(XMLNode, "Position")), *NewLine\Parent)
 		
+		Update_Displayed_Height(*GadgetData, *GadgetData\Meas_TL_LineHeight)
+		
 		ProcedureReturn *NewLine
 	EndProcedure
 	
-	Procedure _RemoveLine(*GadgetData.GadgetData, XMLNode)
+	Procedure _RemoveLine(*GadgetData.GadgetData, XMLNode) ;TODO: Clean up the line content.
 		Protected *Line.Line = FindMapElement(*GadgetData\Cont_Lines(), GetXMLAttribute(XMLNode, "UUID"))
-		
-		; Clean up what's inside.
 		
 		_Display_RemoveLine(*GadgetData, *Line)
 		DeleteMapElement(*GadgetData\Cont_Lines())
+		
+		Update_Displayed_Height(*GadgetData, - *GadgetData\Meas_TL_LineHeight - (*Line\SubLineCount * #Size_MediaBlock_Height * Bool(*Line\Fold = #Unfolded)))
 	EndProcedure
 	
 	Procedure _RenameLine(*GadgetData.GadgetData, *Line.Line, Name.s)
@@ -1670,11 +1701,24 @@ Module PureTL
 		ProcedureReturn Result
 	EndProcedure
 	
+	Procedure _HoverLine(*GadgetData.GadgetData, Y)
+		Protected *Result
+		With *GadgetData
+			ForEach \State_LineIndex()
+				If \State_LineIndex()\Position > Y
+					*Result = \State_LineIndex()\Line
+					Break
+				EndIf
+			Next
+		EndWith
+		ProcedureReturn *Result
+	EndProcedure
+	
 	Procedure EditLine(*GadgetData.GadgetData, *Line.line, XML = 0)
 		
 	EndProcedure
 	
-	Procedure ProcessLineFold(*Line.Line)
+	Procedure ProcessLineFold(*GadgetData.GadgetData, *Line.Line)
 		With *Line
 			\SubLineCount = Bool(\UsedDataPoints(#Properties_Sub)) +
 			                Bool(\UsedDataPoints(#Properties_X)) +
@@ -1689,16 +1733,16 @@ Module PureTL
 				\Fold = #Folded
 				\HorizontalOffset + #Size_List_FoldIcon_Offset
 			ElseIf \SubLineCount = 0 And \Fold
+				Update_Displayed_Height(*GadgetData, - *Line\SubLineCount * #Size_MediaBlock_Height)
 				\Fold = #NoFold
 				\HorizontalOffset - #Size_List_FoldIcon_Offset
 			EndIf
 		EndWith
 	EndProcedure
 	
-	Procedure AddUsedDataPoint(*Line.Line, *UsedGadgetData.DataPoint)
+	Procedure AddUsedDataPointEX(*Line.Line, *UsedGadgetData.DataPoint)
 		; At some point, you'll add a new property and forget about this place... Ain't there a better solution to make this a bit more robust?
 		With *Line
-			\UsedDataPoints(#Properties_Sub)			+ *UsedGadgetData\Container
 			\UsedDataPoints(#Properties_X) 				+ *UsedGadgetData\X 		
 			\UsedDataPoints(#Properties_Y) 				+ *UsedGadgetData\Y 		
 			\UsedDataPoints(#Properties_Z) 				+ *UsedGadgetData\Z 		
@@ -1709,9 +1753,8 @@ Module PureTL
 		EndWith
 	EndProcedure
 	
-	Procedure RemoveUsedDataPoint(*Line.Line, *UsedGadgetData.DataPoint)
+	Procedure RemoveUsedDataPointEX(*Line.Line, *UsedGadgetData.DataPoint)
 		With *Line
-			\UsedDataPoints(#Properties_Sub)			- *UsedGadgetData\Container
 			\UsedDataPoints(#Properties_X) 				- *UsedGadgetData\X
 			\UsedDataPoints(#Properties_Y) 				- *UsedGadgetData\Y 
 			\UsedDataPoints(#Properties_Z) 				- *UsedGadgetData\Z 
@@ -1722,19 +1765,53 @@ Module PureTL
 		EndWith
 	EndProcedure
 	
-	Procedure AddMediaBlockContainer(*Mediablock.Mediablock)
+	Procedure AddUsedDataPoint(*Line.Line, *UsedGadgetData.DataPoint)
+		With *Line
+			\UsedDataPoints(#Properties_Sub)			+ *UsedGadgetData\Container
+			AddUsedDataPointEX(*Line.Line, *UsedGadgetData.DataPoint)
+		EndWith
+	EndProcedure
+	
+	Procedure RemoveUsedDataPoint(*Line.Line, *UsedGadgetData.DataPoint)
+		With *Line
+			\UsedDataPoints(#Properties_Sub)			- *UsedGadgetData\Container
+			RemoveUsedDataPointEX(*Line.Line, *UsedGadgetData.DataPoint)
+		EndWith
+	EndProcedure
+	
+	Procedure AddMediaBlockContainer(*GadgetData.GadgetData, *Mediablock.Mediablock)
 		*Mediablock\UsedData\Container = #True
 		*Mediablock\Line\UsedDataPoints(#Properties_Sub) + 1
-		ProcessLineFold(*Mediablock\Line)
+		ProcessLineFold(*GadgetData, *Mediablock\Line)
 	EndProcedure
 	
-	Procedure RemoveMediaBlockContainer(*Mediablock.Mediablock)
+	Procedure RemoveMediaBlockContainer(*GadgetData.GadgetData, *Mediablock.Mediablock)
 		*Mediablock\UsedData\Container = #False
 		*Mediablock\Line\UsedDataPoints(#Properties_Sub) - 1
-		ProcessLineFold(*Mediablock\Line)
+		ProcessLineFold(*GadgetData, *Mediablock\Line)
+	EndProcedure
+	;}
+	
+	;{ Media block stuff
+	Procedure _SetTimelineDuration(*GadgetData.GadgetData, Size = -1)
+		
+		With *GadgetData
+			If Size = -1
+				ForEach \Cont_MediaBlocks()
+					If \Cont_MediaBlocks()\BlockEnd > Size
+						Size = \Cont_MediaBlocks()\BlockEnd
+					EndIf
+				Next
+				Size + #Duration_Extension
+			EndIf
+			
+			\Cont_Duration = Max(Size, #Default_Duration)
+			SetGadgetAttribute(\Comp_HScrollBar, #PB_ScrollBar_Maximum, \Cont_Duration)
+			\Meas_HPosition = GetGadgetState(\Comp_HScrollBar)
+			
+		EndWith
 	EndProcedure
 	
-	; Media block stuff
 	Procedure _AddMediaBlock(*GadgetData.GadgetData, XMLNode)
 		Protected *NewMediaBlock.MediaBlock, Loop, Json, *Adress, BlockEnd
 		
@@ -1781,6 +1858,11 @@ Module PureTL
 				*NewMediaBlock\Line\MediaBlock() = *NewMediaBlock
 				*NewMediaBlock\ListAdress = @*NewMediaBlock\Line\MediaBlock()
 				SortMediaBlocks(*NewMediaBlock\Line\MediaBlock(), @CompareAscending())
+				
+				; Extend the timeline duration if needed.
+				If *NewMediaBlock\BlockEnd + #Duration_Extension > \Cont_Duration
+					_SetTimelineDuration(*GadgetData, *NewMediaBlock\BlockEnd + #Duration_Extension)
+				EndIf
 			EndIf
 			
 			Select *NewMediaBlock\Type
@@ -1801,46 +1883,41 @@ Module PureTL
 	EndProcedure
 	
 	Procedure _DeleteMediaBlock(*GadgetData.GadgetData, XMLNode)
-		Protected *Mediablock.Mediablock
+		Protected *Mediablock.Mediablock, LastBlock, Parent
 		With *GadgetData
 			*Mediablock = FindMapElement(\Cont_MediaBlocks(), GetXMLAttribute(XMLNode, "UUID"))
 			
 			If *Mediablock\Animated
 				RemoveUsedDataPoint(*Mediablock\Line, *Mediablock\UsedData)
-				ProcessLineFold(*Mediablock\Line)
+				ProcessLineFold(*GadgetData, *Mediablock\Line)
 			ElseIf *Mediablock\Container
 				*Mediablock\Line\UsedDataPoints(#Properties_Sub) - 1
-				ProcessLineFold(*Mediablock\Line)
+				ProcessLineFold(*GadgetData, *Mediablock\Line)
 			EndIf
+			
+			LastBlock = *Mediablock\BlockEnd
+			Parent = *Mediablock\Parent
 			
 			ChangeCurrentElement(*Mediablock\Line\MediaBlock(), *Mediablock\ListAdress)
 			DeleteElement(*Mediablock\Line\MediaBlock())
 			DeleteMapElement(\Cont_MediaBlocks())
+			
+			; Shorten the timeline duration if needed
+			If Not Parent And LastBlock + #Duration_Extension = \Cont_Duration
+				_SetTimelineDuration(*GadgetData)
+			EndIf
 		EndWith
-	EndProcedure
-	
-	Procedure _HoverLine(*GadgetData.GadgetData, Y)
-		Protected *Result
-		With *GadgetData
-			ForEach \State_LineIndex()
-				If \State_LineIndex()\Position > Y
-					*Result = \State_LineIndex()\Line
-					Break
-				EndIf
-			Next
-		EndWith
-		ProcedureReturn *Result
 	EndProcedure
 	
 	Procedure _HoverMediaBlock(*GadgetData.GadgetData, X, Y)
 		With *GadgetData
 			Protected Line
 			If _HoverLine(*GadgetData, Y)
-				Line = ListIndex(\State_LineIndex()) + \Meas_VPosition
+				Line = ListIndex(\State_LineIndex())
 				
 				If Line > -1
 					X = Max(0, X) ; Sometimes, X goes negative, not sure if it's a PB bug or a Renderboy one...
-					ProcedureReturn \State_Collision_Line(Line)\Column(Int(Round(X / \Meas_TL_ColumnWidth, #PB_Round_Down)) + \Meas_HPosition)
+					ProcedureReturn \State_Collision_Line(Line)\Column(Int(Round(X / \Meas_TL_ColumnWidth, #PB_Round_Down))) ; Possibly wrong?
 				EndIf
 			EndIf
 		EndWith
@@ -1859,6 +1936,7 @@ Module PureTL
 	EndProcedure
 	
 	Procedure _MoveMediaBlock(*GadgetData.GadgetData, *Mediablock.Mediablock, *Line.Line, Position, *Parent.Mediablock = 0)
+		Protected LastBlock, OriginalLine = *Mediablock\Line
 		With *GadgetData
 			
 			If *Mediablock\Parent
@@ -1868,14 +1946,18 @@ Module PureTL
 			Else
 				ChangeCurrentElement(*Mediablock\Line\MediaBlock(), *Mediablock\ListAdress)
 				DeleteElement(*Mediablock\Line\MediaBlock())
-				If *Mediablock\Animated
-					RemoveUsedDataPoint(*Mediablock\Line, *Mediablock\UsedData)
-					ProcessLineFold(*Mediablock\Line)
-				ElseIf *Mediablock\Container
-					*Mediablock\Line\UsedDataPoints(#Properties_Sub) - 1
-					ProcessLineFold(*Mediablock\Line)
+				If OriginalLine <> *Line.Line
+					If *Mediablock\Animated
+						RemoveUsedDataPoint(*Mediablock\Line, *Mediablock\UsedData)
+						ProcessLineFold(*GadgetData, *Mediablock\Line)
+					ElseIf *Mediablock\Container
+						*Mediablock\Line\UsedDataPoints(#Properties_Sub) - 1
+						ProcessLineFold(*GadgetData, *Mediablock\Line)
+					EndIf
 				EndIf
 			EndIf
+			
+			LastBlock = *Mediablock\BlockEnd
 			
 			*Mediablock\BlockEnd = Position + *Mediablock\BlockEnd - *Mediablock\BlockStart
 			*Mediablock\BlockStart = Position
@@ -1897,21 +1979,40 @@ Module PureTL
 				*Mediablock\ListAdress = @*Mediablock\Line\MediaBlock()
 				SortMediaBlocks(*Mediablock\Line\MediaBlock(), @CompareAscending())
 				
-				If *Mediablock\Animated
-					AddUsedDataPoint(*Mediablock\Line, *Mediablock\UsedData)
-					ProcessLineFold(*Mediablock\Line)
-				ElseIf *Mediablock\Container
-					*Mediablock\Line\UsedDataPoints(#Properties_Sub) + 1
-					ProcessLineFold(*Mediablock\Line)
+				If OriginalLine <> *Line.Line
+					If *Mediablock\Animated
+						AddUsedDataPoint(*Mediablock\Line, *Mediablock\UsedData)
+						ProcessLineFold(*GadgetData, *Mediablock\Line)
+					ElseIf *Mediablock\Container
+						*Mediablock\Line\UsedDataPoints(#Properties_Sub) + 1
+						ProcessLineFold(*GadgetData, *Mediablock\Line)
+					EndIf
+				EndIf
+				
+				; Correct the timeline duration if needed.
+				If *Mediablock\BlockEnd + #Duration_Extension > \Cont_Duration
+					_SetTimelineDuration(*GadgetData, *Mediablock\BlockEnd + #Duration_Extension)
+				ElseIf LastBlock + #Duration_Extension = \Cont_Duration
+					_SetTimelineDuration(*GadgetData, -1)
 				EndIf
 			EndIf
 		EndWith
 	EndProcedure
 	
 	Procedure _ResizeMediaBlock(*GadgetData.GadgetData, *Mediablock.Mediablock, NewStart, NewEnd, JSON)
+		Protected LastBlock = *Mediablock\BlockEnd
+		
 		*Mediablock\Duration = NewEnd - NewStart
-		*Mediablock\BlockEnd = NewStart + *Mediablock\Duration
+		*Mediablock\BlockEnd = NewEnd
 		*Mediablock\BlockStart = NewStart
+		
+		If Not *Mediablock\Parent; Correct the timeline duration if needed.
+			If *Mediablock\BlockEnd + #Duration_Extension > *GadgetData\Cont_Duration
+				_SetTimelineDuration(*GadgetData, *Mediablock\BlockEnd + #Duration_Extension)
+			ElseIf LastBlock + #Duration_Extension = *GadgetData\Cont_Duration
+				_SetTimelineDuration(*GadgetData, -1)
+			EndIf
+		EndIf
 		
 		SortMediaBlocks(*Mediablock\Line\MediaBlock(), @CompareAscending())
 	EndProcedure
@@ -1922,12 +2023,12 @@ Module PureTL
 		With *GadgetData
 			ForEach \State_Selected_MediaBlocks()
 				If EventData()
-					AddUsedDataPoint(\State_Selected_MediaBlocks()\Line, @\State_Selected_MediaBlocks()\UsedData)
-					ProcessLineFold(\State_Selected_MediaBlocks()\Line)
+					AddUsedDataPointEX(\State_Selected_MediaBlocks()\Line, @\State_Selected_MediaBlocks()\UsedData)
+					ProcessLineFold(*GadgetData, \State_Selected_MediaBlocks()\Line)
 					\State_Selected_MediaBlocks()\Animated = #True
 				Else
-					RemoveUsedDataPoint(\State_Selected_MediaBlocks()\Line, @\State_Selected_MediaBlocks()\UsedData)
-					ProcessLineFold(\State_Selected_MediaBlocks()\Line)
+					RemoveUsedDataPointEX(\State_Selected_MediaBlocks()\Line, @\State_Selected_MediaBlocks()\UsedData)
+					ProcessLineFold(*GadgetData, \State_Selected_MediaBlocks()\Line)
 					For Loop = 1 To \State_Selected_MediaBlocks()\Duration
 						CopyStructure(@\State_Selected_MediaBlocks()\DataPoints(0), @\State_Selected_MediaBlocks()\DataPoints(Loop), Datapoint)
 					Next
@@ -1947,20 +2048,21 @@ Module PureTL
 			ForEach \State_Selected_MediaBlocks()
 				If EventData()
 					\State_Selected_MediaBlocks()\Container = #True
-					AddMediaBlockContainer(\State_Selected_MediaBlocks())
+					AddMediaBlockContainer(*GadgetData, \State_Selected_MediaBlocks())
 				Else
 					\State_Selected_MediaBlocks()\Container = #False
-					RemoveMediaBlockContainer(\State_Selected_MediaBlocks())
+					RemoveMediaBlockContainer(*GadgetData, \State_Selected_MediaBlocks())
 				EndIf
 			Next
 			Redraw(*GadgetData, #True)
 		EndWith
 	EndProcedure
+	;}
 	
 	; Handler
 	Procedure Handler_Body()
-		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget), Y = GetGadgetAttribute(*GadgetData\Comp_Body, #PB_Canvas_MouseY) - #Size_Header_Height, X = GetGadgetAttribute(*GadgetData\Comp_Body, #PB_Canvas_MouseX)
-		Protected *Mediablock.MediaBlock, Redraw, VOffset, HOffset, *Line.Line, *Adress, Column, Icon = #PB_Cursor_Default, Position, BlockStart, BlockEnd, Distance
+		Protected Gadget = EventGadget(), *GadgetData.GadgetData = GetGadgetData(Gadget), Y = GetGadgetAttribute(*GadgetData\Comp_Body, #PB_Canvas_MouseY) - #Size_Header_Height, X = Min(GetGadgetAttribute(*GadgetData\Comp_Body, #PB_Canvas_MouseX), *GadgetData\Meas_Body_Width)
+		Protected *Mediablock.MediaBlock, Redraw, VOffset, HOffset, *Line.Line, *Adress, Icon = #PB_Cursor_Default, Position, BlockStart, BlockEnd, Distance
 		Protected *Task.Task, XMLNode, XML
 		
 		With *GadgetData
@@ -1969,7 +2071,6 @@ Module PureTL
 					Select \State_Action
 						Case #Action_Body_Drag ;{
 							HOffset = Round(X / \Meas_TL_ColumnWidth, #PB_Round_Down) + \Meas_HPosition
-							
 							
 							If ListSize(\State_Selected_MediaBlocks()) > 1
 								
@@ -1996,6 +2097,10 @@ Module PureTL
 									*MediaBlock = _HoverMediaBlock(*GadgetData, X, Y)
 									
 									If \State_LineIndex()\Sub = #Properties_Sub And (*Mediablock And (*Mediablock\Container Or *Mediablock\Parent))
+										If *Mediablock\Parent
+											*Mediablock = *Mediablock\Parent
+										EndIf
+										
 										If \State_SubDropMediaBlock <> *Mediablock
 											\State_SubDropMediaBlock = *Mediablock
 											Redraw = #True
@@ -2061,9 +2166,6 @@ Module PureTL
 									Else
 										\State_Drag_X = \State_Selected_MediaBlocks()\BlockStart - (Round(X / \Meas_TL_ColumnWidth, #PB_Round_Down) + \Meas_HPosition)
 									EndIf
-									
-									Debug \State_Drag_X
-									
 								EndIf
 								\State_Drag_Y = Round(\State_Drag_Y / \Meas_TL_LineHeight, #PB_Round_Down) + \Meas_VPosition
 								
@@ -2103,8 +2205,6 @@ Module PureTL
 							\State_Resize = #Resize_None
 							
 							If \State_WarmMediaBlock And \State_WarmMediaBlock\State = #Hot
-								Column = Round(X / \Meas_TL_ColumnWidth, #PB_Round_Down) + \Meas_HPosition
-								
 								If \State_WarmMediaBlock\Parent
 									Position = - \State_WarmMediaBlock\Parent\BlockStart
 								EndIf
@@ -2241,7 +2341,7 @@ Module PureTL
 							
 							If ListSize(\State_Selected_MediaBlocks()) = 1
 								If \State_AssetDropLine
-									MoveMediaBlock(Gadget, \State_Selected_MediaBlocks(), \State_AssetDropLine, \State_Drag_HOffset - \Meas_HPosition + \State_Drag_X, XMLNode, \State_SubDropMediaBlock)
+									MoveMediaBlock(Gadget, \State_Selected_MediaBlocks(), \State_AssetDropLine, \State_Drag_HOffset + \State_Drag_X, XMLNode, \State_SubDropMediaBlock)
 								EndIf
 								\State_SubDropMediaBlock = 0
 								\State_AssetDropLine = 0
@@ -2423,6 +2523,14 @@ Module PureTL
 					EndSelect
 					Icon = \State_Icon
 					;}
+				Case #PB_EventType_MouseWheel ;{
+					If GetGadgetAttribute(Gadget, #PB_Canvas_Modifiers) & #PB_Canvas_Control
+						\Meas_TL_ColumnWidth = Min(Max(1, \Meas_TL_ColumnWidth + GetGadgetAttribute(Gadget, #PB_Canvas_WheelDelta)), 10)
+						Redraw(*GadgetData, #True)
+					Else
+						
+					EndIf
+					;}
 			EndSelect
 			
 			If Icon <> \State_Icon
@@ -2551,8 +2659,10 @@ Module PureTL
 						ElseIf \State_WarmButton
 							If \State_WarmButton\Fold = #Folded
 								\State_WarmButton\Fold = #Unfolded
+								Update_Displayed_Height(*GadgetData, \State_WarmButton\SubLineCount * #Size_MediaBlock_Height)
 							Else
 								\State_WarmButton\Fold = #Folded
+								Update_Displayed_Height(*GadgetData, - \State_WarmButton\SubLineCount * #Size_MediaBlock_Height)
 							EndIf
 							Redraw(*GadgetData, #True)
 						EndIf
@@ -2627,9 +2737,15 @@ Module PureTL
 	EndProcedure
 	
 	Procedure Handler_VScrollBar()
+		Protected *GadgetData.GadgetData = GetGadgetData(EventGadget())
+		*GadgetData\Meas_VPosition = GetGadgetState(*GadgetData\Comp_VScrollBar)
+		Redraw(*GadgetData, #True)
 	EndProcedure
 	
 	Procedure Handler_HScrollBar()
+		Protected *GadgetData.GadgetData = GetGadgetData(EventGadget())
+		*GadgetData\Meas_HPosition = GetGadgetState(*GadgetData\Comp_HScrollBar)
+		Redraw(*GadgetData, #True)
 	EndProcedure
 	
 	Procedure Handler_RenameString(hWnd, uMsg, wParam, lParam)
@@ -2755,14 +2871,22 @@ Module PureTL
 	
 	; Redraw
 	Procedure Redraw(*GadgetData.GadgetData, UpdateCollisionData = #False)
-		Protected Loop, LoopEnd, BodyYPos, YPos, OddLine, ListIndex, StepCount, LineHeight, DataPropertiesLoop, DataCount, Duration, BlockStart, BlockEnd
+		Protected Loop, BodyYPos, YPos, OddLine, ListIndex, StepCount, LineHeight, DataPropertiesLoop, DataCount, Duration, BlockStart, BlockEnd, InitialPosition, BLockHeight
+		Protected HScroll, VScroll
 		
 		With *GadgetData
-			StartDrawing(CanvasOutput(\Comp_List))
-			StartVectorDrawing(CanvasVectorOutput(\Comp_Body))
-			
 			;{ Empty current collision data if needed
 			If UpdateCollisionData
+				
+				\Meas_List_Height = \Meas_Height - #Size_Header_Height
+				
+				\Meas_Body_Width = \Meas_Width - \Meas_List_Width
+				
+				\Meas_Displayed_Line_Count = Round(\Meas_List_Height / #Size_MediaBlock_Height, #PB_Round_Up)
+				\Meas_Displayed_Column_Count = Round(\Meas_Body_Width / \Meas_TL_ColumnWidth, #PB_Round_Up)
+				
+				ReDim \State_Collision_Line(\Meas_Displayed_Line_Count)
+				
 				For Loop = 0 To \Meas_Displayed_Line_Count 
 					FreeArray(\State_Collision_Line(Loop)\Column()) 
 					Dim \State_Collision_Line(Loop)\Column(\Meas_Displayed_Column_Count)
@@ -2771,6 +2895,9 @@ Module PureTL
 				ClearList(\State_LineIndex())
 			EndIf
 			;}
+			
+			StartDrawing(CanvasOutput(\Comp_List))
+			StartVectorDrawing(CanvasVectorOutput(\Comp_Body))
 			
 			;{ Background color
 			Box(0, 0, \Meas_List_Width, \Meas_List_Height, \Color_List_Back[#cold])
@@ -2785,12 +2912,23 @@ Module PureTL
 						
 			;{ Content
 			If \Cont_Displayed_List_Size
-				SelectElement(\Cont_Displayed_List(), \Meas_VPosition)
-				LoopEnd = \Meas_VPosition + \Meas_Displayed_Line_Count
-				OddLine = \Meas_VPosition % 2
-				BodyYPos = #Size_Header_Height
+				; 				SelectElement(\Cont_Displayed_List(), \Meas_VPosition)
+				ResetList(\Cont_Displayed_List())
 				
-				For Loop = \Meas_VPosition To LoopEnd
+				While NextElement(\Cont_Displayed_List())
+					BLockHeight = \Meas_TL_LineHeight + \Cont_Displayed_List()\SubLineCount * Bool(\Cont_Displayed_List()\Fold = #Unfolded) * #Size_MediaBlock_Height
+					If BLockHeight + YPos > \Meas_VPosition
+						YPos = YPos - \Meas_VPosition
+						Break
+					EndIf
+					YPos + BLockHeight
+				Wend
+				
+				InitialPosition = ListIndex(\Cont_Displayed_List()) 
+				OddLine = InitialPosition % 2
+				BodyYPos = YPos + #Size_Header_Height
+				
+				For Loop = 0 To \Meas_Displayed_Line_Count
 					If \Cont_Displayed_List()\State = #Draged
 						Loop - 1
 					Else
@@ -2828,7 +2966,7 @@ Module PureTL
 								RoundBox(\Meas_TL_TextHorizontaOffset - 6, YPos + 15, #Size_List_FoldIcon_Offset, 28, 3, 3, \Color_List_Back[Bool(Not \Cont_Displayed_List()\State) * 2])
 							EndIf
 							
-							DrawingFont(IconSolid)
+							DrawingFont(FontIcon)
 							If \Cont_Displayed_List()\Fold = #Folded
 								DrawText(\Meas_TL_TextHorizontaOffset + 3, YPos + 18, #FontAwesome_Chevron_Right)
 								DrawingFont(FontBold)
@@ -2883,17 +3021,17 @@ Module PureTL
 								                                  \State_Selected_MediaBlocks()\Duration * \Meas_TL_ColumnWidth + \Meas_TL_ColumnWidth, LineHeight, 2)
 								VectorSourceColor($FFFFFFFF)
 								StrokePath(1)
-								
-								BodyYPos = YPos + #Size_Header_Height
-								
 							EndIf
 						EndIf
 						;}
 						
 						Loop + StepCount
 						YPos + \Meas_TL_LineHeight + #Size_MediaBlock_Height * StepCount
-						BodyYPos + \Meas_TL_LineHeight + #Size_MediaBlock_Height * StepCount
+						BodyYPos = YPos + #Size_Header_Height
 						OddLine = Bool(Not OddLine)
+						If YPos > \Meas_List_Height
+							Break
+						EndIf
 					EndIf
 					
 					If Not NextElement(\Cont_Displayed_List()) ; Check if there is more to draw before starting to draw the next line.
@@ -2911,12 +3049,11 @@ Module PureTL
 				Next
 				
 				If \State_Action = #Action_Body_Drag And ListSize(\State_Selected_MediaBlocks()) > 1 ;{ Draw drag marker for Multiple mediablocks moved at once
-					LoopEnd = \Meas_VPosition + LoopEnd
 					ForEach \State_Selected_MediaBlocks()
 						ChangeCurrentElement(\Cont_Displayed_List(), \State_Selected_MediaBlocks()\Line\DisplayListAdress)
 						ListIndex = Min(max(ListIndex(\Cont_Displayed_List()) + \State_Drag_VOffset, 0), \Cont_Displayed_List_Size - 1)
 						
-						If ListIndex >= \Meas_VPosition And ListIndex <= LoopEnd
+						If ListIndex >= InitialPosition And ListIndex <= \Meas_Displayed_Line_Count + InitialPosition
 							LineHeight = #Size_MediaBlock_Height
 							If \State_Selected_MediaBlocks()\Line\Fold = #Unfolded 
 								If \State_Selected_MediaBlocks()\Animated
@@ -2934,12 +3071,11 @@ Module PureTL
 					StrokePath(1)
 					;}
 				ElseIf \State_Action = #Action_Body_Resize ;{ Draw resize marker
-					LoopEnd = \Meas_VPosition + LoopEnd
 					ForEach \State_Selected_MediaBlocks()
 						ChangeCurrentElement(\Cont_Displayed_List(), \State_Selected_MediaBlocks()\Line\DisplayListAdress)
 						ListIndex = ListIndex(\Cont_Displayed_List())
 						
-						If ListIndex >= \Meas_VPosition And ListIndex <= LoopEnd
+						If ListIndex >= InitialPosition And ListIndex <= \Meas_Displayed_Line_Count + InitialPosition
 							LineHeight = #Size_MediaBlock_Height
 							If \State_Selected_MediaBlocks()\Line\Fold = #Unfolded And (\State_Selected_MediaBlocks()\Animated Or \State_Selected_MediaBlocks()\Container)
 								LineHeight + \State_Selected_MediaBlocks()\Line\SubLineCount * #Size_MediaBlock_Height
@@ -2982,6 +3118,10 @@ Module PureTL
 			;}
 			
 			;{ Header 
+			AddPathBox(0, 0, \Meas_Body_Width, #Size_Header_Height)
+			VectorSourceColor(SetAlpha($FF, \Color_List_Back[#cold]))
+			FillPath()
+			
 			MovePathCursor(0, #Size_Header_Height - 0.5)
 			AddPathLine(\Meas_Body_Width, 0, #PB_Path_Relative)
 			VectorSourceColor(SetAlpha($FF, \Color_General_Line))
@@ -2997,6 +3137,41 @@ Module PureTL
 			DrawAlphaImage(CornerDL, 0, \Meas_List_Height - #Size_RoundedCorner)
 			StopDrawing()
 			StopVectorDrawing()
+			;}
+			
+			;{ Update the scroll bars
+			If UpdateCollisionData
+				If \Meas_Displayed_Height > \Meas_List_Height
+					VScroll = #True
+					SetGadgetAttribute(\Comp_VScrollBar, #PB_ScrollBar_PageLength, \Meas_List_Height)
+				EndIf
+				
+				If \Cont_Duration > \Meas_Displayed_Column_Count
+					HScroll = #True
+					SetGadgetAttribute(\Comp_HScrollBar, #PB_ScrollBar_PageLength, \Meas_Displayed_Column_Count)
+				EndIf
+				
+				If HScroll
+					ResizeGadget(\Comp_HScrollBar, 0, \Meas_Height - #Size_Scrollbar_Thickness, \Meas_Body_Width - VScroll * #Size_Scrollbar_Thickness, #Size_Scrollbar_Thickness)
+					HideGadget(\Comp_HScrollBar, #False)
+					
+					SendMessage_(GadgetID(\Comp_HScrollBar), #WM_SETREDRAW, #True, 0)
+					RedrawWindow_(GadgetID(\Comp_HScrollBar), 0, 0, #RDW_INVALIDATE | #RDW_UPDATENOW | #RDW_ERASE)
+				Else
+					\Meas_HPosition = 0
+					SetGadgetState(\Comp_HScrollBar, 0)
+					HideGadget(\Comp_HScrollBar, #True)
+				EndIf
+				
+				If VScroll
+					ResizeGadget(\Comp_VScrollBar, \Meas_Body_Width - #Size_Scrollbar_Thickness, #Size_Header_Height, #Size_Scrollbar_Thickness, \Meas_List_Height - HScroll * #Size_Scrollbar_Thickness)
+					HideGadget(\Comp_VScrollBar, #False)
+				Else
+					\Meas_VPosition = 0
+					HideGadget(\Comp_VScrollBar, #True)
+				EndIf
+				
+			EndIf
 			;}
 		EndWith		
 	EndProcedure
@@ -3015,7 +3190,7 @@ Module PureTL
 	EndProcedure
 	
 	Procedure Redraw_MediaBlock(*GadgetData.GadgetData, YPos, *Block.MediaBlock, CollisionDataLine, UpdateCollisionData = #False)
-		Protected XPos, Duration, BlockStart, Height, Width, Alpha = $FF, Unfolded, Loop, LoopEnd, TextPos, ChildPos, ChildWidth, CollisionLoop, CollisionLoopEnd
+		Protected XPos, Duration, BlockStart, Height, Width, Alpha = $FF, Unfolded, Loop, LoopEnd, TextPos, ChildPos, ChildWidth, CollisionLoop, CollisionLoopEnd, ParentPos
 		With *GadgetData
 			If *Block\Drag
 				Alpha = 80
@@ -3076,7 +3251,7 @@ Module PureTL
 				
 				VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Front[*Block\State]))
 				MovePathCursor( TextPos + 8, YPos + 11)
-				VectorFont(Icon, 28)
+				VectorFont(FontIcon, 28)
 				DrawVectorText(*Block\Icon)
 				
 				VectorFont(Font, 14)
@@ -3099,15 +3274,26 @@ Module PureTL
 				If \Cont_Displayed_List()\UsedDataPoints(#Properties_Sub) 
 					If *Block\Container
 						If *Block = *GadgetData\State_SubDropMediaBlock
-							VectorSourceColor($FFFFFFFF)
-							AddPathBox(XPos + 2.5, YPos + 2.5, Width - 4, #Size_MediaBlock_Height - 4)
-							StrokePath(0.5)
-						EndIf
-						
+							VectorSourceColor($33FFFFFF)
+ 							AddPathBox(XPos + 1, YPos, Width, #Size_MediaBlock_Height)
+ 							FillPath()
+ 							MovePathCursor((\State_AssetDropPosition - \Meas_HPosition) * \Meas_TL_ColumnWidth, YPos + 2.5)
+ 							
+ 							If \State_AssetDropPosition
+ 								AddPathLine(0, #Size_MediaBlock_Height - 4, #PB_Path_Relative)
+ 								VectorSourceColor($FFFFFFFF)
+ 								StrokePath(0.5)
+ 							EndIf
+ 						EndIf
+ 						
+ 						ParentPos = (*Block\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth
+ 						
 						ForEach *Block\Children() ; Sub content
 							SaveVectorState()
 							
-							ChildPos = XPos + *Block\Children()\BlockStart  * \Meas_TL_ColumnWidth
+							; This won't do for more advanced mediablock (I'm thinking soung, mostly)
+							
+							ChildPos = Max(ParentPos + *Block\Children()\BlockStart * \Meas_TL_ColumnWidth, -3)
 							ChildWidth = *Block\Children()\Duration * \Meas_TL_ColumnWidth + \Meas_TL_ColumnWidth
 							
 							AddPathBox(ChildPos, YPos + 6, ChildWidth, #Size_MediaBlock_Height - 9)
@@ -3124,11 +3310,11 @@ Module PureTL
 							FillPath(#PB_Path_Preserve)
 							ClipPath()
 							
-							TextPos = ChildPos
+							TextPos = Max(ChildPos, XPos)
 				
 							VectorSourceColor(SetAlpha(Alpha, \Color_MediaBlock_Front[*Block\Children()\State]))
 							MovePathCursor( TextPos + 8, YPos + 12)
-							VectorFont(Icon, 26)
+							VectorFont(FontIcon, 26)
 							DrawVectorText(*Block\Children()\Icon)
 							
 							VectorFont(Font, 14)
@@ -3138,8 +3324,9 @@ Module PureTL
 							RestoreVectorState()
 							
 							; Collision map
-							CollisionLoopEnd = Min(*Block\Children()\BlockEnd + *Block\BlockStart, *Block\BlockEnd)
-							For CollisionLoop = *Block\Children()\BlockStart + *Block\BlockStart To CollisionLoopEnd
+							CollisionLoopEnd = Min(*Block\Children()\BlockEnd + *Block\BlockStart, Min(*Block\BlockEnd, \Meas_Displayed_Column_Count))
+							
+							For CollisionLoop = Max(Max(*Block\BlockStart, *Block\Children()\BlockStart + *Block\BlockStart), \Meas_HPosition) - \Meas_HPosition To CollisionLoopEnd
 								\State_Collision_Line(CollisionDataLine + 1)\Column(CollisionLoop) = *Block\Children()
 							Next
 						Next
@@ -3155,16 +3342,14 @@ Module PureTL
 	EndProcedure
 	
 	Procedure Redraw_Line(*GadgetData.GadgetData, YPos, OddLine, CollisionDataLine, UpdateCollisionData = #False)
-		Protected Loop, LoopEnd, LineHeight, StepCount, DataLineLoop, DataLineLoopEnd
+		Protected Loop, LoopEnd, LineHeight, StepCount, DataLineLoop, DataLineLoopEnd, ColumnLoopEnd = *GadgetData\Meas_HPosition + *GadgetData\Meas_Displayed_Column_Count
 		
 		With *GadgetData
-			Protected ColumnLoop, ColumnLoopEnd = \Meas_HPosition + \Meas_Displayed_Column_Count
-			
 			If \Cont_Displayed_List()\Fold = #Unfolded
 				StepCount + \Cont_Displayed_List()\SubLineCount
 			EndIf
 			
-			LineHeight =  \Meas_TL_LineHeight + StepCount * #Size_MediaBlock_Height
+			LineHeight = \Meas_TL_LineHeight + StepCount * #Size_MediaBlock_Height
 			
 			;{ Background color
 			If Not OddLine 
@@ -3184,22 +3369,21 @@ Module PureTL
 				ElseIf \Cont_Displayed_List()\MediaBlock()\BlockEnd > \Meas_HPosition
 					
 					If UpdateCollisionData
-						LoopEnd = Min(\Cont_Displayed_List()\MediaBlock()\BlockEnd, \Meas_HPosition + \Meas_Displayed_Column_Count)
-						
-						For Loop = Max(\Cont_Displayed_List()\MediaBlock()\BlockStart, \Meas_HPosition) To LoopEnd
+						LoopEnd = Min(\Cont_Displayed_List()\MediaBlock()\BlockEnd - \Meas_HPosition, \Meas_Displayed_Column_Count) 
+						For Loop = Max(\Cont_Displayed_List()\MediaBlock()\BlockStart - \Meas_HPosition, 0) To LoopEnd
 							\State_Collision_Line(CollisionDataLine)\Column(Loop) = \Cont_Displayed_List()\MediaBlock()
 						Next
 						
 						If \Cont_Displayed_List()\Fold = #Unfolded
 							If \Cont_Displayed_List()\MediaBlock()\Animated
 								DataLineLoopEnd = min(ArraySize(\State_Collision_Line()), CollisionDataLine + StepCount)
-								For Loop = Max(\Cont_Displayed_List()\MediaBlock()\BlockStart, \Meas_HPosition) To LoopEnd
+								For Loop = Max(\Cont_Displayed_List()\MediaBlock()\BlockStart - \Meas_HPosition, 0) To LoopEnd
 									For DataLineLoop = CollisionDataLine + 1 To DataLineLoopEnd
 										\State_Collision_Line(DataLineLoop)\Column(Loop) = \Cont_Displayed_List()\MediaBlock()
 									Next
 								Next
 							ElseIf \Cont_Displayed_List()\MediaBlock()\Container
-								For Loop = Max(\Cont_Displayed_List()\MediaBlock()\BlockStart, \Meas_HPosition) To LoopEnd
+								For Loop = Max(\Cont_Displayed_List()\MediaBlock()\BlockStart - \Meas_HPosition, 0) To LoopEnd
 									\State_Collision_Line(CollisionDataLine + 1)\Column(Loop) = \Cont_Displayed_List()\MediaBlock()
 								Next
 							EndIf
@@ -3212,25 +3396,6 @@ Module PureTL
 			
 			ProcedureReturn StepCount
 		EndWith
-	EndProcedure
-	
-	; Misc
-	Procedure Refit(Gadget, GadgetWidth, GadgetHeight)
-		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), Loop
-		
-		With *GadgetData
-			GadgetHeight - #Size_Header_Height
-			
-			\Meas_List_Height = GadgetHeight
-			
-			\Meas_Body_Width = GadgetWidth - \Meas_List_Width
-			
-			\Meas_Displayed_Line_Count = Round(\Meas_List_Height / #Size_MediaBlock_Height, #PB_Round_Up)
-			\Meas_Displayed_Column_Count = Round(\Meas_Body_Width / \Meas_TL_ColumnWidth, #PB_Round_Up)
-			
-			ReDim \State_Collision_Line(\Meas_Displayed_Line_Count)
-		EndWith
-		
 	EndProcedure
 	
 	Procedure VerticalFocus(*GadgetData.GadgetData)
@@ -3307,7 +3472,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 1726
-; FirstLine = 430
-; Folding = AAKAhDAAAEIAgbEDoAAAAAAAAAg
+; CursorPosition = 2528
+; FirstLine = 690
+; Folding = AAFgxDAAAAMGAACAJAAgABAAIgAA-
 ; EnableXP

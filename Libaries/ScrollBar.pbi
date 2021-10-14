@@ -393,27 +393,19 @@ Module ScrollBar
 	EndProcedure
 	
 	;TODO: Remove the Renderboy optimization
+	;... Which was what?
 	
 	Procedure _ResizeGadget(*this.PB_Gadget, x, y, Width, Height) ; Ok
 		Protected *GadgetData.GadgetData = *this\VT
-; 		
-; 		*this\VT = *GadgetData\OriginalVT
-; 		ResizeGadget(*GadgetData\Gadget, x, y, Width, Height)
-; 		*this\VT = *GadgetData
-		
 		With *GadgetData
 			\Width = Width
 			\Height = Height
 			SetWindowPos_(GadgetID(\Gadget), 0, x, y, Width, Height, #SWP_NOREDRAW|#SWP_NOZORDER)
 			
-; 			\Width = GadgetWidth(\Gadget)
-; 			\Height = GadgetHeight(\Gadget) 
-			
 			CalculateSize
 		EndWith
 		
 		Redraw(*GadgetData)
-		
 	EndProcedure
 	
 	Procedure _GetGadgetColor(*this.PB_Gadget, ColorType)
@@ -544,8 +536,8 @@ CompilerIf #PB_Compiler_IsMainFile
 	Repeat
 	Until WaitWindowEvent() = #PB_Event_CloseWindow
 CompilerEndIf
-; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 405
+; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
+; CursorPosition = 395
 ; FirstLine = 18
-; Folding = CASEB9
+; Folding = CQAAw
 ; EnableXP

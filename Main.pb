@@ -113,7 +113,7 @@ CompilerElse
 		WaitWindowEvent()
 	ForEver
 CompilerEndIf
-; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 14
+; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
+; CursorPosition = 11
 ; Folding = RQ-
 ; EnableXP
