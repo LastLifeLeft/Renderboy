@@ -907,7 +907,7 @@
 				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
 		EndSelect
 		
-  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 30, AssetButton::DragType, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID))
+  		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 60, AssetButton::DragType, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID))
   	EndProcedure
   	
   	Procedure HandlerTimeLineChildrenDrop()
@@ -1070,8 +1070,8 @@ EndModule
 
 
 
-; IDE Options = PureBasic 6.00 Alpha 4 (Windows - x64)
-; CursorPosition = 933
+; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
+; CursorPosition = 909
 ; FirstLine = 359
 ; Folding = h4ngoGAAD0
 ; EnableXP

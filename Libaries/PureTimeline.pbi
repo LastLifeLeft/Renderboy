@@ -494,6 +494,7 @@ Module PureTL
 		
 		#Action_Body_InitDrag
 		#Action_Body_Drag
+		#Action_Body_PlayerDrag
 		#Action_Body_Resize
 		
 		#Action_Drop
@@ -682,6 +683,8 @@ Module PureTL
 		
 		List *State_Selected_MediaBlocks.MediaBlock()
 		
+		State_PlayerPosition.i
+		
 		; Content
 		List *Cont_Displayed_List.Line()
 		Cont_Displayed_List_Size.i
@@ -712,7 +715,7 @@ Module PureTL
 	
 	; Size
 	#Size_TL_DefaultLineHeight = 58
-	#Size_TL_DefaultColumnWidth = 6
+	#Size_TL_DefaultColumnWidth = 4
 	#Size_TL_MaxColumnWidth = 15
 	#Size_TL_MinColumnWidth = 1
 	
@@ -2183,6 +2186,12 @@ Module PureTL
 							EndIf
 							
 							;}
+						Case #Action_Body_PlayerDrag ;{
+							Position = Round(X / \Meas_TL_ColumnWidth, #PB_Round_Down) + \Meas_HPosition
+							If \State_PlayerPosition <> Position
+								\State_PlayerPosition = Position
+								Redraw(*GadgetData)
+							EndIf
 						Default ;{
 							If Y >= 0
 								*Mediablock = _HoverMediaBlock(*GadgetData, X, Y)
@@ -2290,6 +2299,13 @@ Module PureTL
 						\State_Action = #Action_Body_InitDrag
 						
 						If Redraw
+							Redraw(*GadgetData)
+						EndIf
+					ElseIf Y < 0
+						Position = Round(X / \Meas_TL_ColumnWidth, #PB_Round_Down) + \Meas_HPosition
+						\State_Action = #Action_Body_PlayerDrag
+						If \State_PlayerPosition <> Position
+							\State_PlayerPosition = Position
 							Redraw(*GadgetData)
 						EndIf
 					EndIf
@@ -2405,6 +2421,9 @@ Module PureTL
 							\State_Action = #Action_Hover
 							
 							Redraw = #True
+							;}
+						Case #Action_Body_PlayerDrag ;{
+							\State_Action = #Action_Hover
 							;}
 					EndSelect
 					
@@ -2527,8 +2546,22 @@ Module PureTL
 					If GetGadgetAttribute(Gadget, #PB_Canvas_Modifiers) & #PB_Canvas_Control
 						\Meas_TL_ColumnWidth = Min(Max(1, \Meas_TL_ColumnWidth + GetGadgetAttribute(Gadget, #PB_Canvas_WheelDelta)), 10)
 						Redraw(*GadgetData, #True)
-					Else
 						
+						; Width smaller than one won't work with the current collision system.						
+; 						Select \Meas_TL_ColumnWidth
+; 							Case 1
+; 							Case 0.5
+; 							Case 0.3
+; 							Case 0.1
+; 							Default	
+; 								
+; 						EndSelect
+						
+					Else
+						\Meas_VPosition + GetGadgetAttribute(Gadget, #PB_Canvas_WheelDelta) * -40
+						SetGadgetState(\Comp_VScrollBar, \Meas_VPosition)
+						\Meas_VPosition = GetGadgetState(\Comp_VScrollBar)
+						Redraw(*GadgetData, #True)
 					EndIf
 					;}
 			EndSelect
@@ -2706,6 +2739,12 @@ Module PureTL
 							;}
 					EndSelect
 					;}
+				Case #PB_EventType_MouseWheel ;{
+					\Meas_VPosition + GetGadgetAttribute(Gadget, #PB_Canvas_WheelDelta) * -40
+					SetGadgetState(\Comp_VScrollBar, \Meas_VPosition)
+					\Meas_VPosition = GetGadgetState(\Comp_VScrollBar)
+					Redraw(*GadgetData, #True)
+					;}	
 			EndSelect
 		EndWith
 	EndProcedure
@@ -2905,11 +2944,11 @@ Module PureTL
 			DrawingMode(#PB_2DDrawing_Transparent)
 			FrontColor(\Color_List_Front[#Cold])
 			
-			AddPathBox(0, 0, \Meas_Body_Width, VectorOutputHeight())
+			AddPathBox(0, #Size_Header_Height, \Meas_Body_Width, \Meas_List_Height)
 			VectorSourceColor(SetAlpha($FF, \Color_List_Back[#cold]))
 			FillPath()
 			;}
-						
+			
 			;{ Content
 			If \Cont_Displayed_List_Size
 				; 				SelectElement(\Cont_Displayed_List(), \Meas_VPosition)
@@ -3122,10 +3161,38 @@ Module PureTL
 			VectorSourceColor(SetAlpha($FF, \Color_List_Back[#cold]))
 			FillPath()
 			
+			StepCount = Round(\Meas_Body_Width / \Meas_TL_ColumnWidth, #PB_Round_Up)
+			InitialPosition = (\Meas_HPosition % 10)
+			For Loop = 0 To StepCount Step 10
+				MovePathCursor(0.5 + (Loop - InitialPosition) * \Meas_TL_ColumnWidth, #Size_Header_Height)
+				If (Loop + \Meas_HPosition - InitialPosition) % 100
+					AddPathLine(0, - 10, #PB_Relative)
+				Else
+					AddPathLine(0, - 25, #PB_Relative)
+				EndIf
+			Next
+			
+			VectorSourceColor(SetAlpha($80, \Color_MediaBlock_Front[#cold]))
+			StrokePath(0.5)
+			
 			MovePathCursor(0, #Size_Header_Height - 0.5)
 			AddPathLine(\Meas_Body_Width, 0, #PB_Path_Relative)
 			VectorSourceColor(SetAlpha($FF, \Color_General_Line))
 			StrokePath(#Size_Line_Thin)
+			
+			If \State_PlayerPosition >= \Meas_HPosition - 5 And \State_PlayerPosition <= \Meas_HPosition + \Meas_Displayed_Column_Count + 5
+				MovePathCursor((\State_PlayerPosition - \Meas_HPosition) * \Meas_TL_ColumnWidth + 0.5 - #Size_Player_TopOffset, 0)
+				AddPathLine(0, #Size_Player_TopSquare, #PB_Path_Relative)
+				AddPathLine(#Size_Player_TopOffset - 0.5, #Size_Player_TopHeight - #Size_Player_TopSquare, #PB_Path_Relative)
+				AddPathLine(#Size_Player_Width, 0, #PB_Path_Relative)
+				AddPathLine(#Size_Player_TopOffset - 0.5, - (#Size_Player_TopHeight - #Size_Player_TopSquare), #PB_Path_Relative)
+				AddPathLine(0, - #Size_Player_TopSquare, #PB_Path_Relative)
+				ClosePath()
+				MovePathCursor(#Size_Player_TopOffset - 0.5, #Size_Player_TopHeight, #PB_Path_Relative)
+				AddPathBox(0,0, #Size_Player_Width, \Meas_Height, #PB_Path_Relative)
+				VectorSourceColor($FF5466FF)
+				FillPath()
+			EndIf
 			;}
 			
 			;{ Corner and finish
@@ -3472,7 +3539,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 2528
-; FirstLine = 690
-; Folding = AAFgxDAAAAMGAACAJAAgABAAIgAA-
+; CursorPosition = 2189
+; FirstLine = 625
+; Folding = AAFgzBAAAAMCAACBLZEBAAAAQAAA5
 ; EnableXP
