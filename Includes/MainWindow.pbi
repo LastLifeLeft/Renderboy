@@ -638,6 +638,7 @@
 					If AssetContainer_Width <> PosX
 						AssetContainer_Width = PosX
 						Refit()
+						SendMessage_(Renderer, #WM_SIZE, 0, 0)
 					EndIf
 				Else
 					PosY = General::Min(General::Max(SplitterOrigin - PosY + MouseOrigin, #Size_Timeline_MinimumHeight), Height - 360)
@@ -650,6 +651,7 @@
 						RendererHeight = PosY + #Size_Media_Icon
 						
 						Refit()
+						SendMessage_(Renderer, #WM_SIZE, 0, 0)
 					EndIf
 				EndIf
 				;}
@@ -712,7 +714,7 @@
 				If EditSplitter
 					CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 						AddElement(General::EventList())
-						General::EventList() = General::#Event_Resize
+						General::EventList()\EventType = General::#Event_Resize
 					CompilerEndIf
 					
 					EditSplitter = 0
@@ -754,7 +756,7 @@
 	Procedure HandlerCloseButton()
 		CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 			AddElement(General::EventList())
-			General::EventList() = General::#Event_End
+			General::EventList()\EventType = General::#Event_End
 		CompilerElse
 			End
 		CompilerEndIf
@@ -941,18 +943,22 @@
 				Project::AssetUnUse(PeekS(EventData()))
 			Case PureTL::#EventType_AssetUse
 				Project::AssetUse(PeekS(EventData()))
-			Case PureTL::#EventType_PlayerMove, PureTL::#EventType_Change
-				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
-					AddElement(General::EventList())
-					General::EventList() = General::#Event_ReRender
-				CompilerEndIf
+			Case PureTL::#EventType_PlayerMove
+				AddElement(General::EventList())
+				General::EventList()\EventType = General::#Event_ReRender
 				PureTL::UpdateCurrentAssetList(#TimeLine)
-			Case PureTL::#EventType_Edit
-				CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
-					AddElement(General::EventList())
-					General::EventList() = General::#Event_Edit
-				CompilerEndIf
+			Case PureTL::#EventType_Change
 				
+			Case PureTL::#EventType_Edit
+				AddElement(General::EventList())
+				General::EventList()\UUID = PeekS(EventData(), -1)
+				General::EventList()\EventType = General::#Event_Edit
+			Case PureTL::#EventType_AddLayer
+				AddElement(General::EventList())
+				General::EventList()\EventType = General::#Event_AddLayer
+			Case PureTL::#EventType_RemoveLayer
+				AddElement(General::EventList())
+				General::EventList()\EventType = General::#Event_RemoveLayer
 		EndSelect
 	EndProcedure
 	
@@ -983,6 +989,10 @@
 			RendererHeight = AssetContainerHeight + #Size_Media_Icon
 			SetWindowPos_(Renderer, 0, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, RendererWidth, AssetContainerHeight + #Size_Media_Icon, #SWP_NOZORDER)
 			
+; 			CompilerIf #PB_Compiler_DLL
+			
+			
+			
 			SetWindowPos_(MediaContainerBorder(1), 0, AssetContainer_Width - #Size_RoundedCorner, 0, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			SetWindowPos_(MediaContainerBorder(2), 0, AssetContainer_Width - #Size_RoundedCorner, AssetContainerHeight - #Size_RoundedCorner, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			SetWindowPos_(MediaContainerBorder(3), 0, 0, AssetContainerHeight - #Size_RoundedCorner, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
@@ -994,7 +1004,7 @@
 			
 			CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 				AddElement(General::EventList())
-				General::EventList() = General::#Event_Resize
+				General::EventList()\EventType = General::#Event_Resize
 			CompilerEndIf
 			
 			If AssetButtonScrollBar
@@ -1071,7 +1081,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 909
-; FirstLine = 359
-; Folding = h4ngoGAAD0
+; CursorPosition = 1006
+; FirstLine = 131
+; Folding = h4hAAQBAA-
 ; EnableXP

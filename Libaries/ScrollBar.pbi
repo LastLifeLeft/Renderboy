@@ -392,8 +392,8 @@ Module ScrollBar
 		EndIf
 	EndProcedure
 	
-	;TODO: Remove the Renderboy optimization
-	;... Which was what?
+	;TODO: Remove the Renderboy specific optimization
+	;... Which was what? Amazing job on the comment clarity!
 	
 	Procedure _ResizeGadget(*this.PB_Gadget, x, y, Width, Height) ; Ok
 		Protected *GadgetData.GadgetData = *this\VT
@@ -537,7 +537,7 @@ CompilerIf #PB_Compiler_IsMainFile
 	Until WaitWindowEvent() = #PB_Event_CloseWindow
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 395
+; CursorPosition = 430
 ; FirstLine = 18
 ; Folding = CQAAw
 ; EnableXP

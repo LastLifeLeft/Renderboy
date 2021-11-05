@@ -344,8 +344,8 @@
 	;}
 	
 EndModule
-; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 217
-; FirstLine = 72
-; Folding = vDIECQ-
+; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
+; CursorPosition = 182
+; FirstLine = 41
+; Folding = vDAACQ-
 ; EnableXP

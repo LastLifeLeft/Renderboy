@@ -11,10 +11,17 @@
 		#Event_Resize
 		#Event_ReRender
 		#Event_Edit
+		#Event_AddLayer
+		#Event_RemoveLayer
 	EndEnumeration
 	
+	Structure EventList
+		EventType.i
+		UUID.s
+	EndStructure
+	
 	Global WindowName.s
-	Global NewList EventList()
+	Global NewList EventList.EventList()
 	
 	CompilerIf #PB_Compiler_OS = #PB_OS_Windows ; Fix color
 		Macro FixColor(Color)
@@ -195,8 +202,7 @@ Module General
 EndModule
 
 
-; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 120
-; FirstLine = 51
-; Folding = tfw
+; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
+; CursorPosition = 23
+; Folding = tdw
 ; EnableXP

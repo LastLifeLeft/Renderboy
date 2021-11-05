@@ -68,7 +68,7 @@
 				SetGadgetData(Gadget, *GadgetData)
 				BindGadgetEvent(Gadget, @HandlerAssetButton())
 				Redraw(Gadget)
-				
+				 
 				SetGadgetColor(\TextGadget, #PB_Gadget_FrontColor, $FFFFFF)
 				SetGadgetColor(\TextGadget, #PB_Gadget_BackColor, $482E27)
 			EndWith
@@ -617,8 +617,8 @@
 	
 	
 EndModule
-; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 34
-; FirstLine = 28
+; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
+; CursorPosition = 70
+; FirstLine = 31
 ; Folding = -Hh
 ; EnableXP

@@ -1,19 +1,15 @@
-//surface_set_target(frame_surface)
-draw_clear_alpha(c_black, 1)
-//check if some channel limitation is needed since we are working on a canvas?
-
-var _edit = -1
-
-for (var i = 0; i < layer_list_size; i++)
+if (rerender)
 {
-	layer_list[| i][0].render(layer_list[| i][2]);
-	if layer_list[| i][1] = layer_edit
+	draw_clear(c_black);
+	rerender = false;
+	
+	var _item_count/*int*/ = ds_list_size(render_list);
+	
+	for (var i/*int*/= 0; i < _item_count; i++)
 	{
-		_edit = i
+		render_list[| i].render();
 	}
-}
-
-if _edit > -1
-{
-	layer_list[| _edit][0].edit(layer_list[| _edit][2]);
+	
+	sprite_delete(render_sprite);
+	render_sprite = sprite_create_from_surface(application_surface, 0, 0, target_width, target_height, false, false, 0, 0);
 }
