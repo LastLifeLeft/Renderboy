@@ -216,6 +216,7 @@
 	Declare HandlerTimeLineDrop()
 	Declare HandlerTimeLineChildrenDrop()
 	Declare HandlerTimeLine()
+	Declare Hook(nCode, wParam, *p.KBDLLHOOKSTRUCT)
 	
 	; Misc
 	Declare Refit()
@@ -410,6 +411,10 @@
 		SetWindowLongPtr_(WindowID(DragPreview),#GWL_EXSTYLE,#WS_EX_LAYERED)
 		SetLayeredWindowAttributes_(WindowID(DragPreview),0,140,#LWA_ALPHA)
 		ImagePreview = ImageGadget(#PB_Any, 0, 0, 0, 0, 0)
+		
+		
+		#WH_KEYBOARD_LL = 13
+		SetWindowsHookEx_(#WH_KEYBOARD_LL,@Hook(),GetModuleHandle_(0),0)
 		
 		; Renderer
 		CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
@@ -794,7 +799,7 @@
 		Protected Gadget = EventGadget(), *MediaButton.MediaButton = GetGadgetData(Gadget)
 		
 		Select EventType()
-			Case #PB_EventType_MouseEnter
+			Case #PB_EventType_MouseEnter ;{
 				If *MediaButton\State = 0
 					StartDrawing(CanvasOutput(Gadget))
 					Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(#Color_Window_Back_Cold))
@@ -808,8 +813,8 @@
 					DrawText(*MediaButton\Textx, 45, *MediaButton\Text)
 					
 					StopDrawing()
-				EndIf
-			Case #PB_EventType_MouseLeave
+				EndIf ;}
+			Case #PB_EventType_MouseLeave ;{
 				If *MediaButton\State = 0
 					StartDrawing(CanvasOutput(Gadget))
 					Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(#Color_Window_Back_Cold))
@@ -823,8 +828,8 @@
 					DrawText(*MediaButton\Textx, 45, *MediaButton\Text)
 					
 					StopDrawing()
-				EndIf
-			Case #PB_EventType_LeftButtonDown
+				EndIf ;}
+			Case #PB_EventType_LeftButtonDown ;{
 				If *MediaButton\State = 0
 					*MediaButton\State = #True
 					StartDrawing(CanvasOutput(Gadget))
@@ -851,7 +856,31 @@
 					
 					PostEvent(#PB_Event_Gadget, #Window, Gadget, #PB_EventType_MouseLeave)
 					
+					ForEach AssetButtonList()
+						AssetButton::Delete(AssetButtonList()\Gadget)
+					Next
+					
+					ClearList(AssetButtonList())
+					
+					Select MediaState
+						Case #Asset_Media ;{
+							Project::RePopulateMediaLibrary()
+							;}
+						Case #Asset_Sound ;{
+							
+							;}
+						Case #Asset_Model ;{
+							
+							;}
+						Case #Asset_Overlay ;{
+							
+							;}
+						Case #Asset_Element ;{
+							
+							;}
+					EndSelect
 				EndIf
+				 ;}
 		EndSelect
 		
 	EndProcedure
@@ -962,6 +991,23 @@
 		EndSelect
 	EndProcedure
 	
+	Procedure Hook(nCode, wParam, *p.KBDLLHOOKSTRUCT)
+		If nCode = #HC_ACTION
+			Select *p\vkCode
+				Case 160 ; shift 
+					ModifierShift = Bool(wParam = #WM_KEYDOWN)
+				Case 162 ; Control
+					ModifierControl = Bool(wParam = #WM_KEYDOWN)
+			EndSelect
+; 			If wParam = #WM_KEYDOWN
+; 				Debug "Up "+ *p\vkCode
+; 			ElseIf wParam = #WM_KEYUP
+; 				Debug "down "+ *p\vkCode
+; 			EndIf
+		EndIf
+		ProcedureReturn #False
+	EndProcedure
+	
 	; Misc
 	Procedure Refit()
 		Protected Height = WindowHeight(#Window), Width = WindowWidth(#Window), AssetContainerHeight
@@ -987,12 +1033,8 @@
 			AssetButtonScrollBar = RefitAssets(AssetContainer_Width, AssetContainerHeight)
 			RendererWidth = WindowWidth - AssetContainer_Width - 30
 			RendererHeight = AssetContainerHeight + #Size_Media_Icon
+			
 			SetWindowPos_(Renderer, 0, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, RendererWidth, AssetContainerHeight + #Size_Media_Icon, #SWP_NOZORDER)
-			
-; 			CompilerIf #PB_Compiler_DLL
-			
-			
-			
 			SetWindowPos_(MediaContainerBorder(1), 0, AssetContainer_Width - #Size_RoundedCorner, 0, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			SetWindowPos_(MediaContainerBorder(2), 0, AssetContainer_Width - #Size_RoundedCorner, AssetContainerHeight - #Size_RoundedCorner, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
 			SetWindowPos_(MediaContainerBorder(3), 0, 0, AssetContainerHeight - #Size_RoundedCorner, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER | #SWP_NOREDRAW)
@@ -1047,7 +1089,6 @@
 		Else
 			ProcedureReturn #False
 		EndIf
-		
 	EndProcedure
 	;}
 	
@@ -1081,7 +1122,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 1006
-; FirstLine = 131
-; Folding = h4hAAQBAA-
+; CursorPosition = 848
+; FirstLine = 189
+; Folding = x4pAAQByPA7
 ; EnableXP

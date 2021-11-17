@@ -10,6 +10,6 @@ if (rerender)
 		render_list[| i].render();
 	}
 	
-	sprite_delete(render_sprite);
-	render_sprite = sprite_create_from_surface(application_surface, 0, 0, target_width, target_height, false, false, 0, 0);
+	//sprite_delete(render_sprite);
+	//render_sprite = sprite_create_from_surface(application_surface, 0, 0, target_width, target_height, false, false, 0, 0);
 }

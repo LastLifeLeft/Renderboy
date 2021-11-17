@@ -48,6 +48,12 @@
             1,
           ],"resourceVersion":"1.0","name":"UI_get_asset_state","tags":[],"resourceType":"GMExtensionFunction",},
         {"externalName":"GetEventMediablock","kind":1,"help":"","hidden":false,"returnType":1,"argCount":0,"args":[],"resourceVersion":"1.0","name":"UI_get_event_mediablock","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetModifierControl","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[],"resourceVersion":"1.0","name":"UI_get_modifier_ctrl","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetModifierShift","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[],"resourceVersion":"1.0","name":"UI_get_modifier_shift","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"UpdateMediaBlockState","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            1,
+            1,
+          ],"resourceVersion":"1.0","name":"UI_set_mediablock_state","tags":[],"resourceType":"GMExtensionFunction",},
       ],"constants":[],"ProxyFiles":[],"copyToTargets":-1,"order":[
         {"name":"UI_init","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_width","path":"extensions/NativeUI/NativeUI.yy",},
@@ -62,6 +68,9 @@
         {"name":"UI_get_asset_path","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_asset_state","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_event_mediablock","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_modifier_ctrl","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_modifier_shift","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_set_mediablock_state","path":"extensions/NativeUI/NativeUI.yy",},
       ],"resourceVersion":"1.0","name":"","tags":[],"resourceType":"GMExtensionFile",},
   ],
   "classname": "",

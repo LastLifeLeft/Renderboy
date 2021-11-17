@@ -1,11 +1,14 @@
 #macro MEDIABLOCK_STATE \
 	state = undefined;\
-	submedia = ds_list_create()\
-	\
-	update = function()\
-	{\
-		state = json_parse(UI_get_asset_state(UUID));\
-	}\
+	submedia = ds_list_create()
+
+enum MB_EEditState
+{
+	Hover,
+	Rotate,
+	Move,
+	Resize
+}
 
 
 function MediaBlock2D(_UUID, _type) constructor
@@ -14,6 +17,21 @@ function MediaBlock2D(_UUID, _type) constructor
 	asset_UUID = UI_get_asset_uuid(UUID);
 	asset = global.asset_map[? asset_UUID];
 	type = _type;
+	
+	edit_count = 0
+	edit_corner = array_create(4);
+	edit_state = MB_EEditState.Hover;
+	edit_direction = 0;
+	edit_angle = 0;
+	edit_x = 0;
+	edit_y = 0;
+	backup_state = {
+	    X : 0,
+	    Y : 0,
+		Width : 0,
+		Height : 0,
+		Angle : 0
+	};
 	
 	if is_undefined(asset)
 	{
@@ -28,11 +46,57 @@ function MediaBlock2D(_UUID, _type) constructor
 	}
 	
 	ds_map_add(global.mediablock_map, UUID, self)
-	
-	image_width = asset.width;
-	image_height = asset.height;
 
 	MEDIABLOCK_STATE
+	
+	update = function(get_asset_state = true)
+	{
+		if get_asset_state
+		{
+			state = json_parse(UI_get_asset_state(UUID));
+			show_debug_message(state.Width);
+		}
+		
+		var _half_width = floor(state.Width * 0.5 * ObjUIManager.frame_scale)
+		var _half_height = floor(state.Height * 0.5 * ObjUIManager.frame_scale)
+		
+		edit_corner[0] = point_direction(0, 0, -_half_width, -_half_height) + state.Angle;
+		edit_corner[1] = point_direction(0, 0, _half_width, -_half_height) + state.Angle;
+		edit_corner[2] = point_direction(0, 0, _half_width, _half_height) + state.Angle;
+		edit_corner[3] = point_direction(0, 0, -_half_width, _half_height) + state.Angle;
+		
+		var _image_len = point_distance(0,0, - _half_width, - _half_height);
+		x = ObjUIManager.frame_draw_x + (state.X * ObjUIManager.frame_scale)
+		y = ObjUIManager.frame_draw_y + (state.Y * ObjUIManager.frame_scale)
+		
+		x1 = x + lengthdir_x(_image_len, edit_corner[0]);
+		y1 = y + lengthdir_y(_image_len, edit_corner[0]);
+		
+		x2 = x + lengthdir_x(_image_len + 1, edit_corner[1]);
+		y2 = y + lengthdir_y(_image_len, edit_corner[1]);
+		
+		x3 = x + lengthdir_x(_image_len + 1, edit_corner[2]);
+		y3 = y + lengthdir_y(_image_len + 1, edit_corner[2]);
+		
+		x4 = x + lengthdir_x(_image_len, edit_corner[3]);
+		y4 = y + lengthdir_y(_image_len + 1, edit_corner[3]);
+		
+		//Right
+		x5 = (x2 + x3) * 0.5
+		y5 = (y2 + y3) * 0.5
+		
+		//top
+		x6 = (x1 + x2) * 0.5
+		y6 = (y1 + y2) * 0.5
+		
+		//Left
+		x7 = (x1 + x4) * 0.5
+		y7 = (y1 + y4) * 0.5
+		
+		// Bottom
+		x8 = (x4 + x3) * 0.5
+		y8 = (y4 + y3) * 0.5
+	}
 	
 	render = function()
     {
@@ -41,258 +105,425 @@ function MediaBlock2D(_UUID, _type) constructor
 		asset.predraw(self, state);
 		asset.draw(self, state);
 		asset.postdraw(self, state);
-		
     }
 	
-	edit = function()
+	edit_step = function()
     {
-		//step ++;
-		//step %= 16
+		var _mouse_x = window_mouse_get_x();
+		var _mouse_y = window_mouse_get_y();
 		
-		//var _angle = array_create(4);
+		edit_count = ++ edit_count % 16;
 		
-		//var _half_width = floor(_state.width * 0.5)
-		//var _half_height = floor(_state.height * 0.5)
-		
-		//_angle[0] = point_direction(0, 0, - _half_width, - _half_height);
-		//_angle[2] = (_angle[0] + 180) % 360
-		//_angle[1] = 360 - _angle[2]
-		//_angle[3] = (_angle[1] + 180) % 360
-		
-		//var _image_len = point_distance(0,0, - _half_width, - _half_height);
-		
-		//var _cursor = cr_default
-		
-		//var x1 = _state.x + lengthdir_x(_image_len, _angle[0]);
-		//var y1 = _state.y + lengthdir_y(_image_len, _angle[0]);
-		
-		//var x2 = _state.x + lengthdir_x(_image_len + 1, _angle[1]);
-		//var y2 = _state.y + lengthdir_y(_image_len, _angle[1]);
-		
-		//var x3 = _state.x + lengthdir_x(_image_len + 1, _angle[2]);
-		//var y3 = _state.y + lengthdir_y(_image_len + 1, _angle[2]);
-		
-		//var x4 = _state.x + lengthdir_x(_image_len, _angle[3]);
-		//var y4 = _state.y + lengthdir_y(_image_len + 1, _angle[3]);
-		
-		//var _lengthdir_x = lengthdir_x(_half_width, 0);
-		//var _lengthdir_y = lengthdir_y(_half_height, 0);
-		
-		//var x5 =  _state.x + _lengthdir_x
-		//var y5 =  _state.y + _lengthdir_y
-		
-		//var x7 = _state.x - _lengthdir_x
-		//var y7 = _state.y - _lengthdir_y
-		
-		//_lengthdir_x = lengthdir_x(_half_width, 90);
-		//_lengthdir_y = lengthdir_y(_half_height, 90);
-		
-		//var x6 = _state.x + _lengthdir_x
-		//var y6 = _state.y + _lengthdir_y
-		
-		//var x8 = _state.x - _lengthdir_x
-		//var y8 = _state.y - _lengthdir_y
-		
-		//draw_selection_rectangle(x1, y1, x2, y2, x3, y3, x4, y4, 2, SprSelection, step / 16);
-		
-		//if (state_drag)
-		//{
-		//	_state.x += mouse_x - state_previous_mouse_x
-		//	_state.y += mouse_y - state_previous_mouse_y
-			
-		//	state_previous_mouse_x = mouse_x
-		//	state_previous_mouse_y = mouse_y
-			
-		//	_cursor = cr_size_all;
-			
-		//	if mouse_check_button_released(mb_left)
-		//	{
-		//		state_drag = false;
-		//		UI_set_asset_state(ObjUIManager.layer_edit, json_stringify( _state))
-		//	}
-		//}
-		//else if (state_rotation)
-		//{
-			
-		//}
-		//else if (state_scale)
-		//{
-		//	var _width = state_original_mouse_x - mouse_x;
-		//	var _height =  state_original_mouse_y - mouse_y;
-			
-		//	switch state_scale
-		//	{
-		//		case 1: #region Top Left
-		//			_state.height = State_origial_height + _height;
-		//			_state.y = state_original_y - floor(_height * 0.5);
-		//			_state.width = State_origial_width + _width
-		//			_state.x = state_original_x - floor(_width * 0.5);
+		switch (edit_state)
+		{
+			case MB_EEditState.Hover: #region
+				if point_in_rectangle(_mouse_x, _mouse_y, x1 - 7, y1 - 7, x1 + 7, y1 + 7) // Top left
+				{
+					ObjUIManager.target_cursor = SprCursorsSizeNWSE;
 					
-		//			break;
-		//			#endregion
-		//		case 2: #region bottom right
-		//			_state.height = State_origial_height - _height;
-		//			_state.y = state_original_y - floor(_height * 0.5);
-		//			_state.width = State_origial_width - _width;
-		//			_state.x = state_original_x - floor(_width * 0.5);
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Resize;
+						edit_direction = 7;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x2 - 7, y2 - 7, x2 + 7, y2 + 7) // Top right
+				{
+					ObjUIManager.target_cursor = SprCursorsSizeNESW;
+					
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Resize;
+						edit_direction = 1;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x3 - 7, y3 - 7, x3 + 7, y3 + 7) // bottom right
+				{
+					ObjUIManager.target_cursor = SprCursorsSizeNWSE;
+					
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Resize;
+						edit_direction = 3;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x4 - 7, y4 - 7, x4 + 7, y4 + 7) // bottom left
+				{
+					ObjUIManager.target_cursor = SprCursorsSizeNESW;
+					
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Resize;
+						edit_direction = 5;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x5 - 7, y5 - 7, x5 + 7, y5 + 7) // right
+				{
+					ObjUIManager.target_cursor = SprCursorsSizeWE;
+					
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Resize;
+						edit_direction = 2;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x6 - 7, y6 - 7, x6 + 7, y6 + 7) // top
+				{
+					ObjUIManager.target_cursor = SprCursorsSizeNS;
+					
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Resize;
+						edit_direction = 0;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x7 - 7, y7 - 7, x7 + 7, y7 + 7) // left
+				{
+					ObjUIManager.target_cursor = SprCursorsSizeWE;
+					
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Resize;
+						edit_direction = 6;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x8 - 7, y8 - 7, x8 + 7, y8 + 7) // bottom
+				{
+					ObjUIManager.target_cursor = SprCursorsSizeNS;
+					
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Resize;
+						edit_direction = 4;
+					}
+				}
+				else if (PointInRotatedRectangle(_mouse_x, _mouse_y, x, y,
+												 (state.Width * 0.5) * ObjUIManager.frame_scale,
+												 (state.Height * 0.5) * ObjUIManager.frame_scale,
+												 state.Width * ObjUIManager.frame_scale,
+												 state.Height * ObjUIManager.frame_scale, 0))
+				{
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Move;
+					}
+					ObjUIManager.target_cursor = SprCursorSizeAll;
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x1 - 20, y1 - 20, x1, y1) // Rotate Top left
+				{
+					ObjUIManager.target_cursor = SprCursorsRotateNW;
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Rotate;
+						edit_direction = ObjUIManager.target_cursor;
+						edit_angle = point_direction(state.X * ObjUIManager.frame_scale + ObjUIManager.frame_draw_x, state.Y * ObjUIManager.frame_scale + ObjUIManager.frame_draw_y, _mouse_x, _mouse_y) - state.Angle;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x2, y2 - 20, x2 + 20, y2) // Rotate Top right
+				{
+					ObjUIManager.target_cursor = SprCursorsRotateNE;
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Rotate;
+						edit_direction = ObjUIManager.target_cursor;
+						edit_angle = point_direction(state.X * ObjUIManager.frame_scale + ObjUIManager.frame_draw_x, state.Y * ObjUIManager.frame_scale + ObjUIManager.frame_draw_y, _mouse_x, _mouse_y) - state.Angle;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x3, y3, x3 + 20, y3 + 20) // Rotate bottom right
+				{
+					ObjUIManager.target_cursor = SprCursorsRotateSE;
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Rotate;
+						edit_direction = ObjUIManager.target_cursor;
+						edit_angle = point_direction(state.X * ObjUIManager.frame_scale + ObjUIManager.frame_draw_x, state.Y * ObjUIManager.frame_scale + ObjUIManager.frame_draw_y, _mouse_x, _mouse_y) - state.Angle;
+					}
+				}
+				else if point_in_rectangle(_mouse_x, _mouse_y, x4 - 20, y4, x4, y4 + 20) // Rotate bottom left
+				{
+					ObjUIManager.target_cursor = SprCursorsRotateSW;
+					if (mouse_check_button_pressed(mb_left))
+					{
+						edit_state = MB_EEditState.Rotate;
+						edit_direction = ObjUIManager.target_cursor;
+						edit_angle = point_direction(state.X * ObjUIManager.frame_scale + ObjUIManager.frame_draw_x, state.Y * ObjUIManager.frame_scale + ObjUIManager.frame_draw_y, _mouse_x, _mouse_y) - state.Angle;
+					}
+				}
 				
-		//			break;
-		//			#endregion
-		//		case 3: #region Top right
-		//			_state.height = State_origial_height + _height;
-		//			_state.y = state_original_y - floor(_height * 0.5);
-		//			_state.width = State_origial_width - _width;
-		//			_state.x = state_original_x - floor(_width * 0.5);
+				if (edit_state != MB_EEditState.Hover)
+				{
+						var _array = variable_struct_get_names(state);
+						for (var i = 0; i < array_length(_array); i++;)
+						{
+							variable_struct_set(backup_state, _array[i], variable_struct_get(state, _array[i]))
+						}
+						
+						edit_x = _mouse_x;
+						edit_y = _mouse_y;
+				}
 				
-		//			break;
-		//			#endregion
-		//		case 4: #region bottom left
-		//			_state.height = State_origial_height - _height;
-		//			_state.y = state_original_y - floor(_height * 0.5);
-		//			_state.width = State_origial_width + _width;
-		//			_state.x = state_original_x - floor(_width * 0.5);
+				break;
+				#endregion
+			case MB_EEditState.Move: #region
+				ObjUIManager._mouse_button = 0 // disable preview movement
+				ObjUIManager.mouse_delta = 0 //disable preview zoom
+				var _x = backup_state.X + round((_mouse_x - edit_x) / ObjUIManager.frame_scale);
+				var _y = backup_state.Y + round((_mouse_y - edit_y) / ObjUIManager.frame_scale);
 				
-		//			break;
-		//			#endregion
-		//		case 5: #region right
-		//			_state.width = State_origial_width - _width;
-		//			_state.x = state_original_x - floor(_width * 0.5);
-					
-		//			break;
-		//			#endregion
-		//		case 6: #region top
-		//			_state.height = State_origial_height + _height;
-		//			_state.y = state_original_y - floor(_height * 0.5);
-					
-		//			break;
-		//			#endregion
-		//		case 7: #region Left
-		//			_state.width = State_origial_width + _width;
-		//			_state.x = state_original_x - floor(_width * 0.5);
-		//			break;
-		//			#endregion
-		//		case 8: #region bottom
-		//			_state.height = State_origial_height - _height;
-		//			_state.y = state_original_y - floor(_height * 0.5);
-					
-		//			break;
-		//			#endregion
-		//	}
-			
-		//	_cursor = global.cursor;
-			
-		//	if mouse_check_button_released(mb_left)
-		//	{
-		//		state_scale = false;
-		//		UI_set_asset_state(ObjUIManager.layer_edit, json_stringify( _state))
-		//	}
-		//}
-		//else
-		//{
-		//	if ((mouse_x >= x1 - 8) && (mouse_x <= x1 + 8) && (mouse_y >= y1 - 8) && (mouse_y <= y1 + 8))
-		//	{
-		//		_cursor = cr_size_nwse;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_scale = 1;
-		//		}
-		//	}
-		//	else if ((mouse_x >= x2 - 8) && (mouse_x <= x2 + 8) && (mouse_y >= y2 - 8) && (mouse_y <= y2 + 8))
-		//	{
-		//		_cursor = cr_size_nesw;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_scale = 3;
-		//		}
-		//	}
-		//	else if ((mouse_x >= x3 - 8) && (mouse_x <= x3 + 8) && (mouse_y >= y3 - 8) && (mouse_y <= y3 + 8))
-		//	{
-		//		_cursor = cr_size_nwse;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_scale = 2;
-		//		}
-		//	}
-		//	else if ((mouse_x >= x4 - 8) && (mouse_x <= x4 + 8) && (mouse_y >= y4 - 8) && (mouse_y <= y4 + 8))
-		//	{
-		//		_cursor = cr_size_nesw;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_scale = 4;
-		//		}
-		//	}
-		//	else if ((mouse_x >= x5 - 8) && (mouse_x <= x5 + 8) && (mouse_y >= y5 - 8) && (mouse_y <= y5 + 8))
-		//	{
-		//		_cursor = cr_size_we;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_scale = 5;
-		//		}
-		//	}
-		//	else if ((mouse_x >= x6 - 8) && (mouse_x <= x6 + 8) && (mouse_y >= y6 - 8) && (mouse_y <= y6 + 8))
-		//	{
-		//		_cursor = cr_size_ns;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_scale = 6;
-		//		}
-		//	}
-		//	else if ((mouse_x >= x7 - 8) && (mouse_x <= x7 + 8) && (mouse_y >= y7 - 8) && (mouse_y <= y7 + 8))
-		//	{
-		//		_cursor = cr_size_we;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_scale = 7;
-		//		}
-		//	}
-		//	else if ((mouse_x >= x8 - 8) && (mouse_x <= x8 + 8) && (mouse_y >= y8 - 8) && (mouse_y <= y8 + 8))
-		//	{
-		//		_cursor = cr_size_ns;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_scale = 8;
-		//			state_original_mouse_x = mouse_x;
-		//			state_original_mouse_y = mouse_y;
-		//		}
-		//	}
-		//	else
-		//	{
-		//		_cursor = cr_size_all;
-		//		if mouse_check_button_pressed(mb_left)
-		//		{
-		//			state_drag = true
-		//			state_previous_mouse_x = mouse_x;
-		//			state_previous_mouse_y = mouse_y;
-		//		}
-		//	}
-			
-		//	if state_scale
-		//	{
-		//		state_original_mouse_x = mouse_x;
-		//		state_original_mouse_y = mouse_y;
-		//		State_origial_width = _state.width;
-		//		State_origial_height = _state.height;
-		//		state_original_x = _state.x;
-		//		state_original_y = _state.y;
-		//	}
-			
-		//}
+				
+				ObjUIManager.target_cursor = SprCursorSizeAll;
+				
+				if (mouse_check_button_pressed(mb_right) or keyboard_check_pressed(vk_escape))
+				{
+					edit_state = MB_EEditState.Hover;
+					var _array = variable_struct_get_names(state);
+					for (var i = 0; i < array_length(_array); i++;)
+					{
+						variable_struct_set(state, _array[i], variable_struct_get(backup_state, _array[i]))
+					}
+					self.update(false);
+					return true;
+				}
+				else if (!mouse_check_button(mb_left))
+				{
+					UI_set_mediablock_state(UUID, json_stringify(state));
+					edit_state = MB_EEditState.Hover;
+				}
+				
+				if (_x != state.X) || (_y != state.Y)
+				{
+					state.X = _x;
+					state.Y = _y;
+					self.update(false);
+					return true;
+				}
+				
+				break;
+				#endregion
+			case MB_EEditState.Resize: #region
+				ObjUIManager._mouse_button = 0 // disable preview movement
+				ObjUIManager.mouse_delta = 0 //disable preview zoom
+				
+				var _offset_y = 0;
+				var _offset_x = 0;
+				var _height = state.Height;
+				var _width = state.Width;
+				var _x = state.X;
+				var _y = state.Y;
+				
+				switch edit_direction
+				{
+					case 0: // Top
+						_offset_y =  round((_mouse_y - edit_y) / ObjUIManager.frame_scale);
+						
+						if ObjUIManager.modifier_shift
+						{
+							_offset_x = round((_offset_y / backup_state.Height) * backup_state.Width);
+						}
+						
+						_y = round(backup_state.Y + _offset_y * 0.5);
+						
+						ObjUIManager.target_cursor = SprCursorsSizeNS;
+						break;
+					case 1: // Top right
+						_offset_y =  round((_mouse_y - edit_y) / ObjUIManager.frame_scale);
+						_offset_x =  round((edit_x - _mouse_x) / ObjUIManager.frame_scale);
+						
+						if ObjUIManager.modifier_shift
+						{
+							if (_offset_y / backup_state.Height) > (_offset_x / backup_state.Width) 
+							{
+								_offset_x = round((_offset_y / backup_state.Height) * backup_state.Width);
+							}
+							else
+							{
+								_offset_y = round((_offset_x / backup_state.Width) * backup_state.Height);
+							}
+						}
+						
+						_x = round(backup_state.X - _offset_x * 0.5);
+						_y = round(backup_state.Y + _offset_y * 0.5);
+						ObjUIManager.target_cursor = SprCursorsSizeNESW;
+						break;
+					case 2: // Right
+						_offset_x =  round((edit_x - _mouse_x) / ObjUIManager.frame_scale);
+						
+						if ObjUIManager.modifier_shift
+						{
+							_offset_y = round((_offset_x / backup_state.Width) * backup_state.Height);
+						}
+						
+						_x = round(backup_state.X - _offset_x * 0.5);
+						
+						ObjUIManager.target_cursor = SprCursorsSizeWE;
+						break;
+					case 3: // Bottom right
+						_offset_x =  round((edit_x - _mouse_x) / ObjUIManager.frame_scale);
+						_offset_y =  round((edit_y - _mouse_y) / ObjUIManager.frame_scale);
+						
+						if ObjUIManager.modifier_shift
+						{
+							if (_offset_y / backup_state.Height) > (_offset_x / backup_state.Width) 
+							{
+								_offset_x = round((_offset_y / backup_state.Height) * backup_state.Width);
+							}
+							else
+							{
+								_offset_y = round((_offset_x / backup_state.Width) * backup_state.Height);
+							}
+						}
+						
+						_x = round(backup_state.X - _offset_x * 0.5);
+						_y = round(backup_state.Y - _offset_y * 0.5);
+						
+						ObjUIManager.target_cursor = SprCursorsSizeNWSE;
+						break;
+					case 4: // Bottom
+						_offset_y =  round((edit_y - _mouse_y) / ObjUIManager.frame_scale);
+						
+						if ObjUIManager.modifier_shift
+						{
+							_offset_x = round((_offset_y / backup_state.Height) * backup_state.Width);
+						}
+						
+						_y = round(backup_state.Y - _offset_y * 0.5);
+						
+						ObjUIManager.target_cursor = SprCursorsSizeNS;
+						break;
+					case 5: // Bottom left
+						_offset_x =  round((_mouse_x - edit_x) / ObjUIManager.frame_scale);
+						_offset_y =  round((edit_y - _mouse_y) / ObjUIManager.frame_scale);
+						
+						if ObjUIManager.modifier_shift
+						{
+							if (_offset_y / backup_state.Height) > (_offset_x / backup_state.Width) 
+							{
+								_offset_x = round((_offset_y / backup_state.Height) * backup_state.Width);
+							}
+							else
+							{
+								_offset_y = round((_offset_x / backup_state.Width) * backup_state.Height);
+							}
+						}
+						
+						_x = round(backup_state.X + _offset_x * 0.5);
+						_y = round(backup_state.Y - _offset_y * 0.5);
+						
+						ObjUIManager.target_cursor = SprCursorsSizeNESW;
+						break;
+					case 6: // left
+						_offset_x =  round((_mouse_x - edit_x) / ObjUIManager.frame_scale);
+						
+						if ObjUIManager.modifier_shift
+						{
+							_offset_y = round((_offset_x / backup_state.Width) * backup_state.Height);
+						}
+						
+						_x = round(backup_state.X + _offset_x * 0.5);
+						
+						ObjUIManager.target_cursor = SprCursorsSizeWE;
+						break;
+					case 7: // top left
+						_offset_y =  round((_mouse_y - edit_y) / ObjUIManager.frame_scale);
+						_offset_x =  round((_mouse_x - edit_x) / ObjUIManager.frame_scale);
+						
+						if ObjUIManager.modifier_shift
+						{
+							if (_offset_y / backup_state.Height) > (_offset_x / backup_state.Width) 
+							{
+								_offset_x = round((_offset_y / backup_state.Height) * backup_state.Width);
+							}
+							else
+							{
+								_offset_y = round((_offset_x / backup_state.Width) * backup_state.Height);
+							}
+						}
+						
+						_x = round(backup_state.X + _offset_x * 0.5);
+						_y = round(backup_state.Y + _offset_y * 0.5);
+						ObjUIManager.target_cursor = SprCursorsSizeNWSE;
+						break;
+				}
+				
+				_width = backup_state.Width - _offset_x;
+				_height = backup_state.Height - _offset_y;
+				
+				if (mouse_check_button_pressed(mb_right) or keyboard_check_pressed(vk_escape))
+				{
+					edit_state = MB_EEditState.Hover;
+					var _array = variable_struct_get_names(state);
+					for (var i = 0; i < array_length(_array); i++;)
+					{
+						variable_struct_set(state, _array[i], variable_struct_get(backup_state, _array[i]))
+					}
+					self.update(false);
+					return true;
+				}
+				else if (!mouse_check_button(mb_left))
+				{
+					UI_set_mediablock_state(UUID, json_stringify(state));
+					edit_state = MB_EEditState.Hover;
+				}
+				
+				if (_width != state.Width) || (_height != state.Height) ||  (_x != state.X) ||  (_y != state.Y)
+				{
+					state.Width = _width;
+					state.Height = _height;
+					state.X = _x;
+					state.Y = _y;
+					self.update(false);
+					return true;
+				}
+				
+				break;
+				#endregion
+			case MB_EEditState.Rotate: #region
+				ObjUIManager._mouse_button = 0 // disable preview movement
+				ObjUIManager.mouse_delta = 0 //disable preview zoom
+				
+				ObjUIManager.target_cursor = edit_direction;
+				var _angle = point_direction(state.X * ObjUIManager.frame_scale + ObjUIManager.frame_draw_x , state.Y * ObjUIManager.frame_scale + ObjUIManager.frame_draw_y, _mouse_x, _mouse_y) - edit_angle;
+				
+				if (state.Angle != _angle)
+				{
+					state.Angle = _angle
+					self.update(false);
+					return true;
+				}
+				
+				if (mouse_check_button_pressed(mb_right) or keyboard_check_pressed(vk_escape))
+				{
+					edit_state = MB_EEditState.Hover;
+					state.Angle = backup_state.Angle;
+					self.update(false);
+					return true;
+				}
+				else if (!mouse_check_button(mb_left))
+				{
+					UI_set_mediablock_state(UUID, json_stringify(state));
+					edit_state = MB_EEditState.Hover;
+				}
+				
+				break;
+				#endregion
+		}
 		
-		//draw_sprite(SprAnchor, 0, x1, y1);
-		//draw_sprite(SprAnchor, 0, x2, y2);
-		//draw_sprite(SprAnchor, 0, x3, y3);
-		//draw_sprite(SprAnchor, 0, x4, y4);
+		return false;
+	}
+	
+	edit_draw = function()
+    {
+		draw_selection_rectangle(x1, y1, x2, y2, x3, y3, x4, y4, 2, SprSelection, edit_count / 16);
 		
-		//draw_sprite(SprAnchor, 0, x5, y5);
-		//draw_sprite(SprAnchor, 0, x6, y6);
-		//draw_sprite(SprAnchor, 0, x7, y7);
-		//draw_sprite(SprAnchor, 0, x8, y8);
-		
-		//if (global.cursor != _cursor)
-		//{
-		//	global.cursor = _cursor;
-		//	window_set_cursor(_cursor);
-		//}
+		draw_sprite(SprAnchor, 0, x1, y1);
+		draw_sprite(SprAnchor, 0, x2, y2);
+		draw_sprite(SprAnchor, 0, x3, y3);
+		draw_sprite(SprAnchor, 0, x4, y4);
+				
+		draw_sprite(SprAnchor, 0, x5, y5);
+		draw_sprite(SprAnchor, 0, x6, y6);
+		draw_sprite(SprAnchor, 0, x7, y7);
+		draw_sprite(SprAnchor, 0, x8, y8);
 	}
 	
 }

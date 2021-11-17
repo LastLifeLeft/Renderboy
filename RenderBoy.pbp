@@ -7,24 +7,24 @@
   <section name="data">
     <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2021-11-05 12:02" user="Poshu" host="DESKTOP-RGG8DMG"/>
+    <lastopen date="2021-11-17 20:01" user="Poshu" host="DESKTOP-RGG8DMG"/>
   </section>
   <section name="files">
     <file name="Includes\AssetButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="9a335eb182c4753c86722f9375845e29"/>
+      <fingerprint md5="bdbac6501da53026cb320dbe37ea7af9"/>
     </file>
     <file name="Includes\General.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="7e87ef8af31b6294a1c025e81e2c2f6d"/>
+      <fingerprint md5="7c77ebf7bf4130ca8d9d613828978b82"/>
     </file>
     <file name="Includes\MainWindow.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="33ff0b03e691dbcebf4b1f65b0757e49"/>
+      <fingerprint md5="d7d92c81d4599a8c3479246efce4dc6d"/>
     </file>
     <file name="Includes\Project.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="f6feb1b824ebe958fc39cf2366b8267c"/>
+      <fingerprint md5="8e4b80535f98cc96a249e6082bc85ef1"/>
     </file>
     <file name="Libaries\CanvasButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -56,7 +56,7 @@
     </file>
     <file name="Libaries\PureTimeline.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="86bdc4c299987eb36784e520153278e1"/>
+      <fingerprint md5="645a3b584f6d7d3edb9463d83ab3b060"/>
     </file>
     <file name="Libaries\ScrollBar.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
@@ -72,7 +72,7 @@
     </file>
     <file name="Main.pb">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
-      <fingerprint md5="01a5284f6003d5ca30537bf322f5f293"/>
+      <fingerprint md5="ac407663f2dbc8cfb3412679f58d748e"/>
     </file>
   </section>
   <section name="targets">

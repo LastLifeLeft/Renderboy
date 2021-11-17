@@ -21,11 +21,26 @@ enum UI_EAssetType
 }
 
 
+enum ECursor
+{
+	HandPoint,
+	HandHover,
+	HandGrab,
+	MoveAll,
+	MoveWE,
+	MoveNS,
+	MoveDiagWE,
+	MoveDiagEW,
+	RotateNW,
+	RotateNE,
+	RotateSE,
+	RotateSW
+}
+
 show_debug_overlay(false);
 
 display_reset(0, true);
 game_set_speed(60, gamespeed_fps);
-
 
 target_width = 1280;
 target_height = 720;

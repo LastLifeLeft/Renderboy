@@ -15,7 +15,7 @@ function AssetImage(_UUID) constructor
 	
 	draw = function(_parent, _state)
 	{
-		better_scaling_draw_sprite(sprite, 0,  _state.X, _state.Y, _state.Width / width,  _state.Height / height, 0, c_white, _state.Transparency, 1);
+		better_scaling_draw_sprite(sprite, 0,  _state.X, _state.Y, _state.Width / width,  _state.Height / height, _state.Angle, c_white, _state.Transparency, 1);
 	}
 	
 	postdraw = function(_parent, _state)

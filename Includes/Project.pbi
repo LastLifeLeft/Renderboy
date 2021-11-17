@@ -13,14 +13,13 @@
 		Height.i
 	EndStructure
 	
+	Structure AssetTypeLibrary
+		*Asset.Asset
+	EndStructure
+	
 	Structure Task
 		XMLID.i
 		XML.s
-	EndStructure
-	
-	Structure AssetLibrary
-		Map ProjectAssets.Asset(2048)
-		Map LibraryAsset.Asset(2048)
 	EndStructure
 	
 	Prototype Delete(UUID.s)
@@ -29,13 +28,14 @@
 	Structure AssetProcedure
 		Add.Add
 	EndStructure
-		
 	
 	#_Add = 0
 	#_Delete = 1
 	
 	; 	Global Dim AssetLibrary.AssetLibrary(5)
 	Global NewMap AssetLibrary.Asset(2048)
+	Global NewMap AssetLibrary_Media.AssetTypeLibrary(2048)
+; 	Global NewMap AssetLibrary.Asset(2048)
 	Global Dim AssetProcedures.AssetProcedure(#__Asset_Type_Count)
 	
 	;Tasks
@@ -139,7 +139,6 @@
 		Protected *Task.Task = AllocateStructure(Task), MainNode, Item, MediaBlocks.s
 		Protected *DeletionProcedure
 		
-		
 		*Task\XMLID = CreateXML(#PB_Any)
  		MainNode = CreateXMLNode(RootXMLNode(*Task\XMLID), "Tasks") 
  		Item = CreateXMLNode(MainNode, #DeleteAsset)
@@ -178,6 +177,13 @@
 	
 	Procedure AssetUnUse(UUID.s)
 		AssetLibrary(UUID)\UsageCount - 1
+	EndProcedure
+	
+	; Library
+	Procedure RePopulateMediaLibrary()
+		ForEach AssetLibrary_Media()
+			MainWindow::AddAssetButton(AssetLibrary_Media()\Asset\Type, AssetLibrary_Media()\Asset\PreviewImage, GetFilePart(AssetLibrary_Media()\Asset\Path, #PB_FileSystem_NoExtension), AssetLibrary_Media()\Asset\UUID)
+		Next
 	EndProcedure
 	
 	; Get
@@ -257,6 +263,9 @@
 		*Asset\Path = Path
 		*Asset\PreviewImage = Image
 		
+		AddMapElement(AssetLibrary_Media(), UUID)
+		AssetLibrary_Media()\Asset = *Asset
+		
 		MainWindow::AddAssetButton(#Asset_Type_Image, Image, GetFilePart(*Asset\Path, #PB_FileSystem_NoExtension), *Asset\UUID)
 	EndProcedure
 	
@@ -284,6 +293,12 @@
 	
 	Procedure _DeleteAsset(UUID.s)
 		FindMapElement(AssetLibrary(), UUID)
+		
+		Select AssetLibrary()\Type
+			Case #Asset_Type_Image, #Asset_Type_Video
+				DeleteMapElement(AssetLibrary_Media(), UUID)
+		EndSelect
+		
 		FreeImage(AssetLibrary()\PreviewImage)
 		MainWindow::DeleteAssetButton(UUID)
 		DeleteMapElement(AssetLibrary())
@@ -345,7 +360,7 @@
 	
 EndModule
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 182
-; FirstLine = 41
-; Folding = vDAACQ-
+; CursorPosition = 184
+; FirstLine = 97
+; Folding = PQIwAg+
 ; EnableXP

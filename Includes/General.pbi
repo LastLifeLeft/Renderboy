@@ -56,6 +56,7 @@ DeclareModule MainWindow
 	Global MaterialIconBig = FontID(LoadFont(#PB_Any, "Material Design Icons Desktop", 20, #PB_Font_HighQuality))
 	Global DragPreview, ImagePreview, DragPreviewVisible
 	Global RendererWidth, RendererHeight
+	Global ModifierControl, ModifierShift
 	
 	Declare Open()
 	Declare AddAssetButton(AssetType, Image, Text.s, UUID.s)
@@ -118,6 +119,9 @@ DeclareModule Project
 	Declare Redo()
 	Declare AssetUse(UUID.s)
 	Declare AssetUnUse(UUID.s)
+	
+	; Library
+	Declare RePopulateMediaLibrary()
 	
 	; Get
 	Declare.s GetAssetName(UUID.s)
@@ -203,6 +207,6 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 23
-; Folding = tdw
+; CursorPosition = 122
+; Folding = sdw
 ; EnableXP

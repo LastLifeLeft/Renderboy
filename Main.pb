@@ -124,6 +124,18 @@ CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 		ProcedureReturn *Result
 	EndProcedure
 	
+	ProcedureCDLL.d GetModifierControl()
+		ProcedureReturn MainWindow::ModifierControl
+	EndProcedure
+	
+	ProcedureCDLL.D GetModifierShift()
+		ProcedureReturn MainWindow::ModifierShift
+	EndProcedure
+	
+	ProcedureCDLL UpdateMediaBlockState(*MediablockUUID, *Json)
+		PureTL::UpdateMediaBlockState(0, PeekS(*MediablockUUID, -1, #PB_UTF8), PeekS(*Json, -1, #PB_UTF8))
+	EndProcedure
+	
 CompilerElse
 	MainWindow::Open()
 	Project::New()
@@ -133,6 +145,7 @@ CompilerElse
 	ForEver
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 122
-; Folding = BA-
+; CursorPosition = 134
+; FirstLine = 11
+; Folding = BE9
 ; EnableXP

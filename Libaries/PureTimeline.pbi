@@ -373,11 +373,9 @@ DeclareModule PureTL
 		Height.d
 		Depth.d
 		Transparency.d
+		Angle.d
 	EndStructure
 		
-	Structure UsedData Extends DataPoint
-		Container.b
-	EndStructure
 	
 	; Public procedures declaration
 	Declare Gadget(Gadget, X, Y, Width, Height, Flags = #Default)
@@ -415,11 +413,11 @@ DeclareModule PureTL
 	Declare MoveMediaBlock(Gadget, *MediaBlock, *NewLine, NewPosition, ParentXMLNode = 0, *Parent = 0)
 	Declare.s DeleteMediaBlockByAsset(Gadget, AssetUUID.s)
 	Declare ResizeMediaBlock(Gadget, *MediaBlock, NewStart, NewEnd, ParentXMLNode = 0)
-	Declare UpdateMediaBlockState(Gadget, Line, Json.s)
 	
 	Declare.s NextMediaBlockUUID(Gadget)
 	Declare GetMediaBlockType(Gadget, UUID.s)
 	Declare.s GetAssetUUID(Gadget, MediablockUUID.s)
+	Declare UpdateMediaBlockState(Gadget, MediablockUUID.s, Json.s)
 	; Data point
 	
 	
@@ -525,7 +523,6 @@ Module PureTL
 	EndEnumeration
 	
 	Enumeration ;Properties
-		#Properties_Sub
 		#Properties_X
 		#Properties_Y
 		#Properties_Z
@@ -533,6 +530,11 @@ Module PureTL
 		#Properties_Height
 		#Properties_Depth
 		#Properties_Transparency
+		#Properties_Angle
+		
+		
+		; THOSE TWO SHOULD STAY AT THE VERY END OF THIS ENUMERATION :
+		#Properties_Container
 		#Properties_Count
 	EndEnumeration
 	
@@ -551,6 +553,14 @@ Module PureTL
 	#DeleteMediaBlock = "DeleteMediaBlock"
 	#MoveMediaBlock = "MoveMediaBlock"
 	#ResizeMediaBlock = "ResizeMediaBlock"
+	
+	Structure UsedData Extends DataPoint
+		Container.b
+	EndStructure
+	
+	Structure DataPointArray
+		Array Properties.b(#Properties_Count - 2)
+	EndStructure
 	
 	Structure MediaBlock
 		Type.i
@@ -573,8 +583,8 @@ Module PureTL
 		List *Children.MediaBlock()
 		
 		Array DataPoints.DataPoint(1)
-		Array DataPointState.DataPoint(1)
-		UsedData.UsedData							; for the line to know which sub data to display.
+		Array DataPointState.DataPointArray(1)
+		Array UsedDataPoints.b(#Properties_Count - 1)
 	EndStructure
 	
 	Structure Line
@@ -596,7 +606,7 @@ Module PureTL
 		
 		List *MediaBlock.MediaBlock()
 		
-		Array UsedDataPoints.l(#Properties_Count)
+		Array UsedDataPoints.l(#Properties_Count - 1)
 	EndStructure
 	
 	Structure SubArray
@@ -814,6 +824,8 @@ Module PureTL
 	#Color_Scrollbar_FrontWarm = $656873
 	#Color_Scrollbar_FrontHot = $434651
 	
+	#Style_DataPoint_SizeBig = 5
+	
 	; Fonts
 	Global FontBold = FontID(LoadFont(#PB_Any, "Rubik Medium", 12, #PB_Font_HighQuality))
 	Global Font = FontID(LoadFont(#PB_Any, "Rubik", 12, #PB_Font_HighQuality))
@@ -825,13 +837,14 @@ Module PureTL
 	
 	; Misc
 	Global Dim Properties.Property(#Properties_Count)
-	Properties(#Properties_Sub)\Text = "Sub-media"
+	Properties(#Properties_Container)\Text = "Sub-media"
 	Properties(#Properties_X)\Text = "X"
 	Properties(#Properties_Y)\Text = "Y"
 	Properties(#Properties_Z)\Text = "Z"
 	Properties(#Properties_Width)\Text = "Width"
 	Properties(#Properties_Height)\Text = "Height"
 	Properties(#Properties_Depth)\Text = "Depth"
+	Properties(#Properties_Angle)\Text = "Angle"
 	Properties(#Properties_Transparency)\Text = "Opacity"
 	;}
 	
@@ -1226,9 +1239,10 @@ Module PureTL
 								\State_AssetDropLine = *Line
 								Redraw(*GadgetData)
 								ProcedureReturn #True
-							ElseIf \State_LineIndex()\Sub = #Properties_Sub
+							ElseIf \State_LineIndex()\Sub = #Properties_Container
+								
 								*MediaBlock = _HoverMediaBlock(*GadgetData, X, Y - #Size_Header_Height)
-								If *MediaBlock And *MediaBlock\UsedData\Container = #True
+								If *MediaBlock And *MediaBlock\UsedDataPoints(#Properties_Container) = #True
 									\State_AssetDropLine = 0
 									\State_SubDropMediaBlock = *MediaBlock
 									Redraw(*GadgetData)
@@ -1572,10 +1586,6 @@ Module PureTL
 		EndIf
 	EndProcedure
 	
-	Procedure UpdateMediaBlockState(Gadget, Line, Json.s)
-		Protected Loop, *MediaBlock.Mediablock
-	EndProcedure
-	
 	Procedure.s GetMediaBlockState(Gadget, AssetUUID.s)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), json = CreateJSON(#PB_Any), Result.s, *Mediablock.Mediablock = FindMapElement(*GadgetData\Cont_MediaBlocks(), AssetUUID), *Parent.Mediablock, Position = *GadgetData\State_PlayerPosition - *Mediablock\BlockStart
 		
@@ -1621,6 +1631,87 @@ Module PureTL
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Mediablock.Mediablock = FindMapElement(*GadgetData\Cont_MediaBlocks(), MediablockUUID)
 		
 		ProcedureReturn *Mediablock\AssetUUID
+	EndProcedure
+	
+	Procedure UpdateMediaBlockState(Gadget, MediablockUUID.s, JsonString.s)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Mediablock.Mediablock = FindMapElement(*GadgetData\Cont_MediaBlocks(), MediablockUUID), json = ParseJSON(#PB_Any, JsonString)
+		Protected Position = *GadgetData\State_PlayerPosition - *Mediablock\BlockStart, PropertiesLoopEnd = #Properties_Count - 2, PropertiesLoop, PropertiesAdress, Loop, LoopEnd, PreviousPosition, StepValue.d, NewDataPoint.DataPoint, OriginalValue.d
+		Protected InterpolationStep, NextKeyFrame
+		
+		
+		With *GadgetData
+			If *Mediablock\Animated
+				ExtractJSONStructure(JSONValue(json), NewDataPoint, DataPoint)
+				
+				For PropertiesLoop = 0 To PropertiesLoopEnd
+					PropertiesAdress = PropertiesLoop * 8
+					If PeekD(*Mediablock\DataPoints(Position) + PropertiesAdress) <> PeekD(@NewDataPoint + PropertiesAdress)
+						*Mediablock\DataPointState(Position)\Properties(PropertiesLoop) = #True
+						
+						If Position > 1 ;{ Interpolation with keyframe BEFORE the new one.
+							For loop = Position - 1 To 0 Step -1
+								If *Mediablock\DataPointState(loop)\Properties(PropertiesLoop) = #True
+									Break
+								EndIf 
+							Next
+							
+							PreviousPosition = Loop
+							InterpolationStep = Position - PreviousPosition
+							
+							If InterpolationStep > 1
+								OriginalValue = PeekD(@*Mediablock\DataPoints(PreviousPosition) + PropertiesAdress)
+								StepValue = (PeekD(@NewDataPoint + PropertiesAdress) - OriginalValue) / InterpolationStep
+								For loop = PreviousPosition + 1 To Position - 1
+									PokeD(@*Mediablock\DataPoints(Loop) + PropertiesAdress, OriginalValue + StepValue * (loop - PreviousPosition))
+								Next
+							EndIf
+						EndIf ;}
+						
+						;{ Interpolation with keyframe AFTER the new one
+						If Position < *Mediablock\Duration - 1
+							NextKeyFrame = #False
+							For Loop = Position + 1 To *Mediablock\Duration - 1
+								If *Mediablock\DataPointState(loop)\Properties(PropertiesLoop) = #True
+									NextKeyFrame = Loop
+									Break
+								EndIf
+							Next
+							
+							If NextKeyFrame
+								InterpolationStep = NextKeyFrame - Position
+								If InterpolationStep > 1
+									
+									OriginalValue = PeekD(@NewDataPoint + PropertiesAdress)
+									StepValue = (PeekD(@*Mediablock\DataPoints(NextKeyFrame) + PropertiesAdress) - OriginalValue) / InterpolationStep
+									
+									NextKeyFrame - 1
+									
+									For Loop = Position + 1 To NextKeyFrame
+										PokeD(@*Mediablock\DataPoints(Loop) + PropertiesAdress, OriginalValue + StepValue * (loop - Position))
+									Next
+								EndIf
+							Else
+								For Loop = Position + 1 To *Mediablock\Duration - 1
+									PokeD(@*Mediablock\DataPoints(Loop) + PropertiesAdress, PeekD(@NewDataPoint + PropertiesAdress))
+								Next
+							EndIf
+							
+						EndIf
+						;}
+						
+						
+						
+					EndIf
+				Next
+
+				ExtractJSONStructure(JSONValue(json), *Mediablock\DataPoints(Position), DataPoint)
+				Redraw(*GadgetData)
+			Else
+				For Loop = 0 To *Mediablock\Duration
+					ExtractJSONStructure(JSONValue(json), *Mediablock\DataPoints(Loop), DataPoint)
+				Next
+			EndIf
+		EndWith
 	EndProcedure
 	;}
 	
@@ -1781,15 +1872,14 @@ Module PureTL
 	EndProcedure
 	
 	Procedure ProcessLineFold(*GadgetData.GadgetData, *Line.Line)
+		Protected Loop, LoopSize
 		With *Line
-			\SubLineCount = Bool(\UsedDataPoints(#Properties_Sub)) +
-			                Bool(\UsedDataPoints(#Properties_X)) +
-			                Bool(\UsedDataPoints(#Properties_Y)) +
-			                Bool(\UsedDataPoints(#Properties_Z)) +
-			                Bool(\UsedDataPoints(#Properties_width)) +
-			                Bool(\UsedDataPoints(#Properties_height)) +
-			                Bool(\UsedDataPoints(#Properties_depth)) +
-			                Bool(\UsedDataPoints(#Properties_Transparency))
+			\SubLineCount = 0
+			LoopSize = ArraySize(\UsedDataPoints())
+			
+			For Loop = 0 To LoopSize
+				\SubLineCount + Bool(\UsedDataPoints(Loop))
+			Next
 			
 			If \SubLineCount > 0 And \Fold = #NoFold
 				\Fold = #Folded
@@ -1802,54 +1892,33 @@ Module PureTL
 		EndWith
 	EndProcedure
 	
-	Procedure AddUsedDataPointEX(*Line.Line, *UsedGadgetData.UsedData)
-		; At some point, you'll add a new property and forget about this place... Ain't there a better solution to make this a bit more robust?
+	Procedure AddUsedDataPoint(*Line.Line, *Mediablock.Mediablock)
+		Protected Loop, LoopEnd = #Properties_Count - 1
 		With *Line
-			\UsedDataPoints(#Properties_X) 				+ *UsedGadgetData\X 		
-			\UsedDataPoints(#Properties_Y) 				+ *UsedGadgetData\Y 		
-			\UsedDataPoints(#Properties_Z) 				+ *UsedGadgetData\Z 		
-			\UsedDataPoints(#Properties_width) 			+ *UsedGadgetData\width 
-			\UsedDataPoints(#Properties_height)			+ *UsedGadgetData\height
-			\UsedDataPoints(#Properties_depth) 			+ *UsedGadgetData\depth
-			\UsedDataPoints(#Properties_Transparency) 	+ *UsedGadgetData\Transparency
+			For Loop = 0 To LoopEnd
+				\UsedDataPoints(Loop) + *Mediablock\UsedDataPoints(Loop)
+			Next
 		EndWith
 	EndProcedure
 	
-	Procedure RemoveUsedDataPointEX(*Line.Line, *UsedGadgetData.UsedData)
+	Procedure RemoveUsedDataPoint(*Line.Line, *Mediablock.Mediablock)
+		Protected Loop, LoopEnd = #Properties_Count - 1
 		With *Line
-			\UsedDataPoints(#Properties_X) 				- *UsedGadgetData\X
-			\UsedDataPoints(#Properties_Y) 				- *UsedGadgetData\Y 
-			\UsedDataPoints(#Properties_Z) 				- *UsedGadgetData\Z 
-			\UsedDataPoints(#Properties_width) 			- *UsedGadgetData\width 
-			\UsedDataPoints(#Properties_height)			- *UsedGadgetData\height
-			\UsedDataPoints(#Properties_depth) 			- *UsedGadgetData\depth
-			\UsedDataPoints(#Properties_Transparency) 	- *UsedGadgetData\Transparency
-		EndWith
-	EndProcedure
-	
-	Procedure AddUsedDataPoint(*Line.Line, *UsedGadgetData.UsedData)
-		With *Line
-			\UsedDataPoints(#Properties_Sub)			+ *UsedGadgetData\Container
-			AddUsedDataPointEX(*Line.Line, *UsedGadgetData)
-		EndWith
-	EndProcedure
-	
-	Procedure RemoveUsedDataPoint(*Line.Line, *UsedGadgetData.UsedData)
-		With *Line
-			\UsedDataPoints(#Properties_Sub)			- *UsedGadgetData\Container
-			RemoveUsedDataPointEX(*Line.Line, *UsedGadgetData)
+			For Loop = 0 To LoopEnd
+				\UsedDataPoints(Loop) - *Mediablock\UsedDataPoints(Loop)
+			Next
 		EndWith
 	EndProcedure
 	
 	Procedure AddMediaBlockContainer(*GadgetData.GadgetData, *Mediablock.Mediablock)
-		*Mediablock\UsedData\Container = #True
-		*Mediablock\Line\UsedDataPoints(#Properties_Sub) + 1
+		*Mediablock\UsedDataPoints(#Properties_Container) = #True
+		*Mediablock\Line\UsedDataPoints(#Properties_Container) + 1
 		ProcessLineFold(*GadgetData, *Mediablock\Line)
 	EndProcedure
 	
 	Procedure RemoveMediaBlockContainer(*GadgetData.GadgetData, *Mediablock.Mediablock)
-		*Mediablock\UsedData\Container = #False
-		*Mediablock\Line\UsedDataPoints(#Properties_Sub) - 1
+		*Mediablock\UsedDataPoints(#Properties_Container) = #False
+		*Mediablock\Line\UsedDataPoints(#Properties_Container) - 1
 		ProcessLineFold(*GadgetData, *Mediablock\Line)
 	EndProcedure
 	;}
@@ -1875,7 +1944,7 @@ Module PureTL
 	EndProcedure
 	
 	Procedure _AddMediaBlock(*GadgetData.GadgetData, XMLNode)
-		Protected *NewMediaBlock.MediaBlock, Loop, Json, *Adress, BlockEnd
+		Protected *NewMediaBlock.MediaBlock, Loop, Json, *Adress, BlockEnd, LoopEnd = #Properties_Count - 2
 		
 		With *GadgetData
 			*NewMediaBlock.MediaBlock = AddMapElement(\Cont_MediaBlocks(), GetXMLAttribute(XMLNode, "UUID"))
@@ -1900,12 +1969,9 @@ Module PureTL
 				ExtractJSONStructure(JSONValue(json), *NewMediaBlock\DataPoints(Loop), DataPoint)
 			Next
 			
-			*NewMediaBlock\DataPointState(0)\x = #True
-			*NewMediaBlock\DataPointState(0)\y = #True
-			*NewMediaBlock\DataPointState(0)\z = #True
-			*NewMediaBlock\DataPointState(0)\width = #True
-			*NewMediaBlock\DataPointState(0)\height = #True
-			*NewMediaBlock\DataPointState(0)\depth = #True
+			For Loop = 0 To LoopEnd
+				*NewMediaBlock\DataPointState(0)\Properties(Loop) = #True
+			Next
 			
 			FreeJSON(Json)
 			
@@ -1930,13 +1996,12 @@ Module PureTL
 			
 			Select *NewMediaBlock\Type
 				Case #Asset_Type_Image ;{
-					*NewMediaBlock\UsedData\Depth = #False
-					*NewMediaBlock\UsedData\Height = #True
-					*NewMediaBlock\UsedData\Width = #True
-					*NewMediaBlock\UsedData\X = #True
-					*NewMediaBlock\UsedData\Y = #True
-					*NewMediaBlock\UsedData\Z = #False
-					*NewMediaBlock\UsedData\Transparency = #True
+					*NewMediaBlock\UsedDataPoints(#Properties_Height) = #True
+					*NewMediaBlock\UsedDataPoints(#Properties_Width) = #True
+					*NewMediaBlock\UsedDataPoints(#Properties_X) = #True
+					*NewMediaBlock\UsedDataPoints(#Properties_Y) = #True
+					*NewMediaBlock\UsedDataPoints(#Properties_Transparency) = #True
+					*NewMediaBlock\UsedDataPoints(#Properties_Angle) = #True
 					;}
 			EndSelect
 			
@@ -1951,10 +2016,10 @@ Module PureTL
 			*Mediablock = FindMapElement(\Cont_MediaBlocks(), GetXMLAttribute(XMLNode, "UUID"))
 			
 			If *Mediablock\Animated
-				RemoveUsedDataPoint(*Mediablock\Line, *Mediablock\UsedData)
+				RemoveUsedDataPoint(*Mediablock\Line, *Mediablock)
 				ProcessLineFold(*GadgetData, *Mediablock\Line)
 			ElseIf *Mediablock\Container
-				*Mediablock\Line\UsedDataPoints(#Properties_Sub) - 1
+				*Mediablock\Line\UsedDataPoints(#Properties_Container) - 1
 				ProcessLineFold(*GadgetData, *Mediablock\Line)
 			EndIf
 			
@@ -2011,10 +2076,10 @@ Module PureTL
 				DeleteElement(*Mediablock\Line\MediaBlock())
 				If OriginalLine <> *Line.Line
 					If *Mediablock\Animated
-						RemoveUsedDataPoint(*Mediablock\Line, *Mediablock\UsedData)
+						RemoveUsedDataPoint(*Mediablock\Line, *Mediablock)
 						ProcessLineFold(*GadgetData, *Mediablock\Line)
 					ElseIf *Mediablock\Container
-						*Mediablock\Line\UsedDataPoints(#Properties_Sub) - 1
+						*Mediablock\Line\UsedDataPoints(#Properties_Container) - 1
 						ProcessLineFold(*GadgetData, *Mediablock\Line)
 					EndIf
 				EndIf
@@ -2044,10 +2109,10 @@ Module PureTL
 				
 				If OriginalLine <> *Line.Line
 					If *Mediablock\Animated
-						AddUsedDataPoint(*Mediablock\Line, *Mediablock\UsedData)
+						AddUsedDataPoint(*Mediablock\Line, *Mediablock)
 						ProcessLineFold(*GadgetData, *Mediablock\Line)
 					ElseIf *Mediablock\Container
-						*Mediablock\Line\UsedDataPoints(#Properties_Sub) + 1
+						*Mediablock\Line\UsedDataPoints(#Properties_Container) + 1
 						ProcessLineFold(*GadgetData, *Mediablock\Line)
 					EndIf
 				EndIf
@@ -2082,7 +2147,7 @@ Module PureTL
 				;TODO: Check if this actually work?
 				
 				For PropertiesLoop = 0 To #Properties_Count - 2
-					If PeekD(@*Mediablock\UsedData + PropertiesLoop * 8)
+					If *Mediablock\UsedDataPoints(PropertiesLoop + 1)
 						
 						Keyframe = #False
 						
@@ -2120,23 +2185,30 @@ Module PureTL
 		SortMediaBlocks(*Mediablock\Line\MediaBlock(), @CompareAscending())
 	EndProcedure
 	
-	Procedure ToggleAnimatedMediaBlock()
-		Protected *GadgetData.GadgetData = GetGadgetData(0), Loop; Yep. Hard coded gadget id... Yep, we've hit refactor time two weeks ago...
+	Procedure ToggleAnimatedMediaBlock(); Yep. Hard coded gadget id... Yep, we've hit refactor time two weeks ago...
+		Protected *GadgetData.GadgetData = GetGadgetData(0), Loop, SubLoop, SubLoopEnd = #Properties_Count - 2
 		
 		With *GadgetData
 			ForEach \State_Selected_MediaBlocks()
 				If EventData()
-					AddUsedDataPointEX(\State_Selected_MediaBlocks()\Line, @\State_Selected_MediaBlocks()\UsedData)
+					\State_Selected_MediaBlocks()\Line\UsedDataPoints(#Properties_Container) - \State_Selected_MediaBlocks()\UsedDataPoints(#Properties_Container)
+					AddUsedDataPoint(\State_Selected_MediaBlocks()\Line, \State_Selected_MediaBlocks())
 					ProcessLineFold(*GadgetData, \State_Selected_MediaBlocks()\Line)
 					\State_Selected_MediaBlocks()\Animated = #True
 				Else
-					RemoveUsedDataPointEX(\State_Selected_MediaBlocks()\Line, @\State_Selected_MediaBlocks()\UsedData)
+					RemoveUsedDataPoint(\State_Selected_MediaBlocks()\Line, \State_Selected_MediaBlocks())
+					\State_Selected_MediaBlocks()\Line\UsedDataPoints(#Properties_Container) + \State_Selected_MediaBlocks()\UsedDataPoints(#Properties_Container)
 					ProcessLineFold(*GadgetData, \State_Selected_MediaBlocks()\Line)
 					For Loop = 1 To \State_Selected_MediaBlocks()\Duration
 						CopyStructure(@\State_Selected_MediaBlocks()\DataPoints(0), @\State_Selected_MediaBlocks()\DataPoints(Loop), Datapoint)
+						
+						For SubLoop = 0 To SubLoopEnd
+							\State_Selected_MediaBlocks()\DataPointState(Loop)\Properties(SubLoop) = #False
+						Next
 					Next
 					
 					\State_Selected_MediaBlocks()\Animated = #False
+					
 				EndIf
 			Next
 			
@@ -2199,7 +2271,7 @@ Module PureTL
 								If *Line
 									*MediaBlock = _HoverMediaBlock(*GadgetData, X, Y)
 									
-									If \State_LineIndex()\Sub = #Properties_Sub And (*Mediablock And (*Mediablock\Container Or *Mediablock\Parent))
+									If \State_LineIndex()\Sub = #Properties_Container And (*Mediablock And (*Mediablock\Container Or (*Mediablock\Parent And *Mediablock\Parent <> \State_Selected_MediaBlocks())) And *Mediablock <> \State_Selected_MediaBlocks())
 										If *Mediablock\Parent
 											*Mediablock = *Mediablock\Parent
 										EndIf
@@ -3029,7 +3101,7 @@ Module PureTL
 	
 	; Redraw
 	Procedure Redraw(*GadgetData.GadgetData, UpdateCollisionData = #False)
-		Protected Loop, BodyYPos, YPos, OddLine, ListIndex, StepCount, LineHeight, DataPropertiesLoop, DataCount, Duration, BlockStart, BlockEnd, InitialPosition, BLockHeight
+		Protected Loop, BodyYPos, YPos, OddLine, ListIndex, StepCount, LineHeight, DataPropertiesLoop, DataPropertiesLoopEnd = #Properties_Count - 2, DataCount, Duration, BlockStart, BlockEnd, InitialPosition, BLockHeight
 		Protected HScroll, VScroll
 		
 		With *GadgetData
@@ -3130,8 +3202,21 @@ Module PureTL
 							ElseIf \Cont_Displayed_List()\Fold = #Unfolded
 								DrawText(\Meas_TL_TextHorizontaOffset, YPos + 18, #FontAwesome_Chevron_Down)
 								DrawingFont(FontBold)
+								
 								DataCount = 0
-								For DataPropertiesLoop = 0 To #Properties_Count
+								
+								If \Cont_Displayed_List()\UsedDataPoints(#Properties_Container)
+									DrawText(\Meas_List_Width - Properties(#Properties_Container)\Size, YPos + \Meas_TL_TextVericalOffset - 2 + #Size_MediaBlock_Height, Properties(#Properties_Container)\Text)
+									DataCount = 1
+									If UpdateCollisionData
+										AddElement(\State_LineIndex())
+										\State_LineIndex()\Line = \Cont_Displayed_List()
+										\State_LineIndex()\Position = YPos + DataCount * #Size_MediaBlock_Height + #Size_MediaBlock_Height + #Size_MediaBlock_VerticalMargin
+										\State_LineIndex()\Sub = #Properties_Container
+									EndIf
+								EndIf
+								
+								For DataPropertiesLoop = 0 To DataPropertiesLoopEnd
 									If \Cont_Displayed_List()\UsedDataPoints(DataPropertiesLoop)
 										DataCount + 1
 										If UpdateCollisionData
@@ -3140,6 +3225,7 @@ Module PureTL
 											\State_LineIndex()\Position = YPos + DataCount * #Size_MediaBlock_Height + #Size_MediaBlock_Height + #Size_MediaBlock_VerticalMargin
 											\State_LineIndex()\Sub = DataPropertiesLoop
 										EndIf
+										
 										DrawText(\Meas_List_Width - Properties(DataPropertiesLoop)\Size, YPos + DataCount * #Size_MediaBlock_Height + \Meas_TL_TextVericalOffset - 2, Properties(DataPropertiesLoop)\Text)
 									EndIf
 								Next
@@ -3375,17 +3461,19 @@ Module PureTL
 	EndProcedure
 	
 	Procedure Redraw_MediaBlock(*GadgetData.GadgetData, YPos, *Block.MediaBlock, CollisionDataLine, UpdateCollisionData = #False)
-		Protected XPos, Duration, BlockStart, Height, Width, Alpha = $FF, Unfolded, Loop, LoopEnd, TextPos, ChildPos, ChildWidth, CollisionLoop, CollisionLoopEnd, ParentPos
+		Protected XPos, Duration, BlockStart, Height, Width, Alpha = $FF, Unfolded, Loop, LoopEnd, TextPos, ChildPos, ChildWidth, BlockContentLoop, BlockContentLoopEnd, ParentPos, BlockContentStart, DatapointY, DatapointX
+		
 		With *GadgetData
 			If *Block\Drag
 				Alpha = 80
 			EndIf
 			
+			;{ Block itself
 			BlockStart = Max(*Block\BlockStart, \Meas_HPosition - 3) ; minus 3 to have the right corners correctly rounded even at the lowest zoom level.
 			Duration = *Block\BlockEnd - BlockStart
 			
 			BlockStart - \Meas_HPosition
-			XPos = BlockStart * \Meas_TL_ColumnWidth
+			XPos = BlockStart * \Meas_TL_ColumnWidth - \Meas_TL_ColumnWidth * 0.5
 			BeginVectorLayer()
 			
 			MovePathCursor(XPos + 3.5, YPos + 4)
@@ -3444,6 +3532,8 @@ Module PureTL
 				DrawVectorText(*Block\Text)
 			EndIf
 			
+			;}
+			
 			; Draw content if unfolded
 			If Unfolded
 				LoopEnd = min(ArraySize(\State_Collision_Line()) - CollisionDataLine, \Cont_Displayed_List()\SubLineCount) -1
@@ -3456,7 +3546,66 @@ Module PureTL
 				
 				FillPath()
 				
-				If \Cont_Displayed_List()\UsedDataPoints(#Properties_Sub) 
+				;{ Animation
+				If *Block\Animated
+					LoopEnd = #Properties_Count - 2
+					BlockContentLoopEnd = *Block\Duration ;Min(, \Meas_HPosition + \Meas_Displayed_Column_Count)
+					BlockContentStart = Max(*Block\BlockStart, \Meas_HPosition) - *Block\BlockStart
+					DatapointY = YPos + (Bool(\Cont_Displayed_List()\UsedDataPoints(#Properties_Container)) * #Size_MediaBlock_Height) + (#Size_MediaBlock_Height * 0.5)
+					DatapointX = (*Block\BlockStart - \Meas_HPosition) * \Meas_TL_ColumnWidth + (\Meas_TL_ColumnWidth * 0.5) - \Meas_TL_ColumnWidth * 0.5 - 0.5
+					VectorSourceColor(SetAlpha(Alpha, $B0B0B0))
+					
+					For Loop = 0 To LoopEnd
+						If \Cont_Displayed_List()\UsedDataPoints(Loop)
+							If *Block\UsedDataPoints(Loop)
+								If \Meas_TL_ColumnWidth > 8
+									
+									For BlockContentLoop = BlockContentStart To BlockContentLoopEnd
+										If *Block\DataPointState(BlockContentLoop)\Properties(Loop)
+											MovePathCursor(DatapointX + BlockContentLoop * \Meas_TL_ColumnWidth, DatapointY - 4)
+											AddPathLine(- #Style_DataPoint_SizeBig, #Style_DataPoint_SizeBig, #PB_Relative)
+											AddPathLine(#Style_DataPoint_SizeBig, #Style_DataPoint_SizeBig, #PB_Relative)
+											AddPathLine(#Style_DataPoint_SizeBig, - #Style_DataPoint_SizeBig, #PB_Relative)
+										EndIf
+										ClosePath()
+									Next
+									
+								ElseIf \Meas_TL_ColumnWidth > 3
+									
+									For BlockContentLoop = BlockContentStart To BlockContentLoopEnd
+										If *Block\DataPointState(BlockContentLoop)\Properties(Loop)
+											AddPathCircle(DatapointX + BlockContentLoop * \Meas_TL_ColumnWidth, DatapointY, 2)
+										EndIf
+									Next
+									
+								Else
+									
+									For BlockContentLoop = BlockContentStart To BlockContentLoopEnd
+										If *Block\DataPointState(BlockContentLoop)\Properties(Loop)
+											AddPathCircle(DatapointX + BlockContentLoop * \Meas_TL_ColumnWidth, DatapointY, 1)
+										EndIf
+									Next
+									
+								EndIf
+							Else
+								FillPath()
+								VectorSourceColor(SetAlpha(Alpha, $FF202020))
+								DrawDashedSquare(XPos + 1, YPos + (Loop - 1) * #Size_MediaBlock_Height, Width, #Size_MediaBlock_Height)
+								VectorSourceColor(SetAlpha(Alpha, $B0B0B0))
+							EndIf
+							
+							DatapointY + #Size_MediaBlock_Height
+							
+						EndIf
+					Next
+					
+					
+					FillPath()
+					VectorSourceColor(SetAlpha(Alpha, $FF202020))
+				EndIf
+				;}
+				
+				If \Cont_Displayed_List()\UsedDataPoints(#Properties_Container) ;{ Container
 					If *Block\Container
 						If *Block = *GadgetData\State_SubDropMediaBlock
 							VectorSourceColor($33FFFFFF)
@@ -3476,7 +3625,7 @@ Module PureTL
 						ForEach *Block\Children() ; Sub content
 							SaveVectorState()
 							
-							; This won't do for more advanced mediablock (I'm thinking soung, mostly)
+							; This won't do for more advanced mediablock (I'm thinking sound, mostly)
 							
 							ChildPos = Max(ParentPos + *Block\Children()\BlockStart * \Meas_TL_ColumnWidth, -3)
 							ChildWidth = *Block\Children()\Duration * \Meas_TL_ColumnWidth + \Meas_TL_ColumnWidth
@@ -3509,20 +3658,20 @@ Module PureTL
 							RestoreVectorState()
 							
 							; Collision map
-							CollisionLoopEnd = Min(*Block\Children()\BlockEnd + *Block\BlockStart, Min(*Block\BlockEnd, \Meas_Displayed_Column_Count))
+							BlockContentLoopEnd = Min(*Block\Children()\BlockEnd + *Block\BlockStart, Min(*Block\BlockEnd, \Meas_Displayed_Column_Count))
 							
-							For CollisionLoop = Max(Max(*Block\BlockStart, *Block\Children()\BlockStart + *Block\BlockStart), \Meas_HPosition) - \Meas_HPosition To CollisionLoopEnd
-								\State_Collision_Line(CollisionDataLine + 1)\Column(CollisionLoop) = *Block\Children()
+							For BlockContentLoop = Max(Max(*Block\BlockStart, *Block\Children()\BlockStart + *Block\BlockStart), \Meas_HPosition) - \Meas_HPosition To BlockContentLoopEnd
+								\State_Collision_Line(CollisionDataLine + 1)\Column(BlockContentLoop) = *Block\Children()
 							Next
 						Next
 					Else
 						DrawDashedSquare(XPos + 1, YPos, Width, #Size_MediaBlock_Height)
 					EndIf
-				EndIf
+				EndIf ;}
 			EndIf
 			EndVectorLayer()
-			
 		EndWith
+		
 		ProcedureReturn *Block\BlockEnd
 	EndProcedure
 	
@@ -3657,7 +3806,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 2551
-; FirstLine = 649
-; Folding = AAFgzBCIACChAAgAQCADAAAAAApBA9
+; CursorPosition = 1684
+; FirstLine = 545
+; Folding = AAFgiBCIACgHCAgAACABAAAAAAFgGg
 ; EnableXP

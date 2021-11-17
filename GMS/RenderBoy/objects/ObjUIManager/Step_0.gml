@@ -1,39 +1,12 @@
 //if (live_call()) return live_result;
 
-var _mouse_delta/*:int*/ = mouse_wheel_down() * -1 + mouse_wheel_up();
-var _modifier_control/*:int*/ = keyboard_check(vk_control);
-var _modifier_shift/*:int*/ = keyboard_check(vk_shift);
-var _modifier_alt/*:int*/ = keyboard_check(vk_alt);
-var _target_cursor = cr_default;
+mouse_delta = mouse_wheel_down() * -1 + mouse_wheel_up();
+_mouse_button = mouse_check_button(mb_middle);
+modifier_control = UI_get_modifier_ctrl();
+modifier_shift = UI_get_modifier_shift();
+
+target_cursor = -1;
 var _resize = false;
-
-if (_mouse_delta != 0)
-{
-	if (_modifier_control)
-	{
-		var _new_scale = clamp(frame_scale + (_mouse_delta * 0.05), 0.25, 3);
-		var _scale_change = frame_scale - _new_scale
-		frame_scale = _new_scale;
-		
-		frame_draw_x += (_scale_change * target_width * 0.5);
-		frame_draw_y += (_scale_change * target_height * 0.5);
-		
-	}
-}
-
-if (mouse_check_button(mb_middle))
-{
-	var _mouse_delta_x = mouse_previous_x - mouse_x;
-	var _mouse_delta_y = mouse_previous_y - mouse_y;
-	
-	frame_draw_x -= _mouse_delta_x;
-	frame_draw_y -= _mouse_delta_y;
-	
-	_target_cursor = cr_size_all;
-}
-
-mouse_previous_x = mouse_x;
-mouse_previous_y = mouse_y;
 
 var _event = UI_tick();
 
@@ -43,6 +16,7 @@ while _event
 	{
 		case UI_EEvent.Edit: #region
 			editing_asset =  global.mediablock_map[? UI_get_event_mediablock()];
+			editing_asset.update();
 			break;
 			#endregion
 		case UI_EEvent.ReRender: #region
@@ -130,7 +104,7 @@ while _event
 	var _event = UI_tick();
 }
 
-if (_resize)
+if (_resize) // Window resized
 {
 	var _new_width = UI_get_width();
 	var _new_height = UI_get_height();
@@ -142,11 +116,80 @@ if (_resize)
 	window_width = _new_width;
 	window_height = _new_height;
 	
+	frame_draw_x = clamp(frame_draw_x, (frame_scale * target_width) * - 0.9, window_width - (frame_scale * target_width) * 0.1)
+	frame_draw_y = clamp(frame_draw_y, (frame_scale * target_height) * - 0.9, window_height - (frame_scale * target_height) * 0.1)
+	
+	if (editing_asset)
+	{
+		editing_asset.update(false);
+	}
+	
 	window_set_size(window_width, window_height);
 }
 
-if (_target_cursor != mouse_cursor)
+if (editing_asset)
 {
-	mouse_cursor = _target_cursor;
-	window_set_cursor(mouse_cursor);
+	rerender += editing_asset.edit_step();
 }
+
+if (mouse_delta != 0) // Scalling the preview
+{
+	if (modifier_control)
+	{
+		var _new_scale = clamp(frame_scale + (mouse_delta * 0.05), 0.25, 3);
+		var _scale_change = frame_scale - _new_scale
+		frame_scale = _new_scale;
+		
+		frame_draw_x += (_scale_change * target_width * 0.5);
+		frame_draw_y += (_scale_change * target_height * 0.5);
+		
+		frame_draw_x = clamp(frame_draw_x, (frame_scale * target_width) * - 0.9, window_width - (frame_scale * target_width) * 0.1)
+		frame_draw_y = clamp(frame_draw_y, (frame_scale * target_height) * - 0.9, window_height - (frame_scale * target_height) * 0.1)
+		
+		if (editing_asset)
+		{
+			editing_asset.update(false);
+		}
+	}
+}
+
+if (_mouse_button) // Moving the preview
+{
+	var mouse_delta_x = mouse_previous_x - mouse_x;
+	var mouse_delta_y = mouse_previous_y - mouse_y;
+	
+	frame_draw_x -= mouse_delta_x;
+	frame_draw_y -= mouse_delta_y;
+	
+	frame_draw_x = clamp(frame_draw_x, (frame_scale * target_width) * - 0.9, window_width - (frame_scale * target_width) * 0.1)
+	frame_draw_y = clamp(frame_draw_y, (frame_scale * target_height) * - 0.9, window_height - (frame_scale * target_height) * 0.1)
+	
+	if (editing_asset)
+	{
+		editing_asset.update(false);
+	}
+	
+	target_cursor = SprCursorsHandGrab;
+	
+}
+
+mouse_previous_x = mouse_x;
+mouse_previous_y = mouse_y;
+
+if (target_cursor != mouse_cursor)
+{
+	mouse_cursor = target_cursor;
+	if (mouse_cursor == -1)
+	{
+		window_set_cursor(cr_default);
+		cursor_sprite = -1;
+	}
+	else
+	{
+		window_set_cursor(cr_none);
+		cursor_sprite = target_cursor;
+	}
+	
+}
+
+
