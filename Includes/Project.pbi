@@ -22,6 +22,13 @@
 		XML.s
 	EndStructure
 	
+	Enumeration ; 2D Effect
+		#Effect2D_Blur
+		#Effect2D_Tiled
+		#Effect2D_FadeIn
+		#Effect2D_FadeOut
+	EndEnumeration
+	
 	Prototype Delete(UUID.s)
 	Prototype Add(Path.s, Image, UUID.s)
 	
@@ -35,13 +42,12 @@
 	; 	Global Dim AssetLibrary.AssetLibrary(5)
 	Global NewMap AssetLibrary.Asset(2048)
 	Global NewMap AssetLibrary_Media.AssetTypeLibrary(2048)
-; 	Global NewMap AssetLibrary.Asset(2048)
+	Global NewMap AssetLibrary_Elements.AssetTypeLibrary(2048)
 	Global Dim AssetProcedures.AssetProcedure(#__Asset_Type_Count)
 	
 	;Tasks
 	#AddAsset = "AddAsset"
 	#DeleteAsset = "DeleteAsset"
-	
 	;}
 	
 	;{ Private procedures declaration
@@ -67,6 +73,11 @@
 	; Misc
 	Declare HandlerUndoRedo(*Task.Task, Redo)
 	;}
+	
+	_AddElement("Tiled", CatchImage(#PB_Any, ?Tiled), Str(#Effect2D_Tiled))
+	_AddElement("Blur", CatchImage(#PB_Any, ?Blur), Str(#Effect2D_Blur))
+	_AddElement("Fade In", CatchImage(#PB_Any, ?FadeIn), Str(#Effect2D_FadeIn))
+	_AddElement("Fade Out", CatchImage(#PB_Any, ?FadeOut), Str(#Effect2D_FadeOut))
 	
 	;{ Public procedures
 	Procedure New()
@@ -186,6 +197,12 @@
 		Next
 	EndProcedure
 	
+	Procedure RePopulateElementLibrary()
+		ForEach AssetLibrary_Elements()
+			MainWindow::AddAssetButton(AssetLibrary_Elements()\Asset\Type, AssetLibrary_Elements()\Asset\PreviewImage, GetFilePart(AssetLibrary_Elements()\Asset\Path, #PB_FileSystem_NoExtension), AssetLibrary_Elements()\Asset\UUID)
+		Next
+	EndProcedure
+	
 	; Get
 	Procedure.s GetAssetName(UUID.s)
 		Protected Result.s
@@ -286,7 +303,19 @@
 	EndProcedure
 	
 	Procedure _AddElement(Path.s, Image, UUID.s)
+		Protected *Asset.Asset
 		
+		*Asset = AddMapElement(AssetLibrary(), UUID)
+		*Asset\Width = 100
+		*Asset\Height = 100
+		
+		*Asset\UUID = UUID
+		*Asset\Type = #Asset_Type_2DEffect
+		*Asset\Path = Path
+		*Asset\PreviewImage = Image
+		
+		AddMapElement(AssetLibrary_Elements(), UUID)
+		AssetLibrary_Elements()\Asset = *Asset
 	EndProcedure
 	
 	; Delete Assets
@@ -358,9 +387,23 @@
 	EndProcedure
 	;}
 	
+	DataSection
+		
+		Blur:
+		IncludeBinary "..\Media\Asset icons\Blur.png"
+		
+		FadeIn:
+		IncludeBinary "..\Media\Asset icons\Fade In.png"
+		
+		FadeOut:
+		IncludeBinary "..\Media\Asset icons\Fade Out.png"
+		
+		Tiled:
+		IncludeBinary "..\Media\Asset icons\Tiled.png"
+	EndDataSection
 EndModule
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 184
-; FirstLine = 97
-; Folding = PQIwAg+
+; CursorPosition = 77
+; FirstLine = 1
+; Folding = PAYghA0
 ; EnableXP

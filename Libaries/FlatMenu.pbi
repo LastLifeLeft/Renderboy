@@ -854,8 +854,7 @@ CompilerIf #PB_Compiler_IsMainFile
 		EndSelect
 	ForEver
 CompilerEndIf
-; IDE Options = PureBasic 6.00 Alpha 3 (Windows - x64)
-; CursorPosition = 733
-; FirstLine = 88
-; Folding = CgBAUAE5
+; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
+; CursorPosition = 157
+; Folding = CgAAEAE5
 ; EnableXP

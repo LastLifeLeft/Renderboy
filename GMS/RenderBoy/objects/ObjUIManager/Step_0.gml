@@ -21,7 +21,7 @@ while _event
 			#endregion
 		case UI_EEvent.ReRender: #region
 			ds_list_clear(render_list);
-			
+			player_position = UI_get_player_position();
 			var _keep_edit = false;
 			
 			for (var _loop/*:int*/ = layer_count - 1; _loop > -1; _loop--)
@@ -30,36 +30,13 @@ while _event
 				{
 					var _mediablock_uuid = UI_next_mediablock_uuid(_loop);
 					
-					while  (_mediablock_uuid != "")
+					while (_mediablock_uuid != "")
 					{
 						var _mediablock = global.mediablock_map[? _mediablock_uuid];
 						
 						if (is_undefined(_mediablock))
 						{
-							switch (UI_get_mediablock_type(_mediablock_uuid))
-							{
-								case  UI_EAssetType.Image:
-									_mediablock = new MediaBlock2D(_mediablock_uuid, UI_EAssetType.Image);
-									break;
-								case  UI_EAssetType.Video :
-									_mediablock = new MediaBlock2D(_mediablock_uuid, UI_EAssetType.Video);
-									break;
-								case  UI_EAssetType.Sound :
-								
-									break;
-								case  UI_EAssetType.Music :
-								
-									break;
-								case  UI_EAssetType.Voice :
-								
-									break;
-								case  UI_EAssetType.Character :
-								
-									break;
-								case  UI_EAssetType.Model :
-								
-									break;
-							}
+							_mediablock = mediablock_load(_mediablock_uuid);
 						}
 						
 						_mediablock.update();
@@ -125,6 +102,7 @@ if (_resize) // Window resized
 	}
 	
 	window_set_size(window_width, window_height);
+	alarm_set(0,10);
 }
 
 if (editing_asset)

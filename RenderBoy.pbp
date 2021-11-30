@@ -1,30 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project xmlns="http://www.purebasic.com/namespace" version="1.0" creator="PureBasic 6.00 Alpha 5 (Windows - x64)">
+<project xmlns="http://www.purebasic.com/namespace" version="1.0" creator="PureBasic 6.00 Beta 1 (Windows - x64)">
   <section name="config">
     <options closefiles="1" openmode="0" name="RenderBoy"/>
   </section>
   <section name="data">
     <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2021-11-17 20:01" user="Poshu" host="DESKTOP-RGG8DMG"/>
+    <lastopen date="2021-11-30 18:22" user="Poshu" host="DESKTOP-RGG8DMG"/>
   </section>
   <section name="files">
     <file name="Includes\AssetButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="bdbac6501da53026cb320dbe37ea7af9"/>
+      <fingerprint md5="48276df78ee4d43dab214a9780dad769"/>
     </file>
     <file name="Includes\General.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="7c77ebf7bf4130ca8d9d613828978b82"/>
+      <fingerprint md5="65860ce17101a289001b667cdd83d4f7"/>
     </file>
     <file name="Includes\MainWindow.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="d7d92c81d4599a8c3479246efce4dc6d"/>
+      <fingerprint md5="363d94320823dbff5e45d272e0817895"/>
     </file>
     <file name="Includes\Project.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="8e4b80535f98cc96a249e6082bc85ef1"/>
+      <fingerprint md5="a34e22b3dc69b73818220b79d496ca59"/>
     </file>
     <file name="Libaries\CanvasButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -36,7 +36,7 @@
     </file>
     <file name="Libaries\FlatMenu.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
-      <fingerprint md5="2f7fb1600532d129e0e56ff002049f5c"/>
+      <fingerprint md5="bdeae84f4392b2ded26b1a0d192a2ddc"/>
     </file>
     <file name="Libaries\GadgetTimer.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -48,7 +48,7 @@
     </file>
     <file name="Libaries\MaterialVector.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
-      <fingerprint md5="6c2645df4efeefcc40ab75ec4ac1a008"/>
+      <fingerprint md5="c0a53f43d4d08f2aef80adb63eb80bad"/>
     </file>
     <file name="Libaries\MemoryStreamModule.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -56,7 +56,7 @@
     </file>
     <file name="Libaries\PureTimeline.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="645a3b584f6d7d3edb9463d83ab3b060"/>
+      <fingerprint md5="0c00bb7f43befe96ebca944b8222f47b"/>
     </file>
     <file name="Libaries\ScrollBar.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
@@ -72,7 +72,7 @@
     </file>
     <file name="Main.pb">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
-      <fingerprint md5="ac407663f2dbc8cfb3412679f58d748e"/>
+      <fingerprint md5="723ff65900992f9c26ea20ec69a348c9"/>
     </file>
   </section>
   <section name="targets">

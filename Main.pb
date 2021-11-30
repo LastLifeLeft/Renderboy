@@ -69,6 +69,22 @@ CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 		ProcedureReturn PureTL::LayerContent(0, Layer)
 	EndProcedure
 	
+	ProcedureCDLL.d ExamineSubMedia(*MediablockUUID)
+		Protected UUID.s = PeekS(*MediablockUUID, -1, #PB_UTF8)
+		ProcedureReturn PureTL::ExamineSubMedia(0, UUID)
+	EndProcedure
+	
+	ProcedureCDLL NextSubMedia(*MediablockUUID)
+		Protected Len, UUID.s = PeekS(*MediablockUUID, -1, #PB_UTF8)
+		UUID = PureTL::NextSubMedia(0, UUID)
+		Len = StringByteLength(UUID, #PB_UTF8) + 1
+		
+		*Result = ReAllocateMemory(*Result, Len, #PB_Memory_NoClear)
+		PokeS(*Result, UUID, Len, #PB_UTF8)
+		
+		ProcedureReturn *Result
+	EndProcedure
+	
 	ProcedureCDLL NextMediaBlock()
 		Protected UUID.s, Len
 		UUID = PureTL::NextMediaBlockUUID(0)
@@ -128,12 +144,24 @@ CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 		ProcedureReturn MainWindow::ModifierControl
 	EndProcedure
 	
-	ProcedureCDLL.D GetModifierShift()
+	ProcedureCDLL.d GetModifierShift()
 		ProcedureReturn MainWindow::ModifierShift
 	EndProcedure
 	
 	ProcedureCDLL UpdateMediaBlockState(*MediablockUUID, *Json)
 		PureTL::UpdateMediaBlockState(0, PeekS(*MediablockUUID, -1, #PB_UTF8), PeekS(*Json, -1, #PB_UTF8))
+	EndProcedure
+	
+	ProcedureCDLL.d GetPlayerPosition()
+		ProcedureReturn PureTL::GetPlayerPosition(0)
+	EndProcedure
+	
+	ProcedureCDLL.d GetMediaBlockDuration(*MediablockUUID)
+		ProcedureReturn PureTL::GetMediaBlockDuration(0, PeekS(*MediablockUUID, -1, #PB_UTF8))
+	EndProcedure
+	
+	ProcedureCDLL.d GetMediaBlockPosition(*MediablockUUID)
+		ProcedureReturn PureTL::GetMediaBlockPosition(0, PeekS(*MediablockUUID, -1, #PB_UTF8))
 	EndProcedure
 	
 CompilerElse
@@ -145,7 +173,7 @@ CompilerElse
 	ForEver
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 134
-; FirstLine = 11
-; Folding = BE9
+; CursorPosition = 154
+; FirstLine = 6
+; Folding = BAA+
 ; EnableXP

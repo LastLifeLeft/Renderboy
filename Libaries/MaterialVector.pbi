@@ -239,6 +239,7 @@ Module MaterialVector
 		AddPathLine(Half - Margin, Margin - Half, #PB_Path_Relative)
 		AddPathLine(Half - Margin,	Half - Margin, #PB_Path_Relative)
 		VectorSourceColor(FrontColor)
+		
 		If Not Style & #Style_NoPath
 			StrokePath(PathWidth, #PB_Path_Default)
 		EndIf
@@ -934,8 +935,8 @@ CompilerEndIf
 
 
 
-; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 119
+; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
+; CursorPosition = 241
 ; FirstLine = 60
-; Folding = rAAIY+
+; Folding = rIAIY+
 ; EnableXP

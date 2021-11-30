@@ -54,6 +54,19 @@
             1,
             1,
           ],"resourceVersion":"1.0","name":"UI_set_mediablock_state","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"ExamineSubMedia","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_examine_submedia","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"NextSubMedia","kind":1,"help":"","hidden":false,"returnType":1,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_next_submedia_uuid","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetPlayerPosition","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[],"resourceVersion":"1.0","name":"UI_get_player_position","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetMediaBlockDuration","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_get_mediablock_duration","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"GetMediaBlockPosition","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_get_mediablock_position","tags":[],"resourceType":"GMExtensionFunction",},
       ],"constants":[],"ProxyFiles":[],"copyToTargets":-1,"order":[
         {"name":"UI_init","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_width","path":"extensions/NativeUI/NativeUI.yy",},
@@ -71,6 +84,11 @@
         {"name":"UI_get_modifier_ctrl","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_modifier_shift","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_set_mediablock_state","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_examine_submedia","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_next_submedia_uuid","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_player_position","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_mediablock_duration","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_get_mediablock_position","path":"extensions/NativeUI/NativeUI.yy",},
       ],"resourceVersion":"1.0","name":"","tags":[],"resourceType":"GMExtensionFile",},
   ],
   "classname": "",

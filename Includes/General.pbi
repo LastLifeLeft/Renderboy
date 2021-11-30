@@ -104,6 +104,7 @@ DeclareModule Project
 		#Asset_Type_Voice
 		#Asset_Type_Character
 		#Asset_Type_Model
+		#Asset_Type_2DEffect
 		
 		#__Asset_Type_Count
 	EndEnumeration
@@ -122,6 +123,7 @@ DeclareModule Project
 	
 	; Library
 	Declare RePopulateMediaLibrary()
+	Declare RePopulateElementLibrary()
 	
 	; Get
 	Declare.s GetAssetName(UUID.s)
@@ -134,6 +136,8 @@ EndDeclareModule
 
 DeclareModule AssetButton
 	Global DragType.i, DragUUID.s, PlusImage, Color
+	
+	Global AssetButtonMedia, AssetButtonSound, AssetButtonModel, AssetButtonOverlay, AssetButtonElement
 	
 	Declare Gadget(Gadget, X, Y, Width, Height, Image, AssetType, Text.s, UUID.s)
 	Declare Delete(Gadget)
@@ -207,6 +211,6 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 122
-; Folding = sdw
+; CursorPosition = 42
+; Folding = 0dw
 ; EnableXP

@@ -197,7 +197,6 @@
 	
 	;{ Private procedures declaration
 	; Handler
-	Declare HandlerGMS2Window(hWnd, Msg, wParam, lParam)
 	Declare HandlerShortcutWorkAround(hWnd, Msg, wParam, lParam)
 	Declare HandlerScrollArea(hWnd, Msg, wParam, lParam)
 	Declare HandlerWindow(hWnd, Msg, wParam, lParam)
@@ -426,10 +425,7 @@
 			
 			SetWindowLong_(Renderer, #GWL_STYLE, GetWindowLong_(Renderer, #GWL_STYLE)| #WS_CHILD  !#WS_POPUP)
 			SetWindowLong_(Renderer, #GWL_EXSTYLE, GetWindowLong_(Renderer, #GWL_EXSTYLE) ! #WS_EX_APPWINDOW)
-			
 			SetParent_(Renderer, WindowID)
- 			SetProp_(Renderer, "oldproc", SetWindowLongPtr_(Renderer, #GWL_WNDPROC, @HandlerGMS2Window()))
-			
 		CompilerElse
 			UseGadgetList(WindowID)
 			Renderer = ContainerGadget(#PB_Any, AssetContainer_Width + 20, #Size_TitleBar_ButtonHeight + 2, 1920 - AssetContainer_Width - 30, 1080 - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height, #PB_Container_BorderLess)
@@ -444,7 +440,6 @@
 	EndProcedure
 	
 	Procedure AddAssetButton(AssetType, Image, Text.s, UUID.s)
-		
 		Select MediaState
 			Case #Asset_Media
 				If Not ( AssetType = Project::#Asset_Type_Image Or AssetType = Project::#Asset_Type_Video)
@@ -459,7 +454,9 @@
 			Case #Asset_Overlay
 				
 			Case #Asset_Element
-				
+				If Not ( AssetType = Project::#Asset_Type_2DEffect)
+					ProcedureReturn
+				EndIf
 		EndSelect
 		
 		LastElement(AssetButtonList())
@@ -485,25 +482,7 @@
 	;}
 	
 	;{ Private procedures
-	; Handler
-	Procedure HandlerGMS2Window(hWnd, Msg, wParam, lParam)
-		
-		If msg = #WM_KEYDOWN
-			Select wParam 
-				Case 89 ; Y
-					If GetAsyncKeyState_(#VK_CONTROL)
-						Project::Redo()
-					EndIf
-				Case 90 ; Z
-					If GetAsyncKeyState_(#VK_CONTROL)
-						Project::Undo()
-					EndIf
-			EndSelect
-		EndIf
-		
-		ProcedureReturn CallWindowProc_(GetProp_(hWnd, "oldproc"), hWnd, Msg, wParam, lParam)
-	EndProcedure
-	
+	; Handler	
 	Procedure HandlerShortcutWorkAround(hWnd, Msg, wParam, lParam)
 		Protected oldproc = GetProp_(hWnd, "oldproc")
 		If msg = #WM_KEYDOWN
@@ -742,18 +721,6 @@
 					DragPreviewVisible = #False
 				EndIf
 				;}
-			Case #WM_KEYDOWN ;{
-				Select wParam 
-					Case 89 ; Y
-						If GetAsyncKeyState_(#VK_CONTROL)
-							Project::Redo()
-						EndIf
-					Case 90 ; Z
-						If GetAsyncKeyState_(#VK_CONTROL)
-							Project::Undo()
-						EndIf
-				EndSelect
-				;}
 		EndSelect
 		ProcedureReturn CallWindowProc_(oldproc, hWnd, Msg, wParam, lParam)
 	EndProcedure
@@ -864,6 +831,8 @@
 					
 					Select MediaState
 						Case #Asset_Media ;{
+							AssetButton::PlusImage = AssetButton::AssetButtonMedia
+							AssetButton::Color = General::FixColor(#Color_Asset_Media)
 							Project::RePopulateMediaLibrary()
 							;}
 						Case #Asset_Sound ;{
@@ -876,7 +845,9 @@
 							
 							;}
 						Case #Asset_Element ;{
-							
+							AssetButton::PlusImage = AssetButton::AssetButtonElement
+							AssetButton::Color = General::FixColor(#Color_Asset_Element)
+							Project::RePopulateElementLibrary()
 							;}
 					EndSelect
 				EndIf
@@ -922,22 +893,18 @@
 		
 		Select AssetButton::DragType
 			Case Project::#Asset_Type_Image
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Media))
 				Icon = ""
 			Case Project::#Asset_Type_Video
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Media))
 			Case Project::#Asset_Type_Sound
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
 			Case Project::#Asset_Type_Music
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
 			Case Project::#Asset_Type_Voice
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
 			Case Project::#Asset_Type_Character
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
 			Case Project::#Asset_Type_Model
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
+			Case Project::#Asset_Type_2DEffect
+				Icon = ""
 		EndSelect
 		
+		Color = AssetButton::Color
   		PureTL::AddMediaBlock(#TimeLine, EventType(), EventData(), 60, AssetButton::DragType, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID))
   	EndProcedure
   	
@@ -946,22 +913,18 @@
 		
 		Select AssetButton::DragType
 			Case Project::#Asset_Type_Image
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Media))
 				Icon = ""
 			Case Project::#Asset_Type_Video
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Media))
 			Case Project::#Asset_Type_Sound
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
 			Case Project::#Asset_Type_Music
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
 			Case Project::#Asset_Type_Voice
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Audio))
 			Case Project::#Asset_Type_Character
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
 			Case Project::#Asset_Type_Model
-				Color = General::SetAlpha($FF, General::FixColor(#Color_Asset_Model))
+			Case Project::#Asset_Type_2DEffect
+				Icon = ""
 		EndSelect
 		
+		Color = AssetButton::Color
   		PureTL::AddMediaBlock(#TimeLine, 0, EventData(), 30, AssetButton::DragType, Icon, Project::GetAssetName(AssetButton::DragUUID), Color, AssetButton::DragUUID, Project::GetAssetDefaultState(AssetButton::DragUUID), EventType())
   	EndProcedure
 	
@@ -993,19 +956,31 @@
 	
 	Procedure Hook(nCode, wParam, *p.KBDLLHOOKSTRUCT)
 		If nCode = #HC_ACTION
-			Select *p\vkCode
-				Case 160 ; shift 
-					ModifierShift = Bool(wParam = #WM_KEYDOWN)
-				Case 162 ; Control
-					ModifierControl = Bool(wParam = #WM_KEYDOWN)
-			EndSelect
-; 			If wParam = #WM_KEYDOWN
-; 				Debug "Up "+ *p\vkCode
-; 			ElseIf wParam = #WM_KEYUP
-; 				Debug "down "+ *p\vkCode
-; 			EndIf
+			If wParam = #WM_KEYDOWN
+				Select *p\vkCode
+					Case #VK_LSHIFT, #VK_RSHIFT
+						ModifierShift = #True
+					Case #VK_LCONTROL, #VK_RCONTROL
+						ModifierControl = #True
+					Case 'Y'
+						If ModifierControl
+							Project::Redo()
+						EndIf
+					Case 'Z'
+						If ModifierControl
+							Project::Undo()
+						EndIf
+				EndSelect
+			ElseIf wParam = #WM_KEYUP
+				Select *p\vkCode
+					Case #VK_LSHIFT, #VK_RSHIFT
+						ModifierShift = #False
+					Case #VK_LCONTROL, #VK_RCONTROL
+						ModifierControl = #False
+				EndSelect
+			EndIf
 		EndIf
-		ProcedureReturn #False
+		ProcedureReturn CallNextHookEx_(#NUL, nCode, wParam, *p)
 	EndProcedure
 	
 	; Misc
@@ -1121,8 +1096,8 @@ EndModule
 
 
 
-; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 848
-; FirstLine = 189
-; Folding = x4pAAQByPA7
+; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
+; CursorPosition = 426
+; FirstLine = 302
+; Folding = x4nEAQA5Do+
 ; EnableXP

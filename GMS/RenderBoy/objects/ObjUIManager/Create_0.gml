@@ -17,7 +17,8 @@ enum UI_EAssetType
 	Music,
 	Voice,
 	Character,
-	Model
+	Model,
+	Effect2D
 }
 
 
@@ -37,7 +38,9 @@ enum ECursor
 	RotateSW
 }
 
-show_debug_overlay(false);
+//show_debug_overlay(true);
+
+draw_set_font(FNT_Segoe);
 
 display_reset(0, true);
 game_set_speed(60, gamespeed_fps);
@@ -74,8 +77,9 @@ render_list = ds_list_create();
 
 editing_asset = 0;
 
+player_position = 0;
+
 UI_init(window_get_caption());
 
 application_surface_draw_enable(false);
-show_debug_overlay(true);
 

@@ -418,6 +418,12 @@ DeclareModule PureTL
 	Declare GetMediaBlockType(Gadget, UUID.s)
 	Declare.s GetAssetUUID(Gadget, MediablockUUID.s)
 	Declare UpdateMediaBlockState(Gadget, MediablockUUID.s, Json.s)
+	
+	Declare ExamineSubMedia(Gadget, UUID.s)
+	Declare.s NextSubMedia(Gadget, UUID.s)
+	
+	Declare GetMediaBlockPosition(Gadget, UUID.s)
+	Declare GetMediaBlockDuration(Gadget, UUID.s)
 	; Data point
 	
 	
@@ -570,6 +576,7 @@ Module PureTL
 		Icon.s
 		Duration.i
 		BlockStart.i
+		BlockStartAbsolute.i
 		BlockEnd.i
 		State.b
 		Drag.b
@@ -1242,7 +1249,10 @@ Module PureTL
 							ElseIf \State_LineIndex()\Sub = #Properties_Container
 								
 								*MediaBlock = _HoverMediaBlock(*GadgetData, X, Y - #Size_Header_Height)
-								If *MediaBlock And *MediaBlock\UsedDataPoints(#Properties_Container) = #True
+								If *Mediablock And ((*Mediablock\Container And Not *Mediablock\Parent) Or *Mediablock\Parent)
+									If *Mediablock\Parent
+										*MediaBlock = *Mediablock\Parent
+									EndIf
 									\State_AssetDropLine = 0
 									\State_SubDropMediaBlock = *MediaBlock
 									Redraw(*GadgetData)
@@ -1316,6 +1326,7 @@ Module PureTL
 	
 	Procedure GetPlayerPosition(Gadget)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget)
+		ProcedureReturn *GadgetData\State_PlayerPosition
 	EndProcedure
 	
 	Procedure.s GetAsset(Gadget, Line)
@@ -1621,6 +1632,36 @@ Module PureTL
 		ProcedureReturn Result
 	EndProcedure
 	
+	Procedure ExamineSubMedia(Gadget, UUID.s)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Mediablock.Mediablock = FindMapElement(*GadgetData\Cont_MediaBlocks(), UUID), Result
+		
+		ForEach *Mediablock\Children()
+			If *Mediablock\Children()\BlockStartAbsolute > *GadgetData\State_PlayerPosition
+				Break
+			Else
+				If *Mediablock\Children()\BlockStartAbsolute + *Mediablock\Children()\Duration >= *GadgetData\State_PlayerPosition
+					If Not PreviousElement(*Mediablock\Children())
+						ResetList(*Mediablock\Children())
+					EndIf
+					Result = #True
+					Break
+				EndIf
+			EndIf
+		Next
+		
+		ProcedureReturn Result
+	EndProcedure
+	
+	Procedure.s NextSubMedia(Gadget, UUID.s)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Mediablock.Mediablock = FindMapElement(*GadgetData\Cont_MediaBlocks(), UUID)
+		
+		If NextElement(*Mediablock\Children())
+			If *Mediablock\Children()\BlockStartAbsolute <= *GadgetData\State_PlayerPosition
+				ProcedureReturn *Mediablock\Children()\UUID
+			EndIf
+		EndIf
+	EndProcedure
+	
 	Procedure GetMediaBlockType(Gadget, UUID.s)
 		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Mediablock.Mediablock = FindMapElement(*GadgetData\Cont_MediaBlocks(), UUID)
 		
@@ -1699,8 +1740,6 @@ Module PureTL
 						EndIf
 						;}
 						
-						
-						
 					EndIf
 				Next
 
@@ -1713,8 +1752,19 @@ Module PureTL
 			EndIf
 		EndWith
 	EndProcedure
-	;}
 	
+	Procedure GetMediaBlockPosition(Gadget, UUID.s)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Mediablock.Mediablock = FindMapElement(*GadgetData\Cont_MediaBlocks(), UUID)
+		
+		ProcedureReturn *Mediablock\BlockStartAbsolute
+	EndProcedure
+	
+	Procedure GetMediaBlockDuration(Gadget, UUID.s)
+		Protected *GadgetData.GadgetData = GetGadgetData(Gadget), *Mediablock.Mediablock = FindMapElement(*GadgetData\Cont_MediaBlocks(), UUID)
+		
+		ProcedureReturn *Mediablock\Duration
+	EndProcedure
+	;}
 	;}
 	
 	;{ Private procedures
@@ -1957,6 +2007,10 @@ Module PureTL
 			*NewMediaBlock\Duration = Val(GetXMLAttribute(XMLNode, "Duration"))
 			*NewMediaBlock\Parent = FindMapElement(\Cont_MediaBlocks(), GetXMLAttribute(XMLNode, "Parent"))
 			*NewMediaBlock\BlockStart = Val(GetXMLAttribute(XMLNode, "Position"))
+			*NewMediaBlock\BlockStartAbsolute = *NewMediaBlock\BlockStart
+			If *NewMediaBlock\Parent
+				*NewMediaBlock\BlockStartAbsolute + *NewMediaBlock\Parent\BlockStartAbsolute
+			EndIf
 			*NewMediaBlock\BlockEnd = *NewMediaBlock\BlockStart + *NewMediaBlock\Duration
 			*NewMediaBlock\Text = GetXMLAttribute(XMLNode, "Text")
 			
@@ -2006,7 +2060,7 @@ Module PureTL
 			EndSelect
 			
 			Redraw(*GadgetData, #True)
-			
+			PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove, \State_PlayerPosition)
 		EndWith
 	EndProcedure
 	
@@ -2035,6 +2089,7 @@ Module PureTL
 				_SetTimelineDuration(*GadgetData)
 			EndIf
 		EndWith
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_PlayerMove, *GadgetData\State_PlayerPosition)
 	EndProcedure
 	
 	Procedure _HoverMediaBlock(*GadgetData.GadgetData, X, Y)
@@ -2063,6 +2118,13 @@ Module PureTL
 		ProcedureReturn Result
 	EndProcedure
 	
+	Procedure _SetChildrenAbsolutePosition(*Mediablock.Mediablock)
+		ForEach *Mediablock\Children()
+			*Mediablock\Children()\BlockStartAbsolute = *Mediablock\Children()\BlockStart + *Mediablock\BlockStartAbsolute
+			_SetChildrenAbsolutePosition(*Mediablock\Children())
+		Next
+	EndProcedure
+	
 	Procedure _MoveMediaBlock(*GadgetData.GadgetData, *Mediablock.Mediablock, *Line.Line, Position, *Parent.Mediablock = 0)
 		Protected LastBlock, OriginalLine = *Mediablock\Line
 		With *GadgetData
@@ -2089,6 +2151,7 @@ Module PureTL
 			
 			*Mediablock\BlockEnd = Position + *Mediablock\BlockEnd - *Mediablock\BlockStart
 			*Mediablock\BlockStart = Position
+			*Mediablock\BlockStartAbsolute = *Mediablock\BlockStart
 			
 			If *Parent
 				*Mediablock\Parent = *Parent
@@ -2099,6 +2162,7 @@ Module PureTL
 				*Parent\Children() = *Mediablock
 				*Mediablock\ListAdress = @*Parent\Children()
 				SortMediaBlocks(*Parent\Children(), @CompareAscending())
+				*Mediablock\BlockStartAbsolute + *Mediablock\Parent\BlockStartAbsolute
 			Else
 				LastElement(*Line\MediaBlock())
 				AddElement(*Line\MediaBlock())
@@ -2124,41 +2188,34 @@ Module PureTL
 					_SetTimelineDuration(*GadgetData, -1)
 				EndIf
 			EndIf
+			
+			_SetChildrenAbsolutePosition(*Mediablock)
 		EndWith
+		
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_PlayerMove, *GadgetData\State_PlayerPosition)
 	EndProcedure
 	
 	Procedure _ResizeMediaBlock(*GadgetData.GadgetData, *Mediablock.Mediablock, NewStart, NewEnd, JSON);TODO: Check if this actually work?
-		Protected LastBlock = *Mediablock\BlockEnd, Duration = NewEnd - NewStart, DataLoop, Keyframe, PropertiesLoop
-		
+		Protected Duration = NewEnd - NewStart, Loop, PropertiesLoop
 		
 		If Duration > *MediaBlock\Duration
 			
 			ReDim *Mediablock\DataPoints(Duration)
 			ReDim *Mediablock\DataPointState(Duration)
 			
-			For DataLoop = *MediaBlock\Duration + 1 To Duration 
-				CopyStructure(@*Mediablock\DataPoints(*MediaBlock\Duration), @*Mediablock\DataPoints(DataLoop), DataPoint)
+			For Loop = *MediaBlock\Duration To Duration 
+				CopyStructure(@*Mediablock\DataPoints(*MediaBlock\Duration - 1), @*Mediablock\DataPoints(Loop), DataPoint)
 			Next
 		Else
 			If *MediaBlock\Animated
-				; Check if there is a key frame beyond the new end. If so, the new end is a key frame.
-				; ... For each data?!
-				
-				;TODO: Check if this actually work?
+				; Check if there is a key frame beyond the new end. If so, the new last frame is a key frame.
 				
 				For PropertiesLoop = 0 To #Properties_Count - 2
-					If *Mediablock\UsedDataPoints(PropertiesLoop + 1)
-						
-						Keyframe = #False
-						
-						For DataLoop = Duration To *MediaBlock\Duration
-							If PeekD(@*Mediablock\DataPointState(DataLoop) + PropertiesLoop * 8)
-								Keyframe = #True
+					If *Mediablock\UsedDataPoints(PropertiesLoop)
+						For Loop = Duration To *MediaBlock\Duration
+							If *Mediablock\DataPointState(Loop)\Properties(PropertiesLoop)
+								*Mediablock\DataPointState(Duration - 1)\Properties(PropertiesLoop) = #True
 								Break
-							EndIf
-							
-							If Keyframe
-								PokeD(@*Mediablock\DataPointState(DataLoop) + PropertiesLoop * 8, #True)
 							EndIf
 						Next
 					EndIf
@@ -2169,20 +2226,27 @@ Module PureTL
 			ReDim *Mediablock\DataPointState(Duration)
 		EndIf
 		
+		
+		If Not *Mediablock\Parent; Correct the timeline duration if needed.
+			If NewEnd + #Duration_Extension > *GadgetData\Cont_Duration
+				_SetTimelineDuration(*GadgetData, NewEnd + #Duration_Extension)
+			ElseIf *Mediablock\BlockEnd + #Duration_Extension = *GadgetData\Cont_Duration
+				_SetTimelineDuration(*GadgetData, -1)
+			EndIf
+			*Mediablock\BlockStartAbsolute = NewStart
+		Else
+			*Mediablock\BlockStartAbsolute = NewStart + *Mediablock\Parent\BlockStartAbsolute
+		EndIf
+		
 		*Mediablock\Duration = Duration
 		*Mediablock\BlockEnd = NewEnd
 		*Mediablock\BlockStart = NewStart
-		
-		
-		If Not *Mediablock\Parent; Correct the timeline duration if needed.
-			If *Mediablock\BlockEnd + #Duration_Extension > *GadgetData\Cont_Duration
-				_SetTimelineDuration(*GadgetData, *Mediablock\BlockEnd + #Duration_Extension)
-			ElseIf LastBlock + #Duration_Extension = *GadgetData\Cont_Duration
-				_SetTimelineDuration(*GadgetData, -1)
-			EndIf
-		EndIf
+	
+		_SetChildrenAbsolutePosition(*Mediablock)
 		
 		SortMediaBlocks(*Mediablock\Line\MediaBlock(), @CompareAscending())
+		
+		PostEvent(#PB_Event_Gadget, 0, *GadgetData\Comp_Container, #EventType_PlayerMove, *GadgetData\State_PlayerPosition)
 	EndProcedure
 	
 	Procedure ToggleAnimatedMediaBlock(); Yep. Hard coded gadget id... Yep, we've hit refactor time two weeks ago...
@@ -2262,6 +2326,7 @@ Module PureTL
 								EndIf
 							Else ;{ The behavior is totally different when moving a single mediablock
 								HOffset = Max(HOffset, 0 - \State_Drag_X)
+								
 								If \State_Drag_HOffset <> HOffset
 									\State_Drag_HOffset = HOffset
 									Redraw = #True
@@ -2271,9 +2336,19 @@ Module PureTL
 								If *Line
 									*MediaBlock = _HoverMediaBlock(*GadgetData, X, Y)
 									
-									If \State_LineIndex()\Sub = #Properties_Container And (*Mediablock And (*Mediablock\Container Or (*Mediablock\Parent And *Mediablock\Parent <> \State_Selected_MediaBlocks())) And *Mediablock <> \State_Selected_MediaBlocks())
+									If \State_LineIndex()\Sub = #Properties_Container And (*Mediablock And ((*Mediablock\Container And *Mediablock <> \State_Selected_MediaBlocks() And Not *Mediablock\Parent) Or (*Mediablock\Parent And *Mediablock\Parent <> \State_Selected_MediaBlocks())))
 										If *Mediablock\Parent
 											*Mediablock = *Mediablock\Parent
+										EndIf
+										
+										If GetGadgetAttribute(\Comp_Body, #PB_Canvas_Modifiers)
+											If (\State_Drag_HOffset - \Meas_HPosition + \State_Drag_X) < *Mediablock\BlockStartAbsolute
+												\State_Drag_HOffset = *Mediablock\BlockStartAbsolute + \Meas_HPosition - \State_Drag_X
+												Redraw = #True
+											ElseIf (\State_Drag_HOffset - \Meas_HPosition + \State_Drag_X + \State_Selected_MediaBlocks()\Duration) >= *Mediablock\BlockStartAbsolute + *Mediablock\Duration
+												\State_Drag_HOffset = *Mediablock\BlockStartAbsolute + \Meas_HPosition - \State_Drag_X + *Mediablock\Duration - \State_Selected_MediaBlocks()\Duration - 1
+												Redraw = #True
+											EndIf
 										EndIf
 										
 										If \State_SubDropMediaBlock <> *Mediablock
@@ -3102,7 +3177,7 @@ Module PureTL
 	; Redraw
 	Procedure Redraw(*GadgetData.GadgetData, UpdateCollisionData = #False)
 		Protected Loop, BodyYPos, YPos, OddLine, ListIndex, StepCount, LineHeight, DataPropertiesLoop, DataPropertiesLoopEnd = #Properties_Count - 2, DataCount, Duration, BlockStart, BlockEnd, InitialPosition, BLockHeight
-		Protected HScroll, VScroll
+		Protected HScroll, VScroll, Width
 		
 		With *GadgetData
 			;{ Empty current collision data if needed
@@ -3255,13 +3330,14 @@ Module PureTL
 											LineHeight + #Size_MediaBlock_Height
 										EndIf
 									EndIf
+									Width = \State_Selected_MediaBlocks()\Duration * \Meas_TL_ColumnWidth
 								Else
 									LineHeight = #Size_MediaBlock_Height - 12
 									BodyYPos + \Meas_TL_LineHeight - 8
+									Width = (\State_Selected_MediaBlocks()\Duration + 0.5) * \Meas_TL_ColumnWidth
 								EndIf
-								MaterialVector::AddPathRoundedBox((\State_Drag_HOffset - \Meas_HPosition + \State_Drag_X) * \Meas_TL_ColumnWidth + 0.5,
-								                                  BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5,
-								                                  \State_Selected_MediaBlocks()\Duration * \Meas_TL_ColumnWidth, LineHeight, 2)
+								MaterialVector::AddPathRoundedBox((\State_Drag_HOffset - \Meas_HPosition + \State_Drag_X) * \Meas_TL_ColumnWidth - \Meas_TL_ColumnWidth * 0.5 + 0.5,
+								                                  BodyYPos + #Size_MediaBlock_VerticalMargin + 0.5, Width, LineHeight, 2)
 								VectorSourceColor($FFFFFFFF)
 								StrokePath(1)
 							EndIf
@@ -3626,8 +3702,7 @@ Module PureTL
 							SaveVectorState()
 							
 							; This won't do for more advanced mediablock (I'm thinking sound, mostly)
-							
-							ChildPos = Max(ParentPos + *Block\Children()\BlockStart * \Meas_TL_ColumnWidth, -3)
+							ChildPos = ParentPos + *Block\Children()\BlockStart * \Meas_TL_ColumnWidth - \Meas_TL_ColumnWidth * 0.5
 							ChildWidth = *Block\Children()\Duration * \Meas_TL_ColumnWidth + \Meas_TL_ColumnWidth
 							
 							AddPathBox(ChildPos, YPos + 6, ChildWidth, #Size_MediaBlock_Height - 9)
@@ -3636,7 +3711,7 @@ Module PureTL
 							
 							MovePathCursor(ChildPos + 3.5, YPos + 7)
 							AddPathLine(ChildWidth - 7, 0, #PB_Path_Relative)
-							VectorSourceColor(SetAlpha(Alpha, *Block\Color))
+							VectorSourceColor(SetAlpha(Alpha, *Block\Children()\Color))
 							StrokePath(6, #PB_Path_RoundEnd)
 							
 							AddPathBox(ChildPos + 1, YPos + 8, ChildWidth - 2, #Size_MediaBlock_Height - 12)
@@ -3805,8 +3880,18 @@ EndModule
 
 
 
+
+
+
+
+
+
+
+
+
+
 ; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 1684
-; FirstLine = 545
-; Folding = AAFgiBCIACgHCAgAACABAAAAAAFgGg
+; CursorPosition = 2348
+; FirstLine = 636
+; Folding = AAFgiBCIACAAhAAIA5BgAAAAAAAAAAw
 ; EnableXP

@@ -7,65 +7,70 @@ function AssetImage(_UUID) constructor
 	path = UI_get_asset_path(UUID);
 	
 	sprite = sprite_add(path, 1, false, false, width * 0.5, height * 0.5);
-	
-	predraw = function(_parent, _state)
-	{
-		
-	}
-	
+
 	draw = function(_parent, _state)
 	{
-		better_scaling_draw_sprite(sprite, 0,  _state.X, _state.Y, _state.Width / width,  _state.Height / height, _state.Angle, c_white, _state.Transparency, 1);
+		draw_sprite_ext(sprite, 0,  _state.X, _state.Y, _state.Width / width,  _state.Height / height, _state.Angle, c_white, _state.Transparency)
 	}
-	
-	postdraw = function(_parent, _state)
+
+	draw_tiled = function(_parent, _state)
 	{
+		var _tex_repeat = gpu_get_tex_repeat();
+		gpu_set_tex_repeat(true);
 		
+		draw_primitive_begin_texture(pr_trianglelist, sprite_get_texture(sprite, 0));
+		var _x1 = (_state.X - _state.Width)
+		var _y1 = (_state.Y - _state.Height)
+		
+		var _x3 = (_state.X + _state.Width)
+		var _y3 = (_state.Y + _state.Height)
+		
+		var xtex = (_x3 - _x1) / width;
+		var ytex = (_y3 - _y1) / height;
+		
+		draw_vertex_texture(_x1, _y1, 0, 0);
+		draw_vertex_texture(_x3, _y1, xtex, 0);
+		draw_vertex_texture(_x3, _y3, xtex, ytex);
+
+		draw_vertex_texture(_x3, _y3, xtex, ytex);
+		draw_vertex_texture(_x1, _y3, 0, ytex);
+		draw_vertex_texture(_x1, _y1, 0, 0);
+
+		draw_primitive_end();
+		gpu_set_tex_repeat(_tex_repeat);
 	}
 	
-	default_predraw = predraw;
 	default_draw = draw;
-	default_postdraw = postdraw;
-	
 }
 
 function AssetVideo(_UUID) constructor
 {
 	UUID = _UUID;
 	
-	predraw = function(_parent, _state)
-	{
-	}
-	
 	draw = function(_parent, _state)
-	{
-	}
-	
-	postdraw = function(_parent, _state)
-	{
-	}
-	
-}
-
-function AssetFXReapeat(_UUID) constructor
-{
-	predraw = function(_parent, _state)
-	{
-		_parent.draw = newdraw;
-	}
-	
-	draw = function(_parent, _state)
-	{
-	}
-	
-	postdraw = function(_parent, _state)
-	{
-		_parent.draw = _parent.default_draw;
-	}
-	
-	newdraw = function(_parent, _state)
 	{
 		
 	}
-	
 }
+
+
+enum RB_EEffect
+{
+	Blur,
+	Tile,
+	Mask,
+	SomethingElse,
+    SIZE
+}
+
+
+
+
+
+//tex_array[0] = 0.5;
+//tex_array[1] = 0.1;
+//tex_array[2] = 0.25;
+
+
+
+
