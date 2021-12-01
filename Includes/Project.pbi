@@ -22,11 +22,13 @@
 		XML.s
 	EndStructure
 	
-	Enumeration ; 2D Effect
+	Enumeration ; Fixed assets
 		#Effect2D_Blur
 		#Effect2D_Tiled
 		#Effect2D_FadeIn
 		#Effect2D_FadeOut
+		
+		#Overlay_Text
 	EndEnumeration
 	
 	Prototype Delete(UUID.s)
@@ -43,6 +45,7 @@
 	Global NewMap AssetLibrary.Asset(2048)
 	Global NewMap AssetLibrary_Media.AssetTypeLibrary(2048)
 	Global NewMap AssetLibrary_Elements.AssetTypeLibrary(2048)
+	Global NewMap AssetLibrary_Overlay.AssetTypeLibrary(2048)
 	Global Dim AssetProcedures.AssetProcedure(#__Asset_Type_Count)
 	
 	;Tasks
@@ -78,6 +81,8 @@
 	_AddElement("Blur", CatchImage(#PB_Any, ?Blur), Str(#Effect2D_Blur))
 	_AddElement("Fade In", CatchImage(#PB_Any, ?FadeIn), Str(#Effect2D_FadeIn))
 	_AddElement("Fade Out", CatchImage(#PB_Any, ?FadeOut), Str(#Effect2D_FadeOut))
+	
+ 	_AddOverlay("Text", CatchImage(#PB_Any, ?Text), Str(#Overlay_Text))
 	
 	;{ Public procedures
 	Procedure New()
@@ -203,6 +208,12 @@
 		Next
 	EndProcedure
 	
+	Procedure RePopulateOverlayLibrary()
+		ForEach AssetLibrary_Overlay()
+			MainWindow::AddAssetButton(AssetLibrary_Overlay()\Asset\Type, AssetLibrary_Overlay()\Asset\PreviewImage, GetFilePart(AssetLibrary_Overlay()\Asset\Path, #PB_FileSystem_NoExtension), AssetLibrary_Overlay()\Asset\UUID)
+		Next
+	EndProcedure
+	
 	; Get
 	Procedure.s GetAssetName(UUID.s)
 		Protected Result.s
@@ -299,7 +310,19 @@
 	EndProcedure
 	
 	Procedure _AddOverlay(Path.s, Image, UUID.s)
+		Protected *Asset.Asset
 		
+		*Asset = AddMapElement(AssetLibrary(), UUID)
+		*Asset\Width = -1
+		*Asset\Height = -1
+		
+		*Asset\UUID = UUID
+		*Asset\Type = #Asset_Type_Overlay
+		*Asset\Path = Path
+		*Asset\PreviewImage = Image
+		
+		AddMapElement(AssetLibrary_Overlay(), UUID)
+		AssetLibrary_Overlay()\Asset = *Asset
 	EndProcedure
 	
 	Procedure _AddElement(Path.s, Image, UUID.s)
@@ -400,10 +423,13 @@
 		
 		Tiled:
 		IncludeBinary "..\Media\Asset icons\Tiled.png"
+		
+		Text:
+		IncludeBinary "..\Media\Asset icons\Text.png"
 	EndDataSection
 EndModule
-; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 77
-; FirstLine = 1
-; Folding = PAYghA0
+; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
+; CursorPosition = 204
+; FirstLine = 112
+; Folding = PAwABB7
 ; EnableXP

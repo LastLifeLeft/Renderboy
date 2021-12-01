@@ -104,6 +104,7 @@ DeclareModule Project
 		#Asset_Type_Voice
 		#Asset_Type_Character
 		#Asset_Type_Model
+		#Asset_Type_Overlay
 		#Asset_Type_2DEffect
 		
 		#__Asset_Type_Count
@@ -124,6 +125,7 @@ DeclareModule Project
 	; Library
 	Declare RePopulateMediaLibrary()
 	Declare RePopulateElementLibrary()
+	Declare RePopulateOverlayLibrary()
 	
 	; Get
 	Declare.s GetAssetName(UUID.s)
@@ -210,7 +212,8 @@ Module General
 EndModule
 
 
-; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 42
+; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
+; CursorPosition = 128
+; FirstLine = 21
 ; Folding = 0dw
 ; EnableXP

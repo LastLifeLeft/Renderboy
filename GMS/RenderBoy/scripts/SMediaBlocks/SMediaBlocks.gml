@@ -671,7 +671,7 @@ function MediaBlock2D(_UUID, _type) constructor
 								  
 				draw_set_halign(fa_center);
 				draw_set_valign(fa_middle);
-				draw_set_alpha(0.75);
+				draw_set_alpha(0.85);
 				
 				var _angle =  edit_angle + (state.Angle - backup_state.Angle);
 				if ((abs(_angle) % 360) > 90 and (abs(_angle) % 360) < 270)
@@ -682,7 +682,7 @@ function MediaBlock2D(_UUID, _type) constructor
 				draw_text_transformed(ObjUIManager.frame_draw_x + ObjUIManager.frame_scale * state.X + lengthdir_x(_distance + 25, edit_angle + (state.Angle - backup_state.Angle)),
 									  ObjUIManager.frame_draw_y + ObjUIManager.frame_scale * state.Y + lengthdir_y(_distance + 25, edit_angle + (state.Angle - backup_state.Angle)),
 									  string(round(state.Angle - backup_state.Angle))+ " deg",
-									  1, 1, _angle);
+									  1, 1, 0);
 				
 				
 				//draw_text_color(

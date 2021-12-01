@@ -32,7 +32,9 @@
 	AssetIcon(Project::#Asset_Type_Image) = ImageID(CatchImage(#PB_Any, ?IconImage))
 	AssetIcon(Project::#Asset_Type_Video) = ImageID(CatchImage(#PB_Any, ?IconVideo))
 	
- 	AssetIcon(Project::#Asset_Type_2DEffect) = ImageID(CatchImage(#PB_Any, ?Icon2DEffect))
+	AssetIcon(Project::#Asset_Type_2DEffect) = ImageID(CatchImage(#PB_Any, ?Icon2DEffect))
+	
+	AssetIcon(Project::#Asset_Type_Overlay) = ImageID(CatchImage(#PB_Any, ?IconOverlay))
 	;}
 	
 	;{ Private procedures declaration
@@ -223,7 +225,7 @@
 			Height = OutputHeight()
 			Box(0, 0, Width, Height - 20, $000000)
 			DrawImage(\Image, \ImageX, \ImageY)
-			DrawAlphaImage(\Icon, 10, 10)
+ 			DrawAlphaImage(\Icon, 10, 10)
 			
 			If \MouseOver
 				DrawAlphaImage(PlusImage, Width - 38, Height - 57)
@@ -280,11 +282,14 @@
 		
 		Icon2DEffect:
 		IncludeBinary "..\Media\Icon2DEffect.png"
-
+		
+		IconOverlay:
+		IncludeBinary "..\Media\IconOverlay.png"
+		
 	EndDataSection
 EndModule
-; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 254
-; FirstLine = 106
+; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
+; CursorPosition = 36
+; FirstLine = 16
 ; Folding = -Dw
 ; EnableXP

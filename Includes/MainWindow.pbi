@@ -842,7 +842,9 @@
 							
 							;}
 						Case #Asset_Overlay ;{
-							
+							AssetButton::PlusImage = AssetButton::AssetButtonOverlay
+							AssetButton::Color = General::FixColor(#Color_Asset_Overlay)
+							Project::RePopulateOverlayLibrary()
 							;}
 						Case #Asset_Element ;{
 							AssetButton::PlusImage = AssetButton::AssetButtonElement
@@ -1097,7 +1099,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 426
-; FirstLine = 302
-; Folding = x4nEAQA5Do+
+; CursorPosition = 849
+; FirstLine = 423
+; Folding = x4nEAQg9Do+
 ; EnableXP
