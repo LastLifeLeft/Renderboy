@@ -684,11 +684,6 @@ function MediaBlock2D(_UUID, _type) constructor
 									  string(round(state.Angle - backup_state.Angle))+ " deg",
 									  1, 1, 0);
 				
-				
-				//draw_text_color(
-				//				ObjUIManager.frame_draw_y + ObjUIManager.frame_scale * state.Y + lengthdir_y(_distance, edit_angle),
-				//				string(round(state.Angle - backup_state.Angle))+ " deg", c_white, c_white, c_white, c_white, 0.75);
-				
 				draw_set_alpha(1);
 				break;
 				#endregion

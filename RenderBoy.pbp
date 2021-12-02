@@ -7,7 +7,7 @@
   <section name="data">
     <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2021-12-01 19:50" user="Poshu" host="DESKTOP-RGG8DMG"/>
+    <lastopen date="2021-12-02 08:14" user="Poshu" host="DESKTOP-RGG8DMG"/>
   </section>
   <section name="files">
     <file name="Includes\AssetButton.pbi">
@@ -42,21 +42,13 @@
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
       <fingerprint md5="eb1dc57c3af9a8e41be33204ba7e23ad"/>
     </file>
-    <file name="Libaries\ImagePlugin.pbi">
-      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
-      <fingerprint md5="e07923e8e0d68e77b8854a8b9143ccbe"/>
-    </file>
     <file name="Libaries\MaterialVector.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
       <fingerprint md5="c0a53f43d4d08f2aef80adb63eb80bad"/>
     </file>
-    <file name="Libaries\MemoryStreamModule.pbi">
-      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
-      <fingerprint md5="755d335d17c1406d055722105c530364"/>
-    </file>
     <file name="Libaries\PureTimeline.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="0c00bb7f43befe96ebca944b8222f47b"/>
+      <fingerprint md5="bae8ff2a44af79289d39edfd709b9036"/>
     </file>
     <file name="Libaries\ScrollBar.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
@@ -72,7 +64,7 @@
     </file>
     <file name="Main.pb">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
-      <fingerprint md5="723ff65900992f9c26ea20ec69a348c9"/>
+      <fingerprint md5="c7ef6bda8e1b14a62eae6a99c8713007"/>
     </file>
   </section>
   <section name="targets">
@@ -87,7 +79,7 @@
     <target name="DLL" enabled="1" default="0">
       <inputfile value="Main.pb"/>
       <outputfile value="GMS\RenderBoy\extensions\NativeUI\UI.dll"/>
-      <compiler version="PureBasic 5.73 LTS (Windows - x64)"/>
+      <compiler version="PureBasic 6.00 Beta 1 - C Backend (Windows - x64)"/>
       <executable value="GMS\RenderBoy\extensions\NativeUI\UI.dll"/>
       <options xpskin="1" optimizer="0"/>
       <format exe="dll" cpu="0"/>

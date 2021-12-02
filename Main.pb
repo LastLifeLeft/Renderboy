@@ -1,9 +1,11 @@
-﻿IncludePath "Libaries"
-IncludeFile "MemoryStreamModule.pbi"
-IncludeFile "ImagePlugin.pbi"
+﻿UseJPEG2000ImageDecoder()
+UseJPEGImageDecoder()
+UsePNGImageDecoder()
+UseGIFImageDecoder()
+UseTGAImageDecoder()
+UseTIFFImageDecoder()
 
-ImagePlugin::UseSystemImageDecoder()
-ImagePlugin::UseSystemImageEncoder()
+IncludePath "Libaries"
 
 IncludeFile "Ease.pbi"
 IncludeFile "TaskList.pbi"
@@ -33,8 +35,6 @@ CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 	; Communication API
 	ProcedureCDLL.d Init(*WindowName)
 		General::WindowName = PeekS(*WindowName, -1, #PB_UTF8)
-		ImagePlugin::UseSystemImageDecoder()
-		ImagePlugin::UseSystemImageEncoder()
 		
 		MainWindow::Open()
 		Project::New()
@@ -172,8 +172,6 @@ CompilerElse
 		WaitWindowEvent()
 	ForEver
 CompilerEndIf
-; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 154
-; FirstLine = 6
-; Folding = BAA+
+; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
+; Folding = DAAw
 ; EnableXP

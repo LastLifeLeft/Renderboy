@@ -587,6 +587,8 @@ Module PureTL
 		Animated.i
 		Container.b
 		
+		InternalDataJSON.s
+		
 		List *Children.MediaBlock()
 		
 		Array DataPoints.DataPoint(1)
@@ -3890,8 +3892,8 @@ EndModule
 
 
 
-; IDE Options = PureBasic 6.00 Alpha 5 (Windows - x64)
-; CursorPosition = 2348
-; FirstLine = 636
-; Folding = AAFgiBCIACAAhAAIA5BgAAAAAAAAAAw
+; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
+; CursorPosition = 588
+; FirstLine = 174
+; Folding = AAFgiBCIACAAhAAIAoBgAAAAAAAAAAw
 ; EnableXP
