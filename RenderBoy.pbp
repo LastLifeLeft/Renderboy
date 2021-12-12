@@ -7,7 +7,7 @@
   <section name="data">
     <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2021-12-02 08:14" user="Poshu" host="DESKTOP-RGG8DMG"/>
+    <lastopen date="2021-12-12 07:57" user="Poshu" host="DESKTOP-RGG8DMG"/>
   </section>
   <section name="files">
     <file name="Includes\AssetButton.pbi">
@@ -20,7 +20,7 @@
     </file>
     <file name="Includes\MainWindow.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="c1e822c05da3b9517000a43fc6b9c453"/>
+      <fingerprint md5="a9f75f3f5292158ded995b0c1a57c449"/>
     </file>
     <file name="Includes\Project.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
@@ -64,7 +64,11 @@
     </file>
     <file name="Main.pb">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
-      <fingerprint md5="c7ef6bda8e1b14a62eae6a99c8713007"/>
+      <fingerprint md5="d59a0206d43eada1f3842f0f51e625ee"/>
+    </file>
+    <file name="Libaries\PureAccordion.pb">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="7303de976db18c1b16394bbaee2b46f4"/>
     </file>
   </section>
   <section name="targets">

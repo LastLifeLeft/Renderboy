@@ -16,6 +16,7 @@ IncludeFile "CanvasButton.pbi"
 IncludeFile "ScrollBar.pbi"
 IncludeFile "FlatMenu.pbi"
 IncludeFile "PureTimeline.pbi"
+IncludeFile "PureAccordion.pb"
 
 IncludePath "Includes"
 IncludeFile "General.pbi"
@@ -173,5 +174,6 @@ CompilerElse
 	ForEver
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
+; CursorPosition = 18
 ; Folding = DAAw
 ; EnableXP
