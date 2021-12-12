@@ -23,6 +23,7 @@ IncludeFile "General.pbi"
 IncludeFile "MainWindow.pbi"
 IncludeFile "Project.pbi"
 IncludeFile "AssetButton.pbi"
+IncludeFile "PropertiesWindow.pbi"
 
 EnableExplicit
 
@@ -174,6 +175,6 @@ CompilerElse
 	ForEver
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 18
-; Folding = DAAw
+; CursorPosition = 25
+; Folding = BAAw
 ; EnableXP

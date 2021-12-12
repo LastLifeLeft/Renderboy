@@ -161,6 +161,7 @@ Module Accordion
 	Declare _OpenGadgetList(*this.PB_Gadget, GadgetItem)
 	Declare _ClearGadgetItemList(*this.PB_Gadget)
 	Declare _SetGadgetColor(*this.PB_Gadget, ColorType, Color)
+	Declare _SetGadgetItemState(*this.PB_Gadget, Position.l, State)
 	
 	Declare HeightCheck(*GadgetData.GadgetData)
 	Declare Fold(*Item.Item)
@@ -194,6 +195,8 @@ Module Accordion
  				\VT\OpenGadgetList2 = @_OpenGadgetList()
  				\VT\ClearGadgetItemList = @_ClearGadgetItemList()
  				\VT\SetGadgetColor = @_SetGadgetColor()
+ 				\VT\SetGadgetItemState = @_SetGadgetItemState()
+ 				
  				; Data
  				\Width = Width
  				\Height = Height
@@ -222,7 +225,6 @@ Module Accordion
 				CompilerEndIf
 			
 				*this\VT = *GadgetData
-				
 				
 				BindGadgetEvent(\ScrollBar, @HandlerScrollBar(), #PB_EventType_Change)
 				SetGadgetData(\ScrollBar, *GadgetData)
@@ -404,6 +406,18 @@ Module Accordion
 		EndSelect
 	EndProcedure
 	
+	Procedure _SetGadgetItemState(*this.PB_Gadget, Position.l, State)
+		Protected *GadgetData.GadgetData = *this\VT
+		
+		With *GadgetData
+			If Position >= 0 And SelectElement(\ItemList(), Position)
+				If \ItemList()\State <> State
+					Fold(@\ItemList())
+				EndIf
+			EndIf
+		EndWith
+	EndProcedure
+	
 	Procedure Redraw(*GadgetData.GadgetData, *Item.Item)
 		With *Item
 			StartVectorDrawing(CanvasVectorOutput(\Canvas))
@@ -527,15 +541,15 @@ Module Accordion
 						Break
 					EndIf
 					
-					LastElement(*GadgetData\ItemList()\GadgetList())
-					
-					Repeat
-						ResizeGadget(*GadgetData\ItemList()\GadgetList()\Gadget, #PB_Ignore, GadgetY(*GadgetData\ItemList()\GadgetList()\Gadget) + \ContentHeight, #PB_Ignore, #PB_Ignore)
-						If *GadgetData\ItemList()\GadgetList()\Title
-							ResizeGadget(*GadgetData\ItemList()\GadgetList()\Title, #PB_Ignore, GadgetY(*GadgetData\ItemList()\GadgetList()\Title) + \ContentHeight, #PB_Ignore, #PB_Ignore)
-						EndIf
-					Until Not PreviousElement(*GadgetData\ItemList()\GadgetList())
-					
+					If LastElement(*GadgetData\ItemList()\GadgetList())
+						
+						Repeat
+							ResizeGadget(*GadgetData\ItemList()\GadgetList()\Gadget, #PB_Ignore, GadgetY(*GadgetData\ItemList()\GadgetList()\Gadget) + \ContentHeight, #PB_Ignore, #PB_Ignore)
+							If *GadgetData\ItemList()\GadgetList()\Title
+								ResizeGadget(*GadgetData\ItemList()\GadgetList()\Title, #PB_Ignore, GadgetY(*GadgetData\ItemList()\GadgetList()\Title) + \ContentHeight, #PB_Ignore, #PB_Ignore)
+							EndIf
+						Until Not PreviousElement(*GadgetData\ItemList()\GadgetList())
+					EndIf
 					ResizeGadget(*GadgetData\ItemList()\Canvas, #PB_Ignore, GadgetY(*GadgetData\ItemList()\Canvas) + \ContentHeight, #PB_Ignore, #PB_Ignore)
 					
 				Until Not PreviousElement(*GadgetData\ItemList())
@@ -649,12 +663,14 @@ CompilerIf #PB_Compiler_IsMainFile
 	Accordion::AddSubGadget(0, WebGadget(#PB_Any, 0, 0, 250, 235, "https://lastlife.net/"), "Et du web?")
 	CloseGadgetList()
 	
+	SetGadgetItemState(0, 0, #True)
+	SetGadgetItemState(0, 2, #True)
+	SetGadgetItemState(0, 0, #False)
 	
 	Repeat
 	Until WaitWindowEvent() = #PB_Event_CloseWindow
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 202
-; FirstLine = 175
-; Folding = -D9BB+
+; CursorPosition = 671
+; Folding = EAAAA9
 ; EnableXP

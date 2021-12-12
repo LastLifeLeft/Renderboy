@@ -2,34 +2,34 @@
 	EnableExplicit
 	; Macro
 	Macro SetMenuButtonAppearence(menu)
-		SetGadgetColor(#menu, CanvasButton::#BackColor_Cold, General::FixColor(#Color_Window_Back_Cold))
-		SetGadgetColor(#menu, CanvasButton::#BackColor_Warm, General::FixColor(#Color_Window_Back_Warm))
-		SetGadgetColor(#menu, CanvasButton::#BackColor_Hot, General::FixColor(#Color_Window_Back_Warm))
-		SetGadgetColor(#menu, CanvasButton::#FrontColor_Cold, General::FixColor(#Color_Window_Front_Cold))
-		SetGadgetColor(#menu, CanvasButton::#FrontColor_Warm, General::FixColor(#Color_Window_Front_Warm))
-		SetGadgetColor(#menu, CanvasButton::#FrontColor_Hot, General::FixColor(#Color_Window_Front_Warm))
+		SetGadgetColor(#menu, CanvasButton::#BackColor_Cold, General::FixColor(General::#Color_Window_Back_Cold))
+		SetGadgetColor(#menu, CanvasButton::#BackColor_Warm, General::FixColor(General::#Color_Window_Back_Warm))
+		SetGadgetColor(#menu, CanvasButton::#BackColor_Hot, General::FixColor(General::#Color_Window_Back_Warm))
+		SetGadgetColor(#menu, CanvasButton::#FrontColor_Cold, General::FixColor(General::#Color_Window_Front_Cold))
+		SetGadgetColor(#menu, CanvasButton::#FrontColor_Warm, General::FixColor(General::#Color_Window_Front_Warm))
+		SetGadgetColor(#menu, CanvasButton::#FrontColor_Hot, General::FixColor(General::#Color_Window_Front_Warm))
 		SetGadgetFont(#menu, Font)
 		BindGadgetEvent(#menu, @Handler#menu#(), #PB_EventType_Change)
 	EndMacro
 	
 	Macro SetWindowButtonApparence(Button)
-		SetGadgetColor(#Button, CanvasButton::#BackColor_Cold, General::FixColor(#Color_Window_Back_Cold))
-		SetGadgetColor(#Button, CanvasButton::#BackColor_Warm, General::FixColor(#Color_Window_Back_Warm))
-		SetGadgetColor(#Button, CanvasButton::#BackColor_Hot, General::FixColor(#Color_Window_Back_Warm))
-		SetGadgetColor(#Button, CanvasButton::#FrontColor_Cold, General::FixColor(#Color_Window_Front_Cold))
-		SetGadgetColor(#Button, CanvasButton::#FrontColor_Warm, General::FixColor(#Color_Window_Front_Warm))
-		SetGadgetColor(#Button, CanvasButton::#FrontColor_Hot, General::FixColor(#Color_Window_Front_Warm))
+		SetGadgetColor(#Button, CanvasButton::#BackColor_Cold, General::FixColor(General::#Color_Window_Back_Cold))
+		SetGadgetColor(#Button, CanvasButton::#BackColor_Warm, General::FixColor(General::#Color_Window_Back_Warm))
+		SetGadgetColor(#Button, CanvasButton::#BackColor_Hot, General::FixColor(General::#Color_Window_Back_Warm))
+		SetGadgetColor(#Button, CanvasButton::#FrontColor_Cold, General::FixColor(General::#Color_Window_Front_Cold))
+		SetGadgetColor(#Button, CanvasButton::#FrontColor_Warm, General::FixColor(General::#Color_Window_Front_Warm))
+		SetGadgetColor(#Button, CanvasButton::#FrontColor_Hot, General::FixColor(General::#Color_Window_Front_Warm))
 		SetGadgetFont(#Button, MaterialIcon)
 		BindGadgetEvent(#Button, @Handler#Button#(), #PB_EventType_Change)
 	EndMacro
 	
 	Macro SetMenuAppearance(MenuName)
 		FlatMenu::SetFont(MenuName#Menu, Font)
-		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#ColorType_LineColor, General::FixColor(#Color_Window_Back_Cold))
-		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_BackCold, General::FixColor(#Color_Window_Back_Warm))
-		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_BackHot, General::FixColor(#Color_Window_Back_Hot))
-		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_FrontCold, General::FixColor(#Color_Window_Front_Cold))
-		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_FrontHot, General::FixColor(#Color_Window_Front_Warm))
+		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#ColorType_LineColor, General::FixColor(General::#Color_Window_Back_Cold))
+		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_BackCold, General::FixColor(General::#Color_Window_Back_Warm))
+		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_BackHot, General::FixColor(General::#Color_Window_Back_Hot))
+		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_FrontCold, General::FixColor(General::#Color_Window_Front_Cold))
+		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_FrontHot, General::FixColor(General::#Color_Window_Front_Warm))
 		FlatMenu::SetColor(MenuName#Menu, FlatMenu::#colorType_FrontDisabled, General::FixColor($909090))
 		BindEvent(#PB_Event_DeactivateWindow, @HandlerCloseMenu(), MenuName#Menu)
 		SetProp_(WindowID(MenuName#Menu), "gadget", #MenuName#Button)
@@ -38,9 +38,9 @@
 	Macro SetAssetBarButtonAppearance(ButtonName)
 		*MediaButton\State = #False
 		StartDrawing(CanvasOutput(ButtonName))
-		Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(#Color_Window_Back_Cold))
+		Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(General::#Color_Window_Back_Cold))
 		FrontColor($A0A0A0)
-		BackColor(General::FixColor(#Color_Window_Back_Cold))
+		BackColor(General::FixColor(General::#Color_Window_Back_Cold))
 		
 		DrawingFont(IconLight)
 		*MediaButton\IconX = (#Size_Media_Icon - TextWidth(*MediaButton\Icon)) * 0.5
@@ -71,19 +71,6 @@
 	
 	
 	;{ Style
-	; Colors
-	#Color_Window_Back_Cold = $1A233A
-	#Color_Window_Back_Warm = $293658
-	#Color_Window_Back_Hot = $5A8DEE
-	
-	#Color_Window_Front_Cold = $D0D0D0
-	#Color_Window_Front_Warm = $FFFFFF
-	
-	#Color_Content_Back_Cold = $272E48
-	
-	#Color_Scrollbar_FrontCold = $787B86
-	#Color_Scrollbar_FrontWarm = $656873
-	#Color_Scrollbar_FrontHot = $434651
 	
 	; Size
 	#Size_Window_Border = 8
@@ -101,9 +88,8 @@
 	;{ Window management stuff
 	#WM_SYSMENU = $313
 	
-	CreateImage(0, 8, 8, 32, General::FixColor($1A233A))
-	Global Margin.RECT, Brush = CreatePatternBrush_(ImageID(0)), CursorSize, DWMEnabled, SplitterCursor, WindowWidth = 1920, WindowHeight = 1080, EditSplitter = 0, SplitterOrigin, MouseOrigin
-	FreeImage(0)
+	Global CursorSize, DWMEnabled, SplitterCursor, WindowWidth = 1920, WindowHeight = 1080, EditSplitter = 0, SplitterOrigin, MouseOrigin
+
 	;}
 	
 	; Fonts
@@ -229,18 +215,15 @@
 		; Appearence
 		WindowID = OpenWindow(#Window, 0, 0, 1920 - #Size_Window_Border * 2, 1041, General::#Name + " " + General::#Version , #WS_OVERLAPPEDWINDOW&~#WS_SYSMENU|#PB_Window_ScreenCentered|#PB_Window_Invisible)
 		EnableWindowDrop(#Window, #PB_Drop_Text, #PB_Drag_Copy)
-		SetRect_(@Margin, 0, 0, 1, 0)
 		
-		CallFunction(0, "DwmExtendFrameIntoClientArea", WindowID, @Margin)
+		CallFunction(0, "DwmExtendFrameIntoClientArea", WindowID, General::@WindowMargin)
 		CallFunction(0, "DwmIsCompositionEnabled", @DWMEnabled)
 		
 		If DWMEnabled = 0
 			SetWindowTheme_(WindowID, "", "")
 		EndIf
 		
-		CloseLibrary(0)
-		
-		SetClassLongPtr_(WindowID, #GCL_HBRBACKGROUND, Brush)
+		SetClassLongPtr_(WindowID, #GCL_HBRBACKGROUND, General::WindowBrush)
 		SetProp_(WindowID, "oldproc", SetWindowLongPtr_(WindowID, #GWL_WNDPROC, @HandlerWindow()))
 		
 		; Title bar
@@ -343,30 +326,30 @@
 		BindEvent(#PB_Event_GadgetDrop, @HandlerAssetDrop(), #Window, #Asset_Container)
 		
 		EnableGadgetDrop(#Asset_Container, #PB_Drop_Files, #PB_Drag_Copy | #PB_Drag_Link | #PB_Drag_Move)
-		SetGadgetColor(#Asset_Container, #PB_Gadget_BackColor, General::FixColor(#Color_Content_Back_Cold))
+		SetGadgetColor(#Asset_Container, #PB_Gadget_BackColor, General::FixColor(General::#Color_Content_Back_Cold))
 		
 		Protected CornerDR = ROTATE_90(CornerUR)
 		Protected CornerDL = ROTATE_90(CornerDR)
 		
-		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( #Color_Content_Back_Cold))
+		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( General::#Color_Content_Back_Cold))
 		StartDrawing(ImageOutput(Image))
 		DrawAlphaImage(ImageID(CornerUL), 0, 0)
 		StopDrawing()
 		MediaContainerBorder(0) = GadgetID(ImageGadget(#PB_Any, 0, 0, 0, 0 , ImageID(Image)))
 		
-		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( #Color_Content_Back_Cold))
+		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( General::#Color_Content_Back_Cold))
 		StartDrawing(ImageOutput(Image))
 		DrawAlphaImage(ImageID(CornerUR), 0, 0)
 		StopDrawing()
 		MediaContainerBorder(1) = GadgetID(ImageGadget(#PB_Any, AssetContainer_Width - #Size_RoundedCorner, 0, 0, 0 , ImageID(Image)))
 		
-		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( #Color_Content_Back_Cold))
+		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( General::#Color_Content_Back_Cold))
 		StartDrawing(ImageOutput(Image))
 		DrawAlphaImage(ImageID(CornerDR), 0, 0)
 		StopDrawing()
 		MediaContainerBorder(2) = GadgetID(ImageGadget(#PB_Any, AssetContainer_Width - #Size_RoundedCorner, 1080 - #Size_TitleBar_ButtonHeight - 25 - Timeline_Height - #Size_Media_Icon, 0, 0 , ImageID(Image)))
 		
-		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( #Color_Content_Back_Cold))
+		Image = CreateImage(#PB_Any, #Size_RoundedCorner, #Size_RoundedCorner, 24, General::FixColor( General::#Color_Content_Back_Cold))
 		StartDrawing(ImageOutput(Image))
 		DrawAlphaImage(ImageID(CornerDL), 0, 0)
 		StopDrawing()
@@ -375,17 +358,17 @@
 		ScrollAreaGadget(#Asset_ScrollArea, 0, 0, AssetContainer_Width - 46, 1080 - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height - #Size_Media_Icon, AssetContainer_Width - 6, 1080 - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height - #Size_Media_Icon, 45, #PB_ScrollArea_BorderLess)
 		SetProp_(GadgetID(#Asset_ScrollArea), "oldproc", SetWindowLongPtr_(GadgetID(#Asset_ScrollArea), #GWL_WNDPROC, @HandlerScrollArea()))
 		
- 		SetGadgetColor(#Asset_ScrollArea, #PB_Gadget_BackColor, General::FixColor(#Color_Content_Back_Cold))
+ 		SetGadgetColor(#Asset_ScrollArea, #PB_Gadget_BackColor, General::FixColor(General::#Color_Content_Back_Cold))
 		CloseGadgetList()
 		CloseGadgetList()
 		ScrollBar::Gadget(#Asset_ScrollBar, 0, #Size_Media_Icon + #Size_TitleBar_ButtonHeight + 2, 12, 1080 - #Size_TitleBar_ButtonHeight - 22 - Timeline_Height - #Size_Media_Icon, 0, 100, 10, ScrollBar::#Vertical)
 		BindGadgetEvent(#Asset_ScrollBar, @HandlerAssetScrollBar(), #PB_EventType_Change)
-		SetGadgetColor(#Asset_ScrollBar, #PB_Gadget_BackColor, General::SetAlpha($FF, General::FixColor(#Color_Content_Back_Cold)))
-		SetGadgetColor(#Asset_ScrollBar, #PB_Gadget_LineColor, General::SetAlpha($FF, General::FixColor(#Color_Window_Back_Cold)))
+		SetGadgetColor(#Asset_ScrollBar, #PB_Gadget_BackColor, General::SetAlpha($FF, General::FixColor(General::#Color_Content_Back_Cold)))
+		SetGadgetColor(#Asset_ScrollBar, #PB_Gadget_LineColor, General::SetAlpha($FF, General::FixColor(General::#Color_Window_Back_Cold)))
 		
-		SetGadgetColor(#Asset_ScrollBar, #PB_Gadget_FrontColor, 		General::SetAlpha($FF, General::FixColor(#Color_Scrollbar_FrontCold)))
-		SetGadgetColor(#Asset_ScrollBar, ScrollBar::#Color_FrontWarm,	General::SetAlpha($FF, General::FixColor(#Color_Scrollbar_FrontWarm)))
-		SetGadgetColor(#Asset_ScrollBar, ScrollBar::#Color_FrontHot,	General::SetAlpha($FF, General::FixColor(#Color_Scrollbar_FrontHot)))
+		SetGadgetColor(#Asset_ScrollBar, #PB_Gadget_FrontColor, 		General::SetAlpha($FF, General::FixColor(General::#Color_Scrollbar_FrontCold)))
+		SetGadgetColor(#Asset_ScrollBar, ScrollBar::#Color_FrontWarm,	General::SetAlpha($FF, General::FixColor(General::#Color_Scrollbar_FrontWarm)))
+		SetGadgetColor(#Asset_ScrollBar, ScrollBar::#Color_FrontHot,	General::SetAlpha($FF, General::FixColor(General::#Color_Scrollbar_FrontHot)))
 		
 		; Timeline
 		PureTL::Gadget(#TimeLine, 10, 1080 - Timeline_Height - 10, 1900, Timeline_Height)
@@ -437,6 +420,10 @@
 		CompilerEndIf
 		Refit()
 		HideWindow(#Window, #False)
+		
+		PropertiesWindow::Open()
+		
+		CloseLibrary(0)
 	EndProcedure
 	
 	Procedure AddAssetButton(AssetType, Image, Text.s, UUID.s)
@@ -545,7 +532,7 @@
 				;}
 			Case #WM_CTLCOLORSTATIC, #WM_CTLCOLORBTN ;{
 				SetBkMode_(wParam, #TRANSPARENT)
-				ProcedureReturn brush
+				ProcedureReturn General::WindowBrush
 				;}
 			Case #WM_SIZE ;{
 				Refit()
@@ -769,9 +756,9 @@
 			Case #PB_EventType_MouseEnter ;{
 				If *MediaButton\State = 0
 					StartDrawing(CanvasOutput(Gadget))
-					Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(#Color_Window_Back_Cold))
+					Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(General::#Color_Window_Back_Cold))
 					FrontColor($FFFFFF)
-					BackColor(General::FixColor(#Color_Window_Back_Cold))
+					BackColor(General::FixColor(General::#Color_Window_Back_Cold))
 					
 					DrawingFont(IconLight)
 					DrawText(*MediaButton\IconX, 12, *MediaButton\Icon)
@@ -784,9 +771,9 @@
 			Case #PB_EventType_MouseLeave ;{
 				If *MediaButton\State = 0
 					StartDrawing(CanvasOutput(Gadget))
-					Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(#Color_Window_Back_Cold))
+					Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(General::#Color_Window_Back_Cold))
 					FrontColor($A0A0A0)
-					BackColor(General::FixColor(#Color_Window_Back_Cold))
+					BackColor(General::FixColor(General::#Color_Window_Back_Cold))
 					
 					DrawingFont(IconLight)
 					DrawText(*MediaButton\IconX, 12, *MediaButton\Icon)
@@ -800,9 +787,9 @@
 				If *MediaButton\State = 0
 					*MediaButton\State = #True
 					StartDrawing(CanvasOutput(Gadget))
-					Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(#Color_Content_Back_Cold))
+					Box(0, 0, #Size_Media_Icon, #Size_Media_Icon, General::FixColor(General::#Color_Content_Back_Cold))
 					FrontColor($FFFFFF)
-					BackColor(General::FixColor(#Color_Content_Back_Cold))
+					BackColor(General::FixColor(General::#Color_Content_Back_Cold))
 					
 					DrawingFont(IconLight)
 					DrawText(*MediaButton\IconX, 12, *MediaButton\Icon)
@@ -1099,7 +1086,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 109
-; FirstLine = 69
-; Folding = x4nAAQA9Dg+
+; CursorPosition = 216
+; FirstLine = 132
+; Folding = -XnEAQg-Dg+
 ; EnableXP

@@ -5,6 +5,20 @@
 	#PB_Image_KeepAspectRatio = 2
 	#PB_Image_LetterBox = 6
 	
+	; Colors
+	#Color_Window_Back_Cold = $1A233A
+	#Color_Window_Back_Warm = $293658
+	#Color_Window_Back_Hot = $5A8DEE
+	
+	#Color_Window_Front_Cold = $D0D0D0
+	#Color_Window_Front_Warm = $FFFFFF
+	
+	#Color_Content_Back_Cold = $272E48
+	
+	#Color_Scrollbar_FrontCold = $787B86
+	#Color_Scrollbar_FrontWarm = $656873
+	#Color_Scrollbar_FrontHot = $434651
+	
 	Enumeration ;Events
 		#Event_None
 		#Event_End
@@ -19,9 +33,6 @@
 		EventType.i
 		UUID.s
 	EndStructure
-	
-	Global WindowName.s
-	Global NewList EventList.EventList()
 	
 	CompilerIf #PB_Compiler_OS = #PB_OS_Windows ; Fix color
 		Macro FixColor(Color)
@@ -42,6 +53,12 @@
 			Color << 8 + Alpha
 		EndMacro
 	CompilerEndIf
+	
+	Global NewList EventList.EventList()
+	CreateImage(0, 8, 8, 32, FixColor($1A233A))
+	Global WindowMargin.RECT, WindowBrush = CreatePatternBrush_(ImageID(0))
+	FreeImage(0)
+	SetRect_(@WindowMargin, 0, 0, 1, 0)
 	
 	Declare Min(a, b)
 	Declare Max(a, b)
@@ -82,17 +99,18 @@ DeclareModule MainWindow
 		#Asset_ElementButton
 		#Asset_ScrollArea
 		#Asset_ScrollBar
+		
+		#__GadgetCount
 	EndEnumeration
 	
-	Enumeration ;Window
-		#Window = 0
-	EndEnumeration
+	#Window = 0
 	
 	#Color_Asset_Media = $39DA8A
 	#Color_Asset_Audio = $FDAC41
 	#Color_Asset_Model = $00CFDD
 	#Color_Asset_Overlay = $9341FD
 	#Color_Asset_Element = $DD00B2
+	
 EndDeclareModule
 
 DeclareModule Project
@@ -211,9 +229,20 @@ Module General
 
 EndModule
 
-
+DeclareModule PropertiesWindow
+	#Window = 1
+	
+	Enumeration MainWindow::#__GadgetCount ;Gadgets
+		#Text_Title
+		#Container
+		#Accordion
+		#CloseButton
+	EndEnumeration
+	
+	Declare Open()
+EndDeclareModule
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 128
-; FirstLine = 21
-; Folding = 0dw
+; CursorPosition = 238
+; FirstLine = 51
+; Folding = tTw-
 ; EnableXP
