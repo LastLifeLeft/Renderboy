@@ -35,6 +35,9 @@
 	AssetIcon(Project::#Asset_Type_2DEffect) = ImageID(CatchImage(#PB_Any, ?Icon2DEffect))
 	
 	AssetIcon(Project::#Asset_Type_Overlay) = ImageID(CatchImage(#PB_Any, ?IconOverlay))
+	AssetIcon(Project::#Asset_Type_Text) = ImageID(CatchImage(#PB_Any, ?IconText))
+; 	AssetIcon(Project::#Asset_Type_Shape) = 
+	
 	;}
 	
 	;{ Private procedures declaration
@@ -286,10 +289,12 @@
 		IconOverlay:
 		IncludeBinary "..\Media\IconOverlay.png"
 		
+		IconText:
+		IncludeBinary "..\Media\IconText.png"
 	EndDataSection
 EndModule
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 36
-; FirstLine = 16
+; CursorPosition = 41
+; FirstLine = 24
 ; Folding = -Dw
 ; EnableXP

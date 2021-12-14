@@ -201,6 +201,7 @@
 	Declare HandlerTimeLineDrop()
 	Declare HandlerTimeLineChildrenDrop()
 	Declare HandlerTimeLine()
+	Declare HandlerPropertieWindowsToggle()
 	Declare Hook(nCode, wParam, *p.KBDLLHOOKSTRUCT)
 	
 	; Misc
@@ -263,6 +264,7 @@
 		
 		EditMenu =  FlatMenu::Create(#Window)
 		FlatMenu::AddItem(EditMenu, 16, -1, "Preferences...")
+		FlatMenu::AddItem(EditMenu, 22, -1, "Properties window", FlatMenu::#Toggle)
 		FlatMenu::AddItem(EditMenu, 17, -1, "Undo")
 		FlatMenu::AddItem(EditMenu, 18, -1, "Redo")
 		FlatMenu::AddItem(EditMenu, 19, -1, "Cut")
@@ -381,6 +383,7 @@
 		; Misc
 		BindEvent(#PB_Event_Menu, Project::@Undo(), #Window, 17)
 		BindEvent(#PB_Event_Menu, Project::@Redo(), #Window, 18)
+		BindEvent(#PB_Event_Menu, @HandlerPropertieWindowsToggle(), #Window, 22)
 		
 		SetGadgetFont(#PB_Default, Font)
 		
@@ -400,7 +403,7 @@
 		
 		; Renderer
 		CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
-			Renderer=FindWindow_(#Null, General::WindowName)
+			Renderer = FindWindow_(#Null, General::WindowName)
 			While Renderer = 0
 				Delay(10)
 				Renderer=FindWindow_(#Null, General::WindowName)
@@ -889,6 +892,10 @@
 			Case Project::#Asset_Type_Voice
 			Case Project::#Asset_Type_Character
 			Case Project::#Asset_Type_Model
+			Case Project::#Asset_Type_Text
+				Icon = ""
+			Case Project::#Asset_Type_Overlay
+				Icon = ""
 			Case Project::#Asset_Type_2DEffect
 				Icon = ""
 		EndSelect
@@ -918,7 +925,6 @@
   	EndProcedure
 	
 	Procedure HandlerTimeLine()
-		
 		Select EventType()
 			Case PureTL::#EventType_AssetUnUse
 				Project::AssetUnUse(PeekS(EventData()))
@@ -928,12 +934,16 @@
 				AddElement(General::EventList())
 				General::EventList()\EventType = General::#Event_ReRender
 				PureTL::UpdateCurrentAssetList(#TimeLine)
+				
+				PropertiesWindow::Update()
 			Case PureTL::#EventType_Change
 				
 			Case PureTL::#EventType_Edit
 				AddElement(General::EventList())
 				General::EventList()\UUID = PeekS(EventData(), -1)
 				General::EventList()\EventType = General::#Event_Edit
+				
+				PropertiesWindow::SetUp(General::EventList()\UUID)
 			Case PureTL::#EventType_AddLayer
 				AddElement(General::EventList())
 				General::EventList()\EventType = General::#Event_AddLayer
@@ -941,6 +951,16 @@
 				AddElement(General::EventList())
 				General::EventList()\EventType = General::#Event_RemoveLayer
 		EndSelect
+	EndProcedure
+	
+	Procedure HandlerPropertieWindowsToggle()
+		If EventData()
+			Debug "ok"
+			HideWindow(PropertiesWindow::#Window, #False)
+		Else
+			Debug "disparait!"
+			HideWindow(PropertiesWindow::#Window, #True)
+		EndIf
 	EndProcedure
 	
 	Procedure Hook(nCode, wParam, *p.KBDLLHOOKSTRUCT)
@@ -1086,7 +1106,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 216
-; FirstLine = 132
-; Folding = -XnEAQg-Dg+
+; CursorPosition = 405
+; FirstLine = 336
+; Folding = -4nAAQA-DF0
 ; EnableXP

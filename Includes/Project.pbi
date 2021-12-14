@@ -22,15 +22,6 @@
 		XML.s
 	EndStructure
 	
-	Enumeration ; Fixed assets
-		#Effect2D_Blur
-		#Effect2D_Tiled
-		#Effect2D_FadeIn
-		#Effect2D_FadeOut
-		
-		#Overlay_Text
-	EndEnumeration
-	
 	Prototype Delete(UUID.s)
 	Prototype Add(Path.s, Image, UUID.s)
 	
@@ -59,7 +50,7 @@
 	Declare _AddVideo(Path.s, PreviewImage, UUID.s)
 	Declare _AddSound(Path.s, PreviewImage, UUID.s)
 	Declare _AddModel(Path.s, PreviewImage, UUID.s)
-	Declare _AddOverlay(Path.s, PreviewImage, UUID.s)
+	Declare _AddOverlay(Path.s, PreviewImage, UUID.s, Type)
 	Declare _AddElement(Path.s, PreviewImage, UUID.s)
 	
 	; Delete Assets
@@ -82,7 +73,7 @@
 	_AddElement("Fade In", CatchImage(#PB_Any, ?FadeIn), Str(#Effect2D_FadeIn))
 	_AddElement("Fade Out", CatchImage(#PB_Any, ?FadeOut), Str(#Effect2D_FadeOut))
 	
- 	_AddOverlay("Text", CatchImage(#PB_Any, ?Text), Str(#Overlay_Text))
+ 	_AddOverlay("Text", CatchImage(#PB_Any, ?Text), Str(#Overlay_Text), #Asset_Type_Text)
 	
 	;{ Public procedures
 	Procedure New()
@@ -309,7 +300,7 @@
 		
 	EndProcedure
 	
-	Procedure _AddOverlay(Path.s, Image, UUID.s)
+	Procedure _AddOverlay(Path.s, Image, UUID.s, Type)
 		Protected *Asset.Asset
 		
 		*Asset = AddMapElement(AssetLibrary(), UUID)
@@ -317,7 +308,7 @@
 		*Asset\Height = -1
 		
 		*Asset\UUID = UUID
-		*Asset\Type = #Asset_Type_Overlay
+		*Asset\Type = Type
 		*Asset\Path = Path
 		*Asset\PreviewImage = Image
 		
@@ -429,7 +420,7 @@
 	EndDataSection
 EndModule
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 204
-; FirstLine = 112
-; Folding = PAwABB7
+; CursorPosition = 203
+; FirstLine = 85
+; Folding = PAwAjB7
 ; EnableXP

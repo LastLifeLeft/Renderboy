@@ -55,6 +55,7 @@
 	CompilerEndIf
 	
 	Global NewList EventList.EventList()
+	Global WindowName.s
 	CreateImage(0, 8, 8, 32, FixColor($1A233A))
 	Global WindowMargin.RECT, WindowBrush = CreatePatternBrush_(ImageID(0))
 	FreeImage(0)
@@ -122,10 +123,21 @@ DeclareModule Project
 		#Asset_Type_Voice
 		#Asset_Type_Character
 		#Asset_Type_Model
+		#Asset_Type_Text
+		#Asset_Type_Shape
 		#Asset_Type_Overlay
 		#Asset_Type_2DEffect
 		
 		#__Asset_Type_Count
+	EndEnumeration
+	
+	Enumeration ; Fixed assets
+		#Effect2D_Blur
+		#Effect2D_Tiled
+		#Effect2D_FadeIn
+		#Effect2D_FadeOut
+		
+		#Overlay_Text
 	EndEnumeration
 	
 	Declare New()
@@ -237,12 +249,14 @@ DeclareModule PropertiesWindow
 		#Container
 		#Accordion
 		#CloseButton
+		#MinimizeButton
 	EndEnumeration
 	
 	Declare Open()
+	Declare Update()
+	Declare SetUp(UUID.s)
 EndDeclareModule
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 238
-; FirstLine = 51
-; Folding = tTw-
+; CursorPosition = 57
+; Folding = tVw-
 ; EnableXP

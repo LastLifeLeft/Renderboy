@@ -251,7 +251,7 @@ Module Accordion
 					ResizeGadget(SubGadget, #Style_Content_HMargin, #Style_Header_Height + \ItemList()\ContentHeight + \ItemList()\YPos, \Width - 2 * #Style_Content_HMargin, #PB_Ignore)
 				Else
 					ResizeGadget(SubGadget, \Width - GadgetWidth(SubGadget) - #Style_Content_HMargin, #Style_Header_Height + \ItemList()\ContentHeight + \ItemList()\YPos, #PB_Ignore, #PB_Ignore)
-					TitleGadget = TextGadget(#PB_Any, #Style_Content_HMargin, #Style_Header_Height + \ItemList()\ContentHeight + \ItemList()\YPos, \Width - GadgetWidth(SubGadget) - #Style_Content_HMargin * 2 - #Style_ScrollBar_Width, 15, Text)
+					TitleGadget = TextGadget(#PB_Any, #Style_Content_HMargin, #Style_Header_Height + \ItemList()\ContentHeight + \ItemList()\YPos + 2, \Width - GadgetWidth(SubGadget) - #Style_Content_HMargin * 2 - #Style_ScrollBar_Width, 15, Text)
 					SetGadgetColor(TitleGadget, #PB_Gadget_BackColor, \WindowColor)
 					SetGadgetColor(TitleGadget, #PB_Gadget_FrontColor, \TextColor)
 				EndIf
@@ -351,7 +351,14 @@ Module Accordion
 				FreeGadget(\ItemList()\Canvas)
 			Next
 			
-			ClearList(*GadgetData\ItemList())
+			ClearList(\ItemList())
+			\InnerHeight = 0
+			
+			SetGadgetAttribute(\ScrollBar, #PB_ScrollBar_Maximum, \InnerHeight)
+			SetGadgetAttribute(\ScrollArea, #PB_ScrollArea_InnerHeight, \InnerHeight)
+			
+			HideGadget(\ScrollArea, #True)
+			
 		EndWith
 	EndProcedure
 	
@@ -500,7 +507,7 @@ Module Accordion
 			EndIf
 			
 			SetGadgetAttribute(\ScrollBar, #PB_ScrollBar_Maximum, \InnerHeight)
-			SetGadgetAttribute(*GadgetData\ScrollArea, #PB_ScrollArea_InnerHeight, *GadgetData\InnerHeight)
+			SetGadgetAttribute(\ScrollArea, #PB_ScrollArea_InnerHeight, \InnerHeight)
 
 		EndWith
 	EndProcedure
@@ -671,6 +678,7 @@ CompilerIf #PB_Compiler_IsMainFile
 	Until WaitWindowEvent() = #PB_Event_CloseWindow
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 671
+; CursorPosition = 630
+; FirstLine = 92
 ; Folding = EAAAA9
 ; EnableXP

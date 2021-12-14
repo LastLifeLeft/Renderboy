@@ -363,6 +363,21 @@ DeclareModule PureTL
 		#EventType_RemoveLayer
 	EndEnumeration
 	
+	Enumeration ;Properties
+		#Properties_X
+		#Properties_Y
+		#Properties_Z
+		#Properties_Width
+		#Properties_Height
+		#Properties_Depth
+		#Properties_Transparency
+		#Properties_Angle
+		
+		; THOSE TWO SHOULD STAY AT THE VERY END OF THIS ENUMERATION :
+		#Properties_Container
+		#Properties_Count
+	EndEnumeration
+	
 	#Event_ParentDrop = #PB_Event_FirstCustomValue
 	
 	Structure DataPoint
@@ -526,22 +541,6 @@ Module PureTL
 		#Asset_Type_Model
 		
 		#__Asset_Type_Count
-	EndEnumeration
-	
-	Enumeration ;Properties
-		#Properties_X
-		#Properties_Y
-		#Properties_Z
-		#Properties_Width
-		#Properties_Height
-		#Properties_Depth
-		#Properties_Transparency
-		#Properties_Angle
-		
-		
-		; THOSE TWO SHOULD STAY AT THE VERY END OF THIS ENUMERATION :
-		#Properties_Container
-		#Properties_Count
 	EndEnumeration
 	
 	Enumeration ;RescaleDirection
@@ -1609,8 +1608,10 @@ Module PureTL
 			*Parent = *Parent\Parent
 		Wend
 		
-		InsertJSONStructure(JSONValue(json), @*Mediablock\DataPoints(Position), DataPoint)
-		Result = ComposeJSON(json)
+		If Position >= 0 And Position < *Mediablock\Duration
+			InsertJSONStructure(JSONValue(json), @*Mediablock\DataPoints(Position), DataPoint)
+			Result = ComposeJSON(json)
+		EndIf
 		
 		FreeJSON(json)
 		
@@ -3893,7 +3894,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 2702
-; FirstLine = 255
-; Folding = AAFAiBCIACAAhAAIAoBgBAAAAAAAAAw
+; CursorPosition = 1610
+; FirstLine = 463
+; Folding = AAFggBCoACBAhAAIAgBgBAAAAAAAAAw
 ; EnableXP
