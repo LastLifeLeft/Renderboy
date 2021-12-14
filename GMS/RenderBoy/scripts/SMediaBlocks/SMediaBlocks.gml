@@ -354,6 +354,7 @@ function MediaBlock2D(_UUID, _type) constructor
 					{
 						variable_struct_set(state, _array[i], variable_struct_get(backup_state, _array[i]))
 					}
+					UI_set_properties(json_stringify(state));
 					self.update(false);
 					return true;
 				}
@@ -395,6 +396,7 @@ function MediaBlock2D(_UUID, _type) constructor
 					state.X = _x;
 					state.Y = _y;
 					self.update(false);
+					UI_set_properties(json_stringify(state));
 					return true;
 				}
 				
@@ -556,6 +558,7 @@ function MediaBlock2D(_UUID, _type) constructor
 					{
 						variable_struct_set(state, _array[i], variable_struct_get(backup_state, _array[i]))
 					}
+					UI_set_properties(json_stringify(state));
 					self.update(false);
 					return true;
 				}
@@ -571,6 +574,7 @@ function MediaBlock2D(_UUID, _type) constructor
 					state.Height = _height;
 					state.X = _x;
 					state.Y = _y;
+					UI_set_properties(json_stringify(state));
 					self.update(false);
 					return true;
 				}
@@ -589,6 +593,7 @@ function MediaBlock2D(_UUID, _type) constructor
 				{
 					edit_state = MB_EEditState.Hover;
 					state.Angle = backup_state.Angle;
+					UI_set_properties(json_stringify(state));
 					self.update(false);
 					return true;
 				}
@@ -603,6 +608,7 @@ function MediaBlock2D(_UUID, _type) constructor
 					mouse_previous_x = _mouse_x;
 					mouse_previous_y = _mouse_y;
 					state.Angle += _angle
+					UI_set_properties(json_stringify(state));
 					self.update(false);
 					return true;
 				}

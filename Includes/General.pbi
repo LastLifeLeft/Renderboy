@@ -252,11 +252,14 @@ DeclareModule PropertiesWindow
 		#MinimizeButton
 	EndEnumeration
 	
+	Global MediaBlockUUID.s
+	
 	Declare Open()
-	Declare Update()
+	Declare Update(JsonString.s)
 	Declare SetUp(UUID.s)
 EndDeclareModule
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 57
+; CursorPosition = 255
+; FirstLine = 63
 ; Folding = tVw-
 ; EnableXP

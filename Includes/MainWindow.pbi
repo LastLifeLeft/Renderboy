@@ -930,12 +930,17 @@
 				Project::AssetUnUse(PeekS(EventData()))
 			Case PureTL::#EventType_AssetUse
 				Project::AssetUse(PeekS(EventData()))
+			Case PureTL::#EventType_ForceUpdate
+				AddElement(General::EventList())
+				General::EventList()\EventType = General::#Event_ReRender
+				PureTL::UpdateCurrentAssetList(#TimeLine)
 			Case PureTL::#EventType_PlayerMove
 				AddElement(General::EventList())
 				General::EventList()\EventType = General::#Event_ReRender
 				PureTL::UpdateCurrentAssetList(#TimeLine)
-				
-				PropertiesWindow::Update()
+				If PropertiesWindow::MediaBlockUUID <> ""
+					PropertiesWindow::Update(PureTL::GetMediaBlockState(0, PropertiesWindow::MediaBlockUUID))
+				EndIf
 			Case PureTL::#EventType_Change
 				
 			Case PureTL::#EventType_Edit
@@ -1106,7 +1111,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 405
-; FirstLine = 336
+; CursorPosition = 932
+; FirstLine = 417
 ; Folding = -4nAAQA-DF0
 ; EnableXP

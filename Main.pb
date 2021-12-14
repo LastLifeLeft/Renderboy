@@ -154,6 +154,10 @@ CompilerIf #PB_Compiler_ExecutableFormat = #PB_Compiler_DLL
 		PureTL::UpdateMediaBlockState(0, PeekS(*MediablockUUID, -1, #PB_UTF8), PeekS(*Json, -1, #PB_UTF8))
 	EndProcedure
 	
+	ProcedureCDLL UpdateProperties(*Json)
+		PropertiesWindow::Update(PeekS(*Json, -1, #PB_UTF8))
+	EndProcedure
+	
 	ProcedureCDLL.d GetPlayerPosition()
 		ProcedureReturn PureTL::GetPlayerPosition(0)
 	EndProcedure
@@ -175,6 +179,7 @@ CompilerElse
 	ForEver
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 25
-; Folding = BAAw
+; CursorPosition = 122
+; FirstLine = 14
+; Folding = BAAj
 ; EnableXP

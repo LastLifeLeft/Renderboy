@@ -357,7 +357,7 @@ Module Accordion
 			SetGadgetAttribute(\ScrollBar, #PB_ScrollBar_Maximum, \InnerHeight)
 			SetGadgetAttribute(\ScrollArea, #PB_ScrollArea_InnerHeight, \InnerHeight)
 			
-			HideGadget(\ScrollArea, #True)
+			HideGadget(\ScrollBar, #True)
 			
 		EndWith
 	EndProcedure
@@ -678,7 +678,6 @@ CompilerIf #PB_Compiler_IsMainFile
 	Until WaitWindowEvent() = #PB_Event_CloseWindow
 CompilerEndIf
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 630
-; FirstLine = 92
+; CursorPosition = 678
 ; Folding = EAAAA9
 ; EnableXP

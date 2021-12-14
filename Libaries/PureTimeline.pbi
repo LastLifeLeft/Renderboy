@@ -361,6 +361,7 @@ DeclareModule PureTL
 		#EventType_Edit
 		#EventType_AddLayer
 		#EventType_RemoveLayer
+		#EventType_ForceUpdate
 	EndEnumeration
 	
 	Enumeration ;Properties
@@ -2063,7 +2064,7 @@ Module PureTL
 			EndSelect
 			
 			Redraw(*GadgetData, #True)
-			PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove, \State_PlayerPosition)
+			PostEvent(#PB_Event_Gadget, 0, \Comp_Container, #EventType_PlayerMove)
 		EndWith
 	EndProcedure
 	
@@ -3894,7 +3895,7 @@ EndModule
 
 
 ; IDE Options = PureBasic 6.00 Beta 1 (Windows - x64)
-; CursorPosition = 1610
-; FirstLine = 463
-; Folding = AAFggBCoACBAhAAIAgBgBAAAAAAAAAw
+; CursorPosition = 2066
+; FirstLine = 244
+; Folding = AAFAgAAAACBABAAoAAAAAAAAAAAAAAw
 ; EnableXP

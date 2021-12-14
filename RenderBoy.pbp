@@ -7,7 +7,7 @@
   <section name="data">
     <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2021-12-14 05:17" user="Poshu" host="DESKTOP-RGG8DMG"/>
+    <lastopen date="2021-12-14 21:45" user="Poshu" host="DESKTOP-RGG8DMG"/>
   </section>
   <section name="files">
     <file name="Includes\AssetButton.pbi">
@@ -16,11 +16,11 @@
     </file>
     <file name="Includes\General.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="59c1dc30770794cbd1bb2b81d02819d9"/>
+      <fingerprint md5="a8397fbfed1f766b2e852dd0a00acdcd"/>
     </file>
     <file name="Includes\MainWindow.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="5cd1adc1edc18b4aaadca83801ede4a6"/>
+      <fingerprint md5="dcf6f905e7d9d3a738bfdb7a7e84a75b"/>
     </file>
     <file name="Includes\Project.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
@@ -28,7 +28,7 @@
     </file>
     <file name="Includes\PropertiesWindow.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="da8c5e8ec5e7ba516b3486bd088c93c7"/>
+      <fingerprint md5="d898296a014bb6036a7b24aef08b006f"/>
     </file>
     <file name="Libaries\CanvasButton.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -51,12 +51,12 @@
       <fingerprint md5="c0a53f43d4d08f2aef80adb63eb80bad"/>
     </file>
     <file name="Libaries\PureAccordion.pb">
-      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="6f6d76d27de8ffc941c1334877c3af0d"/>
+      <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
+      <fingerprint md5="7ccfde0431b22ec5902aab72f13348fa"/>
     </file>
     <file name="Libaries\PureTimeline.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="10c87bfa91a94ed166d530cc25e5cfb2"/>
+      <fingerprint md5="81703120ef0a00d242dd07db2a95371c"/>
     </file>
     <file name="Libaries\ScrollBar.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="++"/>
@@ -72,7 +72,7 @@
     </file>
     <file name="Main.pb">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
-      <fingerprint md5="5f892fc9c11c41cc31bafff9fe78afe4"/>
+      <fingerprint md5="96200a0832f18fa431940273c0d75c8b"/>
     </file>
   </section>
   <section name="targets">

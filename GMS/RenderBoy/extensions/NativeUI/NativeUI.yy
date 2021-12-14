@@ -67,6 +67,9 @@
         {"externalName":"GetMediaBlockPosition","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
             1,
           ],"resourceVersion":"1.0","name":"UI_get_mediablock_position","tags":[],"resourceType":"GMExtensionFunction",},
+        {"externalName":"UpdateProperties","kind":1,"help":"","hidden":false,"returnType":2,"argCount":0,"args":[
+            1,
+          ],"resourceVersion":"1.0","name":"UI_set_properties","tags":[],"resourceType":"GMExtensionFunction",},
       ],"constants":[],"ProxyFiles":[],"copyToTargets":-1,"order":[
         {"name":"UI_init","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_width","path":"extensions/NativeUI/NativeUI.yy",},
@@ -89,6 +92,7 @@
         {"name":"UI_get_player_position","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_mediablock_duration","path":"extensions/NativeUI/NativeUI.yy",},
         {"name":"UI_get_mediablock_position","path":"extensions/NativeUI/NativeUI.yy",},
+        {"name":"UI_set_properties","path":"extensions/NativeUI/NativeUI.yy",},
       ],"resourceVersion":"1.0","name":"","tags":[],"resourceType":"GMExtensionFile",},
   ],
   "classname": "",
