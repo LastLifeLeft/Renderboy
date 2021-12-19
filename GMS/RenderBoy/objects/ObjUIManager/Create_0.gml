@@ -18,6 +18,9 @@ enum UI_EAssetType
 	Voice,
 	Character,
 	Model,
+	Text,
+	Shape,
+	Overlay,
 	Effect2D
 }
 
@@ -37,6 +40,8 @@ enum ECursor
 	RotateSE,
 	RotateSW
 }
+
+scribble_font_set_default("NotoSansDisplay");
 
 //show_debug_overlay(true);
 

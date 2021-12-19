@@ -58,15 +58,14 @@ global.__scribble_effects             = ds_map_create();  //Bidirectional lookup
 global.__scribble_effects_slash       = ds_map_create();  //Bidirectional lookup - stores name:index as well as index:name
 global.__scribble_default_font        = "scribble_fallback_font";
 global.__scribble_buffer              = buffer_create(1024, buffer_grow, 1);
-global.__scribble_glyph_grid          = ds_grid_create(1000, __SCRIBBLE_PARSER_GLYPH.__SIZE);
-global.__scribble_control_grid        = ds_grid_create(1000, __SCRIBBLE_PARSER_CONTROL.__SIZE);
-global.__scribble_word_grid           = ds_grid_create(1000, __SCRIBBLE_PARSER_WORD.__SIZE);
-global.__scribble_line_grid           = ds_grid_create(__SCRIBBLE_MAX_LINES, __SCRIBBLE_PARSER_LINE.__SIZE);
-global.__scribble_stretch_grid        = ds_grid_create(1000, __SCRIBBLE_PARSER_STRETCH.__SIZE);
-global.__scribble_temp_grid           = ds_grid_create(1000, 1);
+global.__scribble_glyph_grid          = ds_grid_create(1000, __SCRIBBLE_GEN_GLYPH.__SIZE);
+global.__scribble_control_grid        = ds_grid_create(1000, __SCRIBBLE_GEN_CONTROL.__SIZE);
+global.__scribble_word_grid           = ds_grid_create(1000, __SCRIBBLE_GEN_WORD.__SIZE);
+global.__scribble_line_grid           = ds_grid_create(__SCRIBBLE_MAX_LINES, __SCRIBBLE_GEN_LINE.__SIZE);
+global.__scribble_stretch_grid        = ds_grid_create(1000, __SCRIBBLE_GEN_STRETCH.__SIZE);
+global.__scribble_temp_grid           = ds_grid_create(1000, __SCRIBBLE_GEN_WORD.__SIZE); //Somewhat arbitrary size. Feel free to increase this size as is needed
+global.__scribble_vbuff_pos_grid      = ds_grid_create(1000, __SCRIBBLE_GEN_VBUFF_POS.__SIZE);
 //global.__scribble_window_array_null   = array_create(2*__SCRIBBLE_WINDOW_COUNT, 1.0); //TODO - Do we still need this?
-global.__scribble_character_delay     = false;
-global.__scribble_character_delay_map = ds_map_create();
 
 global.__scribble_cache_check_time = current_time;
 
@@ -95,7 +94,54 @@ global.__scribble_typewriter_events[? "pause" ] = undefined;
 global.__scribble_typewriter_events[? "delay" ] = undefined;
 global.__scribble_typewriter_events[? "speed" ] = undefined;
 global.__scribble_typewriter_events[? "/speed"] = undefined;
-    
+
+//Hashtable to accelerate command tag lookup
+var _map = ds_map_create();
+_map[? ""          ] =  0;
+_map[? "/"         ] =  0;
+_map[? "/font"     ] =  1;
+_map[? "/f"        ] =  1;
+_map[? "/colour"   ] =  2;
+_map[? "/color"    ] =  2;
+_map[? "/c"        ] =  2;
+_map[? "/alpha"    ] =  3;
+_map[? "/a"        ] =  3;
+_map[? "/scale"    ] =  4;
+_map[? "/s"        ] =  4;
+//5 is unused
+_map[? "/page"     ] =  6;
+_map[? "scale"     ] =  7;
+_map[? "scaleStack"] =  8;
+//9 is unused
+_map[? "alpha"     ] = 10;
+_map[? "fa_left"   ] = 11;
+_map[? "fa_center" ] = 12;
+_map[? "fa_centre" ] = 12;
+_map[? "fa_right"  ] = 13;
+_map[? "fa_top"    ] = 14;
+_map[? "fa_middle" ] = 15;
+_map[? "fa_bottom" ] = 16;
+_map[? "pin_left"  ] = 17;
+_map[? "pin_center"] = 18;
+_map[? "pin_centre"] = 18;
+_map[? "pin_right" ] = 19;
+_map[? "fa_justify"] = 20;
+_map[? "nbsp"      ] = 21;
+_map[? "&nbsp"     ] = 21;
+_map[? "nbsp;"     ] = 21;
+_map[? "&nbsp;"    ] = 21;
+_map[? "cycle"     ] = 22;
+_map[? "/cycle"    ] = 23;
+_map[? "r"         ] = 24;
+_map[? "/b"        ] = 24;
+_map[? "/i"        ] = 24;
+_map[? "/bi"       ] = 24;
+_map[? "b"         ] = 25;
+_map[? "i"         ] = 26;
+_map[? "bi"        ] = 27;
+_map[? "surface"   ] = 28;
+global.__scribble_command_tag_lookup_accelerator = _map;
+
 //Add bindings for default effect names
 //Effect index 0 is reversed for sprites
 global.__scribble_effects[?       "wave"    ] = 1;
@@ -107,6 +153,7 @@ global.__scribble_effects[?       "wheel"   ] = 6;
 global.__scribble_effects[?       "cycle"   ] = 7;
 global.__scribble_effects[?       "jitter"  ] = 8;
 global.__scribble_effects[?       "blink"   ] = 9;
+global.__scribble_effects[?       "slant"   ] = 10;
 global.__scribble_effects_slash[? "/wave"   ] = 1;
 global.__scribble_effects_slash[? "/shake"  ] = 2;
 global.__scribble_effects_slash[? "/rainbow"] = 3;
@@ -116,6 +163,7 @@ global.__scribble_effects_slash[? "/wheel"  ] = 6;
 global.__scribble_effects_slash[? "/cycle"  ] = 7;
 global.__scribble_effects_slash[? "/jitter" ] = 8;
 global.__scribble_effects_slash[? "/blink"  ] = 9;
+global.__scribble_effects_slash[? "/slant"  ] = 10;
 
 //Create a vertex format for our text
 vertex_format_begin();
@@ -135,7 +183,6 @@ global.__scribble_passthrough_vertex_format = vertex_format_end();
 //Cache uniform indexes
 global.__scribble_u_fTime                    = shader_get_uniform(__shd_scribble, "u_fTime"                   );
 global.__scribble_u_vColourBlend             = shader_get_uniform(__shd_scribble, "u_vColourBlend"            );
-global.__scribble_u_vFog                     = shader_get_uniform(__shd_scribble, "u_vFog"                    );
 global.__scribble_u_vGradient                = shader_get_uniform(__shd_scribble, "u_vGradient"               );
 global.__scribble_u_aDataFields              = shader_get_uniform(__shd_scribble, "u_aDataFields"             );
 global.__scribble_u_aBezier                  = shader_get_uniform(__shd_scribble, "u_aBezier"                 );
@@ -151,7 +198,6 @@ global.__scribble_u_fTypewriterAlphaDuration = shader_get_uniform(__shd_scribble
 
 global.__scribble_msdf_u_fTime                    = shader_get_uniform(__shd_scribble_msdf, "u_fTime"                   );
 global.__scribble_msdf_u_vColourBlend             = shader_get_uniform(__shd_scribble_msdf, "u_vColourBlend"            );
-global.__scribble_msdf_u_vFog                     = shader_get_uniform(__shd_scribble_msdf, "u_vFog"                    );
 global.__scribble_msdf_u_vGradient                = shader_get_uniform(__shd_scribble_msdf, "u_vGradient"               );
 global.__scribble_msdf_u_aDataFields              = shader_get_uniform(__shd_scribble_msdf, "u_aDataFields"             );
 global.__scribble_msdf_u_aBezier                  = shader_get_uniform(__shd_scribble_msdf, "u_aBezier"                 );
@@ -172,6 +218,7 @@ global.__scribble_msdf_u_vBorderColour            = shader_get_uniform(__shd_scr
 global.__scribble_msdf_u_fBorderThickness         = shader_get_uniform(__shd_scribble_msdf, "u_fBorderThickness"        );
 global.__scribble_msdf_u_vOutputSize              = shader_get_uniform(__shd_scribble_msdf, "u_vOutputSize"             );
 global.__scribble_msdf_u_fMSDFThicknessOffset     = shader_get_uniform(__shd_scribble_msdf, "u_fMSDFThicknessOffset"    );
+global.__scribble_msdf_u_fSecondDraw              = shader_get_uniform(__shd_scribble_msdf, "u_fSecondDraw"             );
 
 scribble_msdf_thickness_offset(0);
 
@@ -352,7 +399,7 @@ function __scribble_array_find_index(_array, _value)
     return -1;
 }
 
-function __scribble_prepare_collage_work_array(_input_array)
+function __scribble_prepare_super_work_array(_input_array)
 {
     var _output_array = [];
     
@@ -485,39 +532,47 @@ function __scribble_buffer_write_unicode(_buffer, _value)
 #region Internal Macro Definitions
 
 // @jujuadams
-#macro __SCRIBBLE_VERSION  "8.0.0 alpha 5"
-#macro __SCRIBBLE_DATE     "2021-10-12"
-#macro __SCRIBBLE_DEBUG    false
+#macro __SCRIBBLE_VERSION     "8.0.0 alpha 8"
+#macro __SCRIBBLE_DATE        "2021-12-12"
+#macro __SCRIBBLE_DEBUG       false
+#macro __SCRIBBLE_VERBOSE_GC  false
 
-//You'll usually only want to modify SCRIBBLE_GLYPH.X_OFFSET, SCRIBBLE_GLYPH.Y_OFFSET, and SCRIBBLE_GLYPH.SEPARATION
-enum SCRIBBLE_GLYPH //TODO - Add pxrange field
+enum SCRIBBLE_GLYPH
 {
-    CHARACTER,  // 0
-    INDEX,      // 1
-    WIDTH,      // 2
-    HEIGHT,     // 3
-    X_OFFSET,   // 4
-    Y_OFFSET,   // 5
-    SEPARATION, // 6
-    TEXTURE,    // 7
-    U0,         // 8
-    V0,         // 9
-    U1,         //10
-    V1,         //11
-    BIDI,       //12
-    __SIZE      //13
+    CHARACTER,     // 0
+                   
+    ORD,           // 1 \
+    BIDI,          // 2  |
+                   //    |
+    X_OFFSET,      // 3  |
+    Y_OFFSET,      // 4  |
+    WIDTH,         // 5  |
+    HEIGHT,        // 6  |
+    FONT_HEIGHT,   // 7  |
+    SEPARATION,    // 8  |
+    LEFT_OFFSET,   // 9  | This group of enums must not change order or be split
+    FONT_SCALE,    //10  |
+                   //    |
+    TEXTURE,       //11  |
+    U0,            //12  |
+    V0,            //13  |
+    U1,            //14  |
+    V1,            //15  |
+                   //    |
+    MSDF_PXRANGE,  //16  |
+    BILINEAR,      //17 /
+    
+    __SIZE        //16
 }
 
-// TODO - Allow copying of glyph layout into a separate grid
-enum SCRIBBLE_LAYOUT
+enum __SCRIBBLE_GLYPH_LAYOUT
 {
-    X,                // 1
-    Y,                // 2
-    WIDTH,            // 3
-    HEIGHT,           // 4
-    ORD,              // 5
-    ANIMATION_INDEX,  // 6
-    __SIZE,           // 7
+    UNICODE, // 0
+    LEFT,    // 1
+    TOP,     // 2
+    RIGHT,   // 3
+    BOTTOM,  // 4
+    __SIZE,  // 5
 }
 
 enum __SCRIBBLE_VERTEX_BUFFER
@@ -528,7 +583,9 @@ enum __SCRIBBLE_VERTEX_BUFFER
     TEXEL_WIDTH,   //3
     TEXEL_HEIGHT,  //4
     SHADER,        //5
-    __SIZE         //6
+    BUFFER,        //6
+    BILINEAR,      //7
+    __SIZE         //8
 }
 
 enum __SCRIBBLE_ANIM
@@ -553,7 +610,8 @@ enum __SCRIBBLE_ANIM
     JITTER_MINIMUM,   //17
     JITTER_MAXIMUM,   //18
     JITTER_SPEED,     //19
-    __SIZE,           //20
+    SLANT_GRADIENT,   //20
+    __SIZE,           //21
 }
 
 enum SCRIBBLE_EASE
@@ -585,12 +643,11 @@ enum SCRIBBLE_EASE
 #macro __SCRIBBLE_PIN_CENTRE           4
 #macro __SCRIBBLE_PIN_RIGHT            5
 #macro __SCRIBBLE_JUSTIFY              6
-#macro __SCRIBBLE_WINDOW_COUNT         4
+#macro __SCRIBBLE_WINDOW_COUNT         3
 #macro __SCRIBBLE_GC_STEP_SIZE         3
 #macro __SCRIBBLE_CACHE_TIMEOUT        120 //How long to wait (in milliseconds) before the text element cache automatically cleans up unused data
 #macro __SCRIBBLE_AUDIO_COMMAND_TAG    "__scribble_audio_playback__"
-#macro SCRIBBLE_DEFAULT_FONT           global.__scribble_default_font
 
-#macro __SCRIBBLE_MAX_LINES  1000  //Maximum number of lines in a textbox. This constant must match the corresponding values in __shd_scribble
+#macro __SCRIBBLE_MAX_LINES  1000  //Maximum number of lines in a textbox. This constant must match the corresponding values in __shd_scribble and __shd_scribble_msdf
 
 #endregion

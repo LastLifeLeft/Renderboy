@@ -16,16 +16,20 @@ function __scribble_font_add_msdf_from_project(_sprite)
     
     var _global_glyph_bidi_map = global.__scribble_glyph_data.bidi_map;
     
-    var _font_data = new __scribble_class_font(_name);
-    _font_data.msdf = true;
-    var _font_glyphs_map = _font_data.glyphs_map;
-    
     if (SCRIBBLE_VERBOSE) __scribble_trace("Defined \"" + _name + "\" as an MSDF font");
     
     var _sprite_width  = sprite_get_width(_sprite);
     var _sprite_height = sprite_get_height(_sprite);
     var _sprite_uvs    = sprite_get_uvs(_sprite, 0);
     var _texture       = sprite_get_texture(_sprite, 0);
+    
+    //Correct for source sprites having their edges clipped off
+    var _texel_w = texture_get_texel_width(_texture);
+    var _texel_h = texture_get_texel_height(_texture);
+    _sprite_uvs[0] -= _texel_w*_sprite_uvs[4];
+    _sprite_uvs[1] -= _texel_h*_sprite_uvs[5];
+    _sprite_uvs[2] += _texel_w*_sprite_width*(1 - _sprite_uvs[6]);
+    _sprite_uvs[3] += _texel_h*_sprite_height*(1 - _sprite_uvs[7]);
     
     var _json_buffer = buffer_load(global.__scribble_font_directory + _name + ".json");
     
@@ -52,10 +56,13 @@ function __scribble_font_add_msdf_from_project(_sprite)
     
     var _json_line_height = _em_size*_metrics_map[? "lineHeight"];
     
-    _font_data.msdf_pxrange = _msdf_pxrange;
-    
     var _size = ds_list_size(_json_glyph_list);
     if (SCRIBBLE_VERBOSE) __scribble_trace("\"" + _name + "\" has " + string(_size) + " characters");
+    
+    var _font_data = new __scribble_class_font(_name, _size, true);
+    var _font_glyphs_map      = _font_data.glyphs_map;
+    var _font_glyph_data_grid = _font_data.glyph_data_grid;
+    _font_data.msdf_pxrange = _msdf_pxrange;
     
     var _i = 0;
     repeat(_size)
@@ -64,10 +71,10 @@ function __scribble_font_add_msdf_from_project(_sprite)
         var _plane_map = _json_glyph_map[? "planeBounds"];
         var _atlas_map = _json_glyph_map[? "atlasBounds"];
         
-        var _index = _json_glyph_map[? "unicode"];
-        var _char  = chr(_index);
+        var _ord  = _json_glyph_map[? "unicode"];
+        var _char = chr(_ord);
         
-        if (__SCRIBBLE_DEBUG) __scribble_trace("     Adding data for character \"" + string(_char) + "\" (" + string(_index) + ")");
+        if (__SCRIBBLE_DEBUG) __scribble_trace("     Adding data for character \"" + string(_char) + "\" (" + string(_ord) + ")");
         
         if (_atlas_map != undefined)
         {
@@ -100,6 +107,8 @@ function __scribble_font_add_msdf_from_project(_sprite)
             var _xadvance = round(_em_size*_json_glyph_map[? "advance"]);
         }
         
+        //if (_xoffset < 0) __scribble_trace("char = ", _char, ", offset = ", _xoffset);
+        
         if (__SCRIBBLE_DEBUG)
         {
             __scribble_trace(_char, "    ", _w, " x ", _h, ", advance=", _xadvance, ", dy=", _yoffset, ", diff=", _w - _xadvance);
@@ -115,39 +124,54 @@ function __scribble_font_add_msdf_from_project(_sprite)
         var _u1 = lerp(_sprite_uvs[0], _sprite_uvs[2], _tex_r/_sprite_width );
         var _v1 = lerp(_sprite_uvs[1], _sprite_uvs[3], _tex_b/_sprite_height);
         
-        var _bidi = _global_glyph_bidi_map[? _index];
-        if (_bidi == undefined) _bidi = __SCRIBBLE_BIDI.L2R;
+        if ((_ord >= 0x4E00) && (_ord <= 0x9FFF)) //CJK Unified ideographs block
+        {
+            var _bidi = __SCRIBBLE_BIDI.ISOLATED;
+        }
+        else
+        {
+            var _bidi = _global_glyph_bidi_map[? _ord];
+            if (_bidi == undefined) _bidi = __SCRIBBLE_BIDI.L2R;
+        }
         
-        var _array = array_create(SCRIBBLE_GLYPH.__SIZE, undefined);
-        _array[@ SCRIBBLE_GLYPH.CHARACTER ] = _char;
-        _array[@ SCRIBBLE_GLYPH.INDEX     ] = _index;
-        _array[@ SCRIBBLE_GLYPH.WIDTH     ] = _w;
-        _array[@ SCRIBBLE_GLYPH.HEIGHT    ] = _h;
-        _array[@ SCRIBBLE_GLYPH.X_OFFSET  ] = _xoffset;
-        _array[@ SCRIBBLE_GLYPH.Y_OFFSET  ] = _yoffset;
-        _array[@ SCRIBBLE_GLYPH.SEPARATION] = _xadvance;
-        _array[@ SCRIBBLE_GLYPH.TEXTURE   ] = _texture;
-        _array[@ SCRIBBLE_GLYPH.U0        ] = _u0;
-        _array[@ SCRIBBLE_GLYPH.V0        ] = _v0;
-        _array[@ SCRIBBLE_GLYPH.U1        ] = _u1;
-        _array[@ SCRIBBLE_GLYPH.V1        ] = _v1;
-        _array[@ SCRIBBLE_GLYPH.BIDI      ] = _bidi;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.CHARACTER   ] = _char;
         
-        _font_glyphs_map[? _index] = _array;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.ORD         ] = _ord;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.BIDI        ] = _bidi;
+        
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.X_OFFSET    ] = _xoffset;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.Y_OFFSET    ] = _yoffset;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.WIDTH       ] = _w;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.HEIGHT      ] = _h;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.FONT_HEIGHT ] = _json_line_height;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.SEPARATION  ] = _xadvance;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.LEFT_OFFSET ] = 1 - _xoffset - 0.5*_msdf_pxrange;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.FONT_SCALE  ] = 1;
+        
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.TEXTURE     ] = _texture;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.U0          ] = _u0;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.V0          ] = _v0;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.U1          ] = _u1;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.V1          ] = _v1;
+        
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.MSDF_PXRANGE] = _msdf_pxrange;
+        _font_glyph_data_grid[# _i, SCRIBBLE_GLYPH.BILINEAR    ] = true;
+        
+        _font_glyphs_map[? _ord] = _i;
         
         ++_i;
     }
     
     //Now handle the space character
-    var _array = _font_glyphs_map[? 32];
-    if (_array == undefined)
+    var _space_index = _font_glyphs_map[? 32];
+    if (_space_index == undefined)
     {
         __scribble_error("Space character not found in character string for MSDF font \"", _name, "\"");
     }
     else
     {
-        _array[@ SCRIBBLE_GLYPH.WIDTH ] = _array[SCRIBBLE_GLYPH.SEPARATION];
-        _array[@ SCRIBBLE_GLYPH.HEIGHT] = _json_line_height;
+        _font_glyph_data_grid[# _space_index, SCRIBBLE_GLYPH.WIDTH ] = _font_glyph_data_grid[# _space_index, SCRIBBLE_GLYPH.SEPARATION];
+        _font_glyph_data_grid[# _space_index, SCRIBBLE_GLYPH.HEIGHT] = _json_line_height;
     }
     
     ds_map_destroy(_json);

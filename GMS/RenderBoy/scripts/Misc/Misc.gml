@@ -15,28 +15,16 @@ function mediablock_load(UUID)
 	var _result;
 	switch (UI_get_mediablock_type(UUID))
 	{
-		case  UI_EAssetType.Image:
+		case UI_EAssetType.Image:
 			_result = new MediaBlock2D(UUID, UI_EAssetType.Image);
 			break;
-		case  UI_EAssetType.Video :
+		case UI_EAssetType.Video :
 			_result = new MediaBlock2D(UUID, UI_EAssetType.Video);
 			break;
-		case  UI_EAssetType.Sound :
-								
+		case UI_EAssetType.Text:
+			_result = new MediaBlocText(UUID)
 			break;
-		case  UI_EAssetType.Music :
-								
-			break;
-		case  UI_EAssetType.Voice :
-								
-			break;
-		case  UI_EAssetType.Character :
-								
-			break;
-		case  UI_EAssetType.Model :
-								
-			break;
-		case  UI_EAssetType.Effect2D :
+		case UI_EAssetType.Effect2D :
 			_result = new MediaBlock2DEffect(UUID);
 			break;
 	}

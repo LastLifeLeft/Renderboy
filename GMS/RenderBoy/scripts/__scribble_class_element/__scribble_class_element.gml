@@ -31,16 +31,12 @@ function __scribble_class_element(_string, _unique_id) constructor
     last_drawn = current_time;
     freeze = false;
     
-    starting_font   = SCRIBBLE_DEFAULT_FONT;
-    starting_colour = c_white;
-    starting_halign = fa_left;
-    starting_valign = fa_top;
-    
-    blend_colour = c_white;
-    blend_alpha  = 1.0;
-    
-    fog_colour = c_white;
-    fog_alpha  = 0.0;
+    starting_font   = global.__scribble_default_font;
+    starting_colour = SCRIBBLE_DEFAULT_COLOR;
+    starting_halign = SCRIBBLE_DEFAULT_HALIGN;
+    starting_valign = SCRIBBLE_DEFAULT_VALIGN;
+    blend_colour    = c_white;
+    blend_alpha     = 1.0;
     
     gradient_colour = c_black;
     gradient_alpha  = 0.0;
@@ -64,10 +60,11 @@ function __scribble_class_element(_string, _unique_id) constructor
     
     line_height_min = -1;
     line_height_max = -1;
+    __line_spacing  = "100%";
     
     __page = 0;
     __ignore_command_tags = false;
-    __template = __scribble_config_default_template;
+    __template = undefined;
     
     bezier_array = array_create(6, 0.0);
     bezier_using = false;
@@ -88,6 +85,11 @@ function __scribble_class_element(_string, _unique_id) constructor
     animation_tick_speed__ = 1;
     animation_blink_state  = true;
     
+    padding_l = 0;
+    padding_t = 0;
+    padding_r = 0;
+    padding_b = 0;
+    
     msdf_shadow_colour   = c_black;
     msdf_shadow_alpha    = 0.0;
     msdf_shadow_xoffset  = 0;
@@ -99,7 +101,9 @@ function __scribble_class_element(_string, _unique_id) constructor
     
     msdf_feather_thickness = 1.0;
     
-    __bidi_hint = undefined; //TODO - Allow bidi to be hinted
+    __bidi_hint = undefined;
+    
+    __z = SCRIBBLE_DEFAULT_Z;
     
     
     
@@ -321,6 +325,18 @@ function __scribble_class_element(_string, _unique_id) constructor
         return self;
     }
     
+    /// @param spacing
+    static line_spacing = function(_spacing)
+    {
+        if (_spacing != __line_spacing)
+        {
+            model_cache_name_dirty = true;
+            __line_spacing = _spacing;
+        }
+        
+        return self;
+    }
+    
     /// @param templateFunction/Array
     /// @param [executeOnlyOnChange=false]
     static template = function(_template, _on_change = false)
@@ -355,7 +371,7 @@ function __scribble_class_element(_string, _unique_id) constructor
     /// @param page
     static page = function(_page)
     {
-        var _model = __get_model(true);
+        var _model = __get_model(false);
         if (is_struct(_model))
         {
             if (_page < 0)
@@ -373,26 +389,11 @@ function __scribble_class_element(_string, _unique_id) constructor
                 __page = _page;
             }
         }
-        
-        return self;
-    }
-    
-    /// @param colour
-    /// @param alpha
-    static fog = function(_colour, _alpha)
-    {
-        if (is_string(_colour))
+        else
         {
-            _colour = global.__scribble_colours[? _colour];
-            if (_colour == undefined)
-            {
-                __scribble_error("Colour name \"", _colour, "\" not recognised");
-                exit;
-            }
+            __page = 0;
         }
         
-        fog_colour = _colour & 0xFFFFFF;
-        fog_alpha  = _alpha;
         return self;
     }
     
@@ -511,6 +512,41 @@ function __scribble_class_element(_string, _unique_id) constructor
         return _events;
     }
     
+    static right_to_left = function(_state)
+    {
+        var _new_bidi_hint = _state? __SCRIBBLE_BIDI.R2L : __SCRIBBLE_BIDI.L2R;
+        
+        if (__bidi_hint != _new_bidi_hint)
+        {
+            model_cache_name_dirty = true;
+            __bidi_hint = _new_bidi_hint;
+        }
+        
+        return self;
+    }
+    
+    static padding = function(_l, _t, _r, _b)
+    {
+        if ((_l != padding_l) || (_t != padding_t) || (_r != padding_r) || (_b != padding_b))
+        {
+            model_cache_name_dirty = true;
+            
+            padding_l = _l;
+            padding_t = _t;
+            padding_r = _r;
+            padding_b = _b;
+        }
+        
+        return self;
+    }
+    
+    static z = function(_z)
+    {
+        __z = _z;
+        
+        return self;
+    }
+    
     #endregion
     
     
@@ -549,107 +585,59 @@ function __scribble_class_element(_string, _unique_id) constructor
     
     #region Getters
     
-    /// @param [x=0]
-    /// @param [y=0]
-    /// @param [leftPad=0]
-    /// @param [topPad=0]
-    /// @param [rightPad=0]
-    /// @param [bottomPad=0]
-    static get_bbox = function(_x = 0, _y = 0, _margin_l = 0, _margin_t = 0, _margin_r = 0, _margin_b = 0)
+    /// @param x
+    /// @param y
+    static get_bbox = function(_x, _y)
     {
         var _model = __get_model(true);
         if (!is_struct(_model))
         {
             //No extant model, return an empty bounding box
-            var _l = _x - _margin_l;
-            var _t = _y - _margin_t;
-            var _r = _x + _margin_r;
-            var _b = _y + _margin_b;
-            
-            var _x0 = _l;   var _y0 = _t;
-            var _x1 = _r;   var _y1 = _t;
-            var _x2 = _l;   var _y2 = _b;
-            var _x3 = _r;   var _y3 = _b;
+            return __get_bbox_transform(_x, _y, _model, {
+                left   : _x,
+                top    : _y,
+                right  : _x,
+                bottom : _y,
+            });
         }
         else
         {
-            __update_scale_to_box_scale();
-            var _xscale = scale_to_box_scale*xscale;
-            var _yscale = scale_to_box_scale*yscale;
-            
-            var _model_bbox = _model.get_bbox(SCRIBBLE_BOX_ALIGN_TO_PAGE? __page : undefined);
-        
-            switch(_model.valign)
+            var _model_bbox = _model.__get_bbox(SCRIBBLE_BOX_ALIGN_TO_PAGE? __page : undefined);
+            return __get_bbox_transform(_x, _y, _model, _model_bbox);
+        }
+    }
+    
+    /// @param x
+    /// @param y
+    /// @param [typist]
+    static get_bbox_revealed = function(_x, _y, _typist)
+    {
+        var _model = __get_model(true);
+        if (!is_struct(_model))
+        {
+            //No extant model, return an empty bounding box
+            return __get_bbox_transform(_x, _y, _model, {
+                left   : _x,
+                top    : _y,
+                right  : _x,
+                bottom : _y,
+            });
+        }
+        else
+        {
+            if (_typist != undefined)
             {
-                case fa_top:
-                    var _bbox_t = 0;
-                    var _bbox_b = _model_bbox.height;
-                break;
-        
-                case fa_middle:
-                    var _bbox_t = -(_model_bbox.height div 2);
-                    var _bbox_b = -_bbox_t;
-                break;
-        
-                case fa_bottom:
-                    var _bbox_t = -_model_bbox.height;
-                    var _bbox_b = 0;
-                break;
+                return __get_bbox_transform(_x, _y, _model, _model.__get_bbox_revealed(__page, 0, _typist.__window_array[_typist.__window_index]));
             }
-        
-            if ((_xscale == 1) && (_yscale == 1) && (angle == 0))
+            else if (__tw_reveal != undefined)
             {
-                //Avoid using matrices if we can
-                var _l = _x - origin_x + _model_bbox.left  - _margin_l;
-                var _t = _y - origin_y + _bbox_t           - _margin_t;
-                var _r = _x - origin_x + _model_bbox.right + _margin_r;
-                var _b = _y - origin_y + _bbox_b           + _margin_b;
-            
-                var _x0 = _l;   var _y0 = _t;
-                var _x1 = _r;   var _y1 = _t;
-                var _x2 = _l;   var _y2 = _b;
-                var _x3 = _r;   var _y3 = _b;
+                return __get_bbox_transform(_x, _y, _model, _model.__get_bbox_revealed(__page, 0, __tw_reveal));
             }
             else
             {
-                //TODO - Cache this
-                var _matrix = matrix_build(-origin_x, -origin_y, 0,   0,0,0,   1,1,1);
-                    _matrix = matrix_multiply(_matrix, matrix_build(_x, _y, 0,
-                                                                    0, 0, angle,
-                                                                    _xscale, _yscale, 1));
-            
-                var _l = _model_bbox.left  - _margin_l;
-                var _t = _bbox_t           - _margin_t;
-                var _r = _model_bbox.right + _margin_r;
-                var _b = _bbox_b           + _margin_b;
-            
-                var _vertex = matrix_transform_vertex(_matrix, _l, _t, 0); var _x0 = _vertex[0]; var _y0 = _vertex[1];
-                var _vertex = matrix_transform_vertex(_matrix, _r, _t, 0); var _x1 = _vertex[0]; var _y1 = _vertex[1];
-                var _vertex = matrix_transform_vertex(_matrix, _l, _b, 0); var _x2 = _vertex[0]; var _y2 = _vertex[1];
-                var _vertex = matrix_transform_vertex(_matrix, _r, _b, 0); var _x3 = _vertex[0]; var _y3 = _vertex[1];
-            
-                var _l = min(_x0, _x1, _x2, _x3);
-                var _t = min(_y0, _y1, _y2, _y3);
-                var _r = max(_x0, _x1, _x2, _x3);
-                var _b = max(_y0, _y1, _y2, _y3);
+                return get_bbox(_x, _y);
             }
         }
-        
-        var _w = 1 + _r - _l;
-        var _h = 1 + _b - _t;
-        
-        return { left:   _l,
-                 top:    _t,
-                 right:  _r,
-                 bottom: _b,
-                 
-                 width:  _w,
-                 height: _h,
-                 
-                 x0: _x0, y0: _y0,
-                 x1: _x1, y1: _y1,
-                 x2: _x2, y2: _y2,
-                 x3: _x3, y3: _y3 };
     }
     
     static get_width = function()
@@ -657,7 +645,7 @@ function __scribble_class_element(_string, _unique_id) constructor
         var _model = __get_model(true);
         if (!is_struct(_model)) return 0;
         __update_scale_to_box_scale();
-        return scale_to_box_scale*_model.get_width();
+        return scale_to_box_scale*(_model.get_width() + padding_l + padding_r);
     }
     
     static get_height = function()
@@ -665,7 +653,7 @@ function __scribble_class_element(_string, _unique_id) constructor
         var _model = __get_model(true);
         if (!is_struct(_model)) return 0;
         __update_scale_to_box_scale();
-        return scale_to_box_scale*_model.get_height();
+        return scale_to_box_scale*(_model.get_height() + padding_t + padding_b);
     }
     
     static get_page = function()
@@ -712,6 +700,37 @@ function __scribble_class_element(_string, _unique_id) constructor
         return _model.get_wrapped();
     }
     
+	/// @param [page]
+    static get_text = function()
+    {
+		var _page = ((argument_count > 0) && (argument[0] != undefined))? argument[0] : __page;
+		
+        var _model = __get_model(true);
+        if (!is_struct(_model)) return 0;
+		return _model.get_text(_page);
+    }
+    
+    /// @param [page]
+    static get_glyph_data = function()
+    {
+        var _index = argument[0];
+        var _page  = ((argument_count > 1) && (argument[1] != undefined))? argument[1] : __page;
+        
+        var _model = __get_model(true);
+        if (!is_struct(_model)) return 0;
+        return _model.get_glyph_data(_index, _page);
+    }
+    
+    /// @param [page]
+    static get_glyph_count = function()
+    {
+        var _page = ((argument_count > 0) && (argument[0] != undefined))? argument[0] : __page;
+        
+        var _model = __get_model(true);
+        if (!is_struct(_model)) return 0;
+        return _model.get_glyph_count(_page);
+    }
+    
     /// @param [page]
     static get_line_count = function()
     {
@@ -722,11 +741,9 @@ function __scribble_class_element(_string, _unique_id) constructor
         return _model.get_line_count(_page);
     }
     
-    static get_ltrb_array = function()
+    static get_z = function()
     {
-        var _model = __get_model(true);
-        if (!is_struct(_model)) return [];
-        return _model.get_ltrb_array();
+        return __z;
     }
     
     #endregion
@@ -742,8 +759,8 @@ function __scribble_class_element(_string, _unique_id) constructor
         var _xscale = 1.0;
         var _yscale = 1.0;
         
-        if (scale_to_box_max_width  > 0) _xscale = scale_to_box_max_width / _model.get_width();
-        if (scale_to_box_max_height > 0) _yscale = scale_to_box_max_height / _model.get_height();
+        if (scale_to_box_max_width  > 0) _xscale = scale_to_box_max_width  / (_model.get_width()  + padding_l + padding_r);
+        if (scale_to_box_max_height > 0) _yscale = scale_to_box_max_height / (_model.get_height() + padding_t + padding_b);
         
         scale_to_box_scale = min(1.0, _xscale, _yscale);
     }
@@ -795,11 +812,6 @@ function __scribble_class_element(_string, _unique_id) constructor
                                                                    colour_get_green(blend_colour)/255,
                                                                    colour_get_blue( blend_colour)/255,
                                                                    blend_alpha);
-            
-            shader_set_uniform_f(global.__scribble_u_vFog, colour_get_red(  fog_colour)/255,
-                                                           colour_get_green(fog_colour)/255,
-                                                           colour_get_blue( fog_colour)/255,
-                                                           fog_alpha);
             
             shader_set_uniform_f(global.__scribble_u_vGradient, colour_get_red(  gradient_colour)/255,
                                                                 colour_get_green(gradient_colour)/255,
@@ -870,11 +882,6 @@ function __scribble_class_element(_string, _unique_id) constructor
                                                                         colour_get_blue( blend_colour)/255,
                                                                         blend_alpha);
             
-            shader_set_uniform_f(global.__scribble_msdf_u_vFog, colour_get_red(  fog_colour)/255,
-                                                                colour_get_green(fog_colour)/255,
-                                                                colour_get_blue( fog_colour)/255,
-                                                                fog_alpha);
-            
             shader_set_uniform_f(global.__scribble_msdf_u_vGradient, colour_get_red(  gradient_colour)/255,
                                                                      colour_get_green(gradient_colour)/255,
                                                                      colour_get_blue( gradient_colour)/255,
@@ -927,7 +934,7 @@ function __scribble_class_element(_string, _unique_id) constructor
             }
             else
             {
-                shader_set_uniform_i(global.__scribble_u_iTypewriterMethod, SCRIBBLE_EASE.NONE);
+                shader_set_uniform_i(global.__scribble_msdf_u_iTypewriterMethod, SCRIBBLE_EASE.NONE);
             }
             
             shader_set_uniform_f(global.__scribble_msdf_u_vShadowOffsetAndSoftness, msdf_shadow_xoffset, msdf_shadow_yoffset, msdf_shadow_softness);
@@ -963,10 +970,12 @@ function __scribble_class_element(_string, _unique_id) constructor
         #endregion
         
         //Draw the model using ourselves as the context
-        _model.draw(_x, _y, self, (msdf_border_thickness > 0) || (msdf_shadow_alpha > 0));
+        _model.draw(_x, _y, __z, self, (msdf_border_thickness > 0) || (msdf_shadow_alpha > 0));
         
         //Run the garbage collecter
         __scribble_gc_collect();
+        
+        if (SCRIBBLE_SHOW_WRAP_BOUNDARY) debug_draw_bbox(_x, _y);
         
         return SCRIBBLE_DRAW_RETURNS_SELF? self : undefined;
     }
@@ -997,6 +1006,65 @@ function __scribble_class_element(_string, _unique_id) constructor
         return SCRIBBLE_BUILD_RETURNS_SELF? self : undefined;
     }
     
+    static debug_draw_bbox = function(_x, _y)
+    {
+        var _model = __get_model(true);
+        if (!is_struct(_model)) return undefined;
+        
+        if ((scale_to_box_max_width > 0) && (scale_to_box_max_height > 0))
+        {
+            var _w = scale_to_box_max_width  - (padding_l + padding_r);
+            var _h = scale_to_box_max_height - (padding_t + padding_b);
+        }
+        else
+        {
+            var _w = wrap_max_width  - (padding_l + padding_r);
+            var _h = wrap_max_height - (padding_t + padding_b);
+        }
+        
+        _w *= xscale;
+        _h *= yscale;
+        
+        var _l = _x + padding_l;
+        var _t = _y + padding_t;
+        var _r = _l + _w;
+        var _b = _t + _h;
+        
+        switch(starting_halign)
+        {
+            case fa_left:               break;
+            case fa_center: _l -= _w/2; break;
+            case fa_right:  _l -= _w;   break;
+        }
+        
+        switch(_model.valign)
+        {
+            case fa_top:                break;
+            case fa_middle: _t -= _h/2; break;
+            case fa_bottom: _t -= _h;   break;
+        }
+        
+        if (((scale_to_box_max_width > 0) && (scale_to_box_max_height > 0))
+        ||  ((wrap_max_width > 0) && (wrap_max_height > 0)))
+        {
+            draw_set_color(c_red);
+            draw_rectangle(_l, _t, _r, _b, true);
+            draw_set_color(c_white);
+        }
+        else if (wrap_max_width > 0)
+        {
+            _h = _model.get_height();
+            _b = _t + _h;
+            
+            draw_set_color(c_red);
+            draw_line(_l, _t, _l, _t + _h);
+            draw_line(_r, _t, _r, _t + _h);
+            draw_set_color(c_white);
+        }
+        
+        return self;
+    }
+    
     #endregion
     
     
@@ -1021,12 +1089,18 @@ function __scribble_class_element(_string, _unique_id) constructor
                                    string(starting_valign) + ":" +
                                    string(line_height_min) + ":" +
                                    string(line_height_max) + ":" +
+                                   string(__line_spacing ) + ":" +
                                    string(wrap_max_width ) + ":" +
                                    string(wrap_max_height) + ":" +
                                    string(wrap_per_char  ) + ":" +
                                    string(wrap_no_pages  ) + ":" +
                                    string(wrap_max_scale ) + ":" +
                                    string(bezier_array   ) + ":" +
+                                   string(__bidi_hint    ) + ":" +
+                                   string(padding_l      ) + ":" +
+                                   string(padding_t      ) + ":" +
+                                   string(padding_r      ) + ":" +
+                                   string(padding_b      ) + ":" +
                                    string(__ignore_command_tags);
             }
             
@@ -1047,6 +1121,71 @@ function __scribble_class_element(_string, _unique_id) constructor
         }
         
         return model;
+    }
+    
+    static __get_bbox_transform = function(_x, _y, _model, _bbox)
+    {
+        __update_scale_to_box_scale();
+        var _xscale = scale_to_box_scale*_model.fit_scale*xscale;
+        var _yscale = scale_to_box_scale*_model.fit_scale*yscale;
+        
+        //Left/top padding is baked into the model
+        _bbox.left   -= padding_l;
+        _bbox.top    -= padding_t;
+        _bbox.right  += padding_r;
+        _bbox.bottom += padding_b;
+        
+        if ((_xscale == 1) && (_yscale == 1) && (angle == 0))
+        {
+            //Avoid using matrices if we can
+            var _l = _x - origin_x + _bbox.left;
+            var _t = _y - origin_y + _bbox.top;
+            var _r = _x - origin_x + _bbox.right;
+            var _b = _y - origin_y + _bbox.bottom;
+                
+            var _x0 = _l;   var _y0 = _t;
+            var _x1 = _r;   var _y1 = _t;
+            var _x2 = _l;   var _y2 = _b;
+            var _x3 = _r;   var _y3 = _b;
+        }
+        else
+        {
+            //TODO - Optimize or cache this
+            var _matrix = matrix_multiply(matrix_build(-origin_x, -origin_y, 0,   0, 0,     0,         1,       1, 1),
+                          matrix_multiply(matrix_build(        0,         0, 0,   0, 0,     0,   _xscale, _yscale, 1),
+                                          matrix_build(       _x,        _y, 0,   0, 0, angle,         1,       1, 1)));
+                
+            var _l = _bbox.left;
+            var _t = _bbox.top;
+            var _r = _bbox.right;
+            var _b = _bbox.bottom;
+                
+            var _vertex = matrix_transform_vertex(_matrix, _l, _t, 0); var _x0 = _vertex[0]; var _y0 = _vertex[1];
+            var _vertex = matrix_transform_vertex(_matrix, _r, _t, 0); var _x1 = _vertex[0]; var _y1 = _vertex[1];
+            var _vertex = matrix_transform_vertex(_matrix, _l, _b, 0); var _x2 = _vertex[0]; var _y2 = _vertex[1];
+            var _vertex = matrix_transform_vertex(_matrix, _r, _b, 0); var _x3 = _vertex[0]; var _y3 = _vertex[1];
+                
+            var _l = min(_x0, _x1, _x2, _x3);
+            var _t = min(_y0, _y1, _y2, _y3);
+            var _r = max(_x0, _x1, _x2, _x3);
+            var _b = max(_y0, _y1, _y2, _y3);
+        }
+        
+        var _w = 1 + _r - _l;
+        var _h = 1 + _b - _t;
+        
+        return { left:   _l,
+                 top:    _t,
+                 right:  _r,
+                 bottom: _b,
+                 
+                 width:  _w,
+                 height: _h,
+                 
+                 x0: _x0, y0: _y0,
+                 x1: _x1, y1: _y1,
+                 x2: _x2, y2: _y2,
+                 x3: _x3, y3: _y3 };
     }
     
     #endregion
@@ -1206,9 +1345,4 @@ function __scribble_class_element(_string, _unique_id) constructor
     }
     
     #endregion
-    
-    
-    
-    //Apply the default template
-    __scribble_config_default_template();
 }

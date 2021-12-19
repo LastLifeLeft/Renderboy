@@ -1,22 +1,21 @@
 /// @param fontName
+/// @param glyphCount
+/// @param isMSDF
 
-function __scribble_class_font(_name) constructor
+function __scribble_class_font(_name, _glyph_count, _msdf) constructor
 {
+    name = _name;
     global.__scribble_font_data[? _name] = self;
     
-    name = _name;
-    
+    glyph_data_grid = ds_grid_create(_glyph_count, SCRIBBLE_GLYPH.__SIZE);
     glyphs_map = ds_map_create();
     
-    collage = false;
-    
+    msdf         = _msdf;
     msdf_pxrange = undefined;
-    msdf         = undefined;
+    superfont    = false;
     
-    xscale     = 1.0;
-    yscale     = 1.0;
-    scale_dist = 1.0;
-    height     = 0; //*Not* the raw height. This value is changed by scribble_font_scale()
+    scale  = 1.0;
+    height = 0; //*Not* the raw height. This value is changed by scribble_font_scale()
     
     style_regular     = undefined;
     style_bold        = undefined;
@@ -41,13 +40,13 @@ function __scribble_class_font(_name) constructor
     
     static calculate_font_height = function()
     {
-        height = yscale*glyphs_map[? 32][SCRIBBLE_GLYPH.HEIGHT];
+        height = glyph_data_grid[# glyphs_map[? 32], SCRIBBLE_GLYPH.HEIGHT];
         return height;
     }
     
     static clear = function()
     {
-        if (!collage) __scribble_error("Cannot clear non-collage fonts");
+        if (!superfont) __scribble_error("Cannot clear non-superfont fonts");
         
         ds_map_clear(glyphs_map);
         
@@ -61,6 +60,7 @@ function __scribble_class_font(_name) constructor
     //static destroy = function()
     //{
     //    ds_map_destroy(glyphs_map);
+    //    ds_grid_destroy(glyph_data_grid);
     //    ds_map_delete(global.__scribble_font_data, name);
     //}
 }
