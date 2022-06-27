@@ -1,0 +1,3 @@
+[submodule "PureBasic/UITK"]
+	path = PureBasic/UITK
+	url = https://github.com/LastLifeLeft/UI-Toolkit
