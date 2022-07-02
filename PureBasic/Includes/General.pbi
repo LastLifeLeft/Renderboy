@@ -58,11 +58,6 @@ DeclareModule Project
 	
 	Structure Project
 		Assets.AssetArray[5]
-; 		List Library_Media.Asset()
-; 		List Library_Audio.Asset()
-; 		List Library_3D.Asset()
-; 		List Library_Overlay.Asset()
-; 		List Library_Elements.Asset()
 	EndStructure
 	
 	Global Project.Project
@@ -101,8 +96,8 @@ Module General
 	
 EndModule
 ; IDE Options = PureBasic 6.00 LTS (Windows - x64)
-; CursorPosition = 56
-; FirstLine = 20
+; CursorPosition = 46
+; FirstLine = 8
 ; Folding = --
 ; EnableXP
 ; DPIAware
