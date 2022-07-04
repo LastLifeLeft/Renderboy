@@ -35,6 +35,10 @@
 	;{ UITK Subclass stuff
 	; ... This is not the correct way to do it.
 	
+	#WM_SYSMENU = $313
+	#SizableBorder = 8
+	#WindowButtonWidth = 45
+	#WindowBarHeight = 30
 	#Library_ItemTextHeight = 20
 	
 	Enumeration ;DragState
@@ -199,13 +203,49 @@
 		List Sections.UITK::Library_Section()
 		List Items.UITK::Library_Item()
 	EndStructure
+	
+	Structure ThemedWindow
+		*Brush
+		*OriginalProc
+		
+		Width.l
+		Height.l
+		MinWidth.l
+		MinHeight.l
+		MaxWidth.l
+		MaxHeight.l
+		
+		SizeCursor.l
+		Sizable.l
+		
+		ButtonClose.l
+		ButtonMinimize.l
+		ButtonMaximize.l
+		
+		Container.i
+		
+		Label.i
+		LabelWidth.l
+		LabelAlign.b
+		
+		MenuOffset.l
+		List MenuList.i()
+		
+		Theme.UITK::Theme
+	EndStructure
+	
+	Structure WindowContainer
+		*Parent
+		*OriginalProc
+		sizeCursor.l
+	EndStructure
 	;}
 	
 	Global Window, Window_Width, Window_Height
-	Global Render, TimeLine
-	Global TabState
+	Global Render, TimeLine, HorizontalContainer, HorizontalContainer_State, VerticalContainer, VerticalContainer_State
+	Global TabState, LibraryWidth, TimeLineHeight, SplitterOffset
 	Global Dim PlusIcon(4)
-	Global *OriginalEvent
+	Global *OriginalLibraryHandler, *OriginalContainterHandler
 	
 	PlusIcon(Project::#Media) = ImageID(CatchImage(#PB_Any, ?PlusMedia))
 	PlusIcon(Project::#Audio) = ImageID(CatchImage(#PB_Any, ?PlusAudio))
@@ -214,20 +254,25 @@
 	PlusIcon(Project::#Modifiers) = ImageID(CatchImage(#PB_Any, ?PlusModifiers))
 	
 	; Appearance
-	#Appearance_Window_Width = 1200
+	#Appearance_Window_Width = 1280
 	#Appearance_Window_Height = 700
 	#Appearance_Window_Margin = 10
 	#Appearance_TimeLine_MinHeight = 300
 	#Appearance_Render_MinWidth = 600
-	#Appearance_Render_MinHeight = 400
-	#Appearance_LibraryButton_Height = 70
+	#Appearance_Render_MinHeight = 380
+	#Appearance_Library_ButtonHeight = 70
+	#Appearance_Library_MinWidth = 560
 	;}
 	
 	; Private procedure declarations
 	Prototype OriginEvent(*GadgetData, *Event)
 	Declare Handler_Tab()
+	Declare Handler_Resize()
+	Declare Handler_Close()
 	Declare Library_RedrawItem(*Item.UITK::Library_Item, X, Y, Width, Height, State, *Theme.UITK::Theme)
 	Declare Library_EventHandler(*GadgetData.LibraryData, *Event.Event)
+	Declare HorizontalContainer_Handler(hWnd, Msg, wParam, lParam)
+	Declare VerticalContainer_Handler(hWnd, Msg, wParam, lParam)
 	
 	; Public procedures
 	Procedure Open()
@@ -245,6 +290,8 @@
 		UITK::WindowSetColor(Window, UITK::#Color_WindowBorder, SetAlpha(FixColor(#Color_Window_Border), 255))
 		UITK::WindowSetColor(Window, UITK::#Color_Parent, SetAlpha(FixColor(#Color_Window_Border), 255))
 		UITK::WindowSetColor(Window, UITK::#Color_Shade_Cold, SetAlpha(FixColor(#Color_Gadget_BackCold), 255))
+		UITK::SetWindowBounds(Window, #Appearance_Window_Width, #Appearance_Window_Height + 30, -1, -1)
+		BindEvent(#PB_Event_SizeWindow, @Handler_Resize(), Window)
 		
 		UITK::SetWindowIcon(Window, ImageID(CatchImage(#PB_Any, ?Icon)))
 		Window_Width = WindowWidth(Window)
@@ -252,7 +299,7 @@
 		;}
 		
 		;{ Gadgets
-		Tab = UITK::Tab(#PB_Any, #Appearance_Window_Margin * 2, 0, Window_Width - 3 * #Appearance_Window_Margin - #Appearance_Render_MinWidth - #Appearance_Window_Margin * 2, #Appearance_LibraryButton_Height)
+		Tab = UITK::Tab(#PB_Any, #Appearance_Window_Margin * 2, 0, #Appearance_Library_MinWidth, #Appearance_Library_ButtonHeight)
 		SetGadgetColor(Tab, UITK::#Color_Shade_Warm, SetAlpha(FixColor($373A56), 255))
 		SetGadgetColor(Tab, UITK::#Color_Shade_Hot, SetAlpha(FixColor(#Color_Gadget_BackCold), 255))
 		AddGadgetItem(Tab, -1, "Media", ImageID(CatchImage(#PB_Any, ?TabMedia)))
@@ -268,17 +315,30 @@
 		SetGadgetState(Tab, 0)
 		BindGadgetEvent(Tab, @Handler_Tab(), #PB_EventType_Change)
 		
-		Library = UITK::Library(#PB_Any, #Appearance_Window_Margin, #Appearance_LibraryButton_Height, Window_Width - 3 * #Appearance_Window_Margin - #Appearance_Render_MinWidth, Window_Height - 2 * #Appearance_Window_Margin - #Appearance_TimeLine_MinHeight - #Appearance_LibraryButton_Height, UITK::#Drag, @Library_RedrawItem())
+		LibraryWidth = #Appearance_Library_MinWidth
+		TimeLineHeight = #Appearance_TimeLine_MinHeight
+		
+		Library = UITK::Library(#PB_Any, #Appearance_Window_Margin, #Appearance_Library_ButtonHeight, LibraryWidth, Window_Height - 2 * #Appearance_Window_Margin - #Appearance_TimeLine_MinHeight - #Appearance_Library_ButtonHeight, UITK::#Drag, @Library_RedrawItem())
 		SetGadgetAttribute(Library, UITK::#Attribute_CornerRadius, 5)
 		EnableGadgetDrop(Library, #PB_Drop_Files, #PB_Drag_Copy | #PB_Drag_Move)
-		*OriginalEvent = UITK::SubClassFunction(Library, UITK::#SubClass_EventHandler, @Library_EventHandler())
+		*OriginalLibraryHandler = UITK::SubClassFunction(Library, UITK::#SubClass_EventHandler, @Library_EventHandler())
 		
-		Render = ContainerGadget(#PB_Any, GadgetX(Library) + GadgetWidth(Library) + #Appearance_Window_Margin, 0, Window_Width - 3 * #Appearance_Window_Margin - GadgetWidth(Library), Window_Height - 2 * #Appearance_Window_Margin - #Appearance_TimeLine_MinHeight, #PB_Container_BorderLess)
+		Render = ContainerGadget(#PB_Any, GadgetX(Library) + LibraryWidth + #Appearance_Window_Margin, 0, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, Window_Height - 2 * #Appearance_Window_Margin - #Appearance_TimeLine_MinHeight, #PB_Container_BorderLess)
 		SetGadgetColor(Render, #PB_Gadget_BackColor, $000000)
 		CloseGadgetList()
 		
-		TimeLine = TimeLine::Gadget(#Appearance_Window_Margin, GadgetY(Library) + GadgetHeight(Library) + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, #Appearance_TimeLine_MinHeight) 
+		HorizontalContainer = ContainerGadget(#PB_Any, #Appearance_Window_Margin, Window_Height - #Appearance_Window_Margin * 2 - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, #Appearance_Window_Margin)
+		SetGadgetColor(HorizontalContainer, #PB_Gadget_BackColor, FixColor(#Color_Window_Border))
+		*OriginalContainterHandler = SetWindowLongPtr_(GadgetID(HorizontalContainer), #GWL_WNDPROC, @HorizontalContainer_Handler())
+		CloseGadgetList()
 		
+		VerticalContainer = ContainerGadget(#PB_Any, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, 10)
+		SetGadgetColor(VerticalContainer, #PB_Gadget_BackColor, FixColor(#Color_Window_Border))
+		SetWindowLongPtr_(GadgetID(VerticalContainer), #GWL_WNDPROC, @VerticalContainer_Handler())
+		CloseGadgetList()
+		
+		
+		TimeLine = TimeLine::Gadget(#Appearance_Window_Margin, GadgetY(Library) + GadgetHeight(Library) + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
 		;}
 		
 		;{ Menu
@@ -341,6 +401,50 @@
 		EndSelect
 				
 		UITK::Freeze(Library, #False)
+	EndProcedure
+	
+	Procedure Handler_Resize()
+		Protected TempHeight = WindowHeight(Window) - 30, VerticalGrowth = Bool(TempHeight > Window_Height)
+		Window_Width = WindowWidth(Window)
+		Window_Height = TempHeight
+		
+		If Window_Height - TimeLineHeight - 2 * #Appearance_Window_Margin < #Appearance_Render_MinHeight
+			TimeLineHeight = Window_Height - 2 * #Appearance_Window_Margin - #Appearance_Render_MinHeight
+		EndIf
+		
+		If Window_Width - LibraryWidth - 3 * #Appearance_Window_Margin < #Appearance_Render_MinWidth
+			LibraryWidth = Window_Width - 3 * #Appearance_Window_Margin - #Appearance_Render_MinWidth
+		EndIf
+		
+; 		PosX = General::Max(GadgetX(VerticalContainer) + PosX, #Appearance_Library_MinWidth + #Appearance_Window_Margin)
+; 						LibraryWidth = PosX - #Appearance_Window_Margin
+		
+		TempHeight = Window_Height - TimeLineHeight - 2 * #Appearance_Window_Margin
+		
+		SendMessage_(GadgetID(Library), #WM_SETREDRAW, #False, 0)
+		
+		If VerticalGrowth
+			ResizeGadget(TimeLine, #PB_Ignore, TempHeight + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
+			ResizeGadget(HorizontalContainer, #PB_Ignore, Window_Height - #Appearance_Window_Margin * 2 - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, #PB_Ignore)
+			ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth, TempHeight - #Appearance_Library_ButtonHeight)
+			SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
+			RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+			ResizeGadget(VerticalContainer, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, TempHeight)
+			ResizeGadget(Render, LibraryWidth + 2 * #Appearance_Window_Margin, #PB_Ignore, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, TempHeight)
+		Else
+			ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth, TempHeight - #Appearance_Library_ButtonHeight)
+			SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
+			RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+			ResizeGadget(VerticalContainer, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, TempHeight)
+			ResizeGadget(Render, LibraryWidth + 2 * #Appearance_Window_Margin, #PB_Ignore, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, TempHeight)
+			ResizeGadget(HorizontalContainer, #PB_Ignore, Window_Height - #Appearance_Window_Margin * 2 - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, #PB_Ignore)
+			ResizeGadget(TimeLine, #PB_Ignore, TempHeight + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
+		EndIf
+		
+	EndProcedure
+	
+	Procedure Handler_Close()
+		
 	EndProcedure
 	
 	Procedure Library_RedrawItem(*Item.Library_Item, X, Y, Width, Height, State, *Theme.UITK::Theme)
@@ -483,32 +587,161 @@
 				Case UITK::#LeftDoubleClick ;{
 					;}
 				Default ;{
-					CallFunctionFast(*OriginalEvent, *GadgetData, *Event)
+					CallFunctionFast(*OriginalLibraryHandler, *GadgetData, *Event)
 					;}
 			EndSelect
 			
 			If Redraw
-				If Not *GadgetData\Freeze
-					If *GadgetData\MetaGadget
-						
-					Else
-						StartVectorDrawing(CanvasVectorOutput(*GadgetData\Gadget))
-						AddPathBox(*GadgetData\OriginX, *GadgetData\OriginY, *GadgetData\Width, *GadgetData\Height, #PB_Path_Default)
-						ClipPath(#PB_Path_Preserve)
-						VectorSourceColor(*GadgetData\ThemeData\WindowColor)
-						FillPath()
-						*GadgetData\Redraw(*GadgetData)
-						StopVectorDrawing()
-					EndIf
-				EndIf
+				StartVectorDrawing(CanvasVectorOutput(*GadgetData\Gadget))
+				AddPathBox(*GadgetData\OriginX, *GadgetData\OriginY, *GadgetData\Width, *GadgetData\Height, #PB_Path_Default)
+				ClipPath(#PB_Path_Preserve)
+				VectorSourceColor(*GadgetData\ThemeData\WindowColor)
+				FillPath()
+				*GadgetData\Redraw(*GadgetData)
+				StopVectorDrawing()
 			EndIf
 		EndWith
 		
 		ProcedureReturn Redraw
 	EndProcedure
 	
+	Procedure HorizontalContainer_Handler(hWnd, Msg, wParam, lParam)
+		Protected PosY
+		
+		Select Msg
+			Case #WM_MOUSEMOVE
+				If HorizontalContainer_State
+					PosY = ((lParam >> 16) & $FFFF) - SplitterOffset
+					If PosY > 30000
+						PosY - 65535
+					EndIf
+					
+					If PosY > 0
+						PosY = General::Min(GadgetY(HorizontalContainer) + PosY, Window_Height - #Appearance_TimeLine_MinHeight - 2 * #Appearance_Window_Margin)
+						TimeLineHeight = Window_Height - posy - 2 * #Appearance_Window_Margin
+						
+						SetWindowPos_(GadgetID(TimeLine), 0, #Appearance_Window_Margin, Window_Height - #Appearance_Window_Margin - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight, #SWP_NOZORDER | #SWP_NOREDRAW)
+						
+						SetWindowPos_(hWnd, 0, #Appearance_Window_Margin, PosY, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER)
+						
+						SetWindowPos_(GadgetID(Render), 0, 0, 0, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight, #SWP_NOZORDER | #SWP_NOMOVE | #SWP_NOREDRAW)
+						
+						ResizeGadget(VerticalContainer, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight)
+						
+						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #False, 0)
+						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, #PB_Ignore, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight - #Appearance_Library_ButtonHeight)
+						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
+						
+						RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						RedrawWindow_(GadgetID(TimeLine), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						RedrawWindow_(GadgetID(Render), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+					Else
+						PosY = General::Max(GadgetY(HorizontalContainer) + PosY, #Appearance_Render_MinHeight)
+						TimeLineHeight = Window_Height - PosY - 2 * #Appearance_Window_Margin
+						
+						SetWindowPos_(GadgetID(Render), 0, 0, 0, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight,#SWP_NOZORDER |  #SWP_NOMOVE | #SWP_NOREDRAW)
+						
+						ResizeGadget(VerticalContainer, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight)
+						
+						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #False, 0)
+						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, #PB_Ignore, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight - #Appearance_Library_ButtonHeight)
+						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
+						
+						SetWindowPos_(hWnd, 0, #Appearance_Window_Margin, PosY, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER)
+						
+						SetWindowPos_(GadgetID(TimeLine), 0, #Appearance_Window_Margin, Window_Height - #Appearance_Window_Margin - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight, #SWP_NOZORDER | #SWP_NOREDRAW)
+						
+						RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						RedrawWindow_(GadgetID(TimeLine), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						RedrawWindow_(GadgetID(Render), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+					EndIf
+				EndIf
+				
+				SetCursor_(LoadCursor_(0, #IDC_SIZENS))
+				ProcedureReturn
+			Case #WM_LBUTTONDOWN
+				HorizontalContainer_State = #True
+				SetCapture_(hWnd)
+				SetCursor_(LoadCursor_(0, #IDC_SIZENS))
+				SplitterOffset = (lParam >> 16) & $FFFF
+				ProcedureReturn
+			Case #WM_LBUTTONUP
+				HorizontalContainer_State = #False
+				ReleaseCapture_()
+				SetCursor_(LoadCursor_(0, #IDC_SIZENS))
+				SetActiveGadget(Library)
+				ProcedureReturn
+		EndSelect
+		
+		ProcedureReturn CallWindowProc_(*OriginalContainterHandler, hWnd, Msg, wParam, lParam)
+	EndProcedure
 	
-	DataSection
+	Procedure VerticalContainer_Handler(hWnd, Msg, wParam, lParam)
+		Protected PosX, Height
+		
+		Select Msg
+			Case #WM_MOUSEMOVE
+				If HorizontalContainer_State
+					PosX = (lParam & $FFFF) - SplitterOffset
+					If PosX > 30000
+						PosX - 65535
+					EndIf
+					
+					Height = Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight
+					
+					If PosX > 0
+						PosX = General::Min(GadgetX(VerticalContainer) + PosX, Window_Width - #Appearance_Render_MinWidth - #Appearance_Window_Margin)
+						LibraryWidth = PosX - #Appearance_Window_Margin
+						
+						SetWindowPos_(GadgetID(Render), 0, LibraryWidth + #Appearance_Window_Margin * 2, 0, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, Height, #SWP_NOZORDER | #SWP_NOREDRAW)
+						
+						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #False, 0)
+; 						SetWindowPos_(GadgetID(Library), 0, 0, 0, LibraryWidth, Height - #Appearance_Library_ButtonHeight, #SWP_NOZORDER | #SWP_NOREDRAW | #SWP_NOMOVE)
+						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth, #PB_Ignore)
+						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
+						
+						RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						RedrawWindow_(GadgetID(Render), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						
+						SetWindowPos_(GadgetID(VerticalContainer), 0, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, Height, #SWP_NOZORDER)
+						
+					Else
+						PosX = General::Max(GadgetX(VerticalContainer) + PosX, #Appearance_Library_MinWidth + #Appearance_Window_Margin)
+						LibraryWidth = PosX - #Appearance_Window_Margin
+						
+						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #False, 0)
+						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth, #PB_Ignore)
+						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
+						
+						SetWindowPos_(GadgetID(Render), 0, LibraryWidth + #Appearance_Window_Margin * 2, 0, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, Height, #SWP_NOZORDER | #SWP_NOREDRAW)
+
+						RedrawWindow_(GadgetID(Render), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						
+						SetWindowPos_(GadgetID(VerticalContainer), 0, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, Height, #SWP_NOZORDER)
+					EndIf
+				EndIf
+				
+				SetCursor_(LoadCursor_(0, #IDC_SIZEWE))
+				ProcedureReturn
+			Case #WM_LBUTTONDOWN
+				HorizontalContainer_State = #True
+				SetCapture_(hWnd)
+				SetCursor_(LoadCursor_(0, #IDC_SIZEWE))
+				SplitterOffset = lParam & $FFFF
+				ProcedureReturn
+			Case #WM_LBUTTONUP
+				HorizontalContainer_State = #False
+				ReleaseCapture_()
+				SetCursor_(LoadCursor_(0, #IDC_SIZEWE))
+				SetActiveGadget(Library)
+				ProcedureReturn
+		EndSelect
+		
+		ProcedureReturn CallWindowProc_(*OriginalContainterHandler, hWnd, Msg, wParam, lParam)
+	EndProcedure
+	
+	DataSection ;{
 		Icon:
 		IncludeBinary "../Media/Logo.png"
 		
@@ -541,11 +774,11 @@
 		
 		PlusOverlay:
 		IncludeBinary "../Media/Plus-Overlay.png"
-	EndDataSection
+	EndDataSection ;}
 EndModule
 ; IDE Options = PureBasic 6.00 LTS (Windows - x64)
-; CursorPosition = 462
-; FirstLine = 311
-; Folding = Z-ln
+; CursorPosition = 695
+; FirstLine = 130
+; Folding = ZflA1
 ; EnableXP
 ; DPIAware

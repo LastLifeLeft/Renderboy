@@ -43,7 +43,7 @@
 	EndProcedure
 	
 	Procedure AddAsset(Assets.s)
-		Protected Loop, Count, File.s, Extension.s
+		Protected Loop, Count, File.s, Extension.s, ExistingFile
 		Protected Image, FinalImage, OriginalWidth, OriginalHeight, ImageWidth, ImageHeight
 		
 		Count = CountString(Assets, #LF$) + 1
@@ -53,7 +53,19 @@
 			Extension = LCase(GetExtensionPart(File))
 			
 			Select Extension
-				Case "jpg", "jpeg", "png", "bmp"
+				Case "jpg", "jpeg", "png", "bmp" ;{
+					ExistingFile = #False
+					ForEach Project\Assets[#Media]\list()
+						If Project\Assets[#Media]\list()\Path = File
+							ExistingFile = #True
+							Break
+						EndIf
+					Next
+					
+					If ExistingFile
+						Continue
+					EndIf
+					
 					Image = LoadImage(#PB_Any, File)
 					
 					If Image
@@ -85,16 +97,17 @@
 						StopVectorDrawing()
 						FreeImage(Image)
 						
-						LastElement(Project\Assets[#Media]\list())
 						AddElement(Project\Assets[#Media]\list())
 						Project\Assets[#Media]\list()\Name = GetFilePart(File, #PB_FileSystem_NoExtension)
 						Project\Assets[#Media]\list()\PreviewImage = FinalImage
 						Project\Assets[#Media]\list()\Type = #Asset_Image
+						Project\Assets[#Media]\list()\Path = File
 						
 						If GetGadgetState(MainWindow::Tab) = 0
 							SetGadgetItemData(MainWindow::Library, AddGadgetItem(MainWindow::Library, -1, Project\Assets[#Media]\list()\Name, ImageID(Project\Assets[#Media]\list()\PreviewImage), 1), @Project\Assets[#Media]\list())
 						EndIf
 					EndIf
+					;}
 			EndSelect
 			
 			
@@ -108,7 +121,7 @@
 	EndDataSection
 EndModule
 ; IDE Options = PureBasic 6.00 LTS (Windows - x64)
-; CursorPosition = 82
-; Folding = 0-
+; CursorPosition = 44
+; Folding = 0v
 ; EnableXP
 ; DPIAware

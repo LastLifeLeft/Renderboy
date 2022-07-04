@@ -32,7 +32,6 @@ DeclareModule Project
 		#Asset_Image
 		#Asset_Video
 		
-		
 		#__Asset_Type_Count
 	EndEnumeration
 	
@@ -50,6 +49,7 @@ DeclareModule Project
 		Type.i
 		Name.s
 		PreviewImage.i
+		Path.s
 	EndStructure
 	
 	Structure AssetArray
@@ -96,8 +96,7 @@ Module General
 	
 EndModule
 ; IDE Options = PureBasic 6.00 LTS (Windows - x64)
-; CursorPosition = 46
-; FirstLine = 8
+; CursorPosition = 51
 ; Folding = --
 ; EnableXP
 ; DPIAware
