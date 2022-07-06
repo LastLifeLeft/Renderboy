@@ -7,7 +7,7 @@
   <section name="data">
     <explorer view="C:\ProgramData\PureBasic\Examples\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2022-07-04 18:39" user="LastLife" host="MONSTRO"/>
+    <lastopen date="2022-07-06 13:38" user="LastLife" host="MONSTRO"/>
   </section>
   <section name="files">
     <file name="Includes\General.pbi">
@@ -16,7 +16,7 @@
     </file>
     <file name="Includes\MainWindow.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="b4830e29cfcb1c5eec671384d8702c45"/>
+      <fingerprint md5="69704ba445fd3a0be00437315360625c"/>
     </file>
     <file name="Includes\Project.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
@@ -24,7 +24,7 @@
     </file>
     <file name="Includes\TimeLine.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="82587342d3750656f6f62e0029981c7e"/>
+      <fingerprint md5="4b61e757da985f590877ec3e7841813d"/>
     </file>
     <file name="Main.pb">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="+"/>
@@ -32,7 +32,7 @@
     </file>
     <file name="UITK\Library\UI-Toolkit.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="0" panelstate="+++"/>
-      <fingerprint md5="594f2ea973f71c6423f6e85f5c9a6362"/>
+      <fingerprint md5="11d08f836f95b74d1f7b07e74bc30e32"/>
     </file>
   </section>
   <section name="targets">

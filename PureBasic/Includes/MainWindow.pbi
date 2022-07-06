@@ -339,6 +339,8 @@
 		
 		
 		TimeLine = TimeLine::Gadget(#Appearance_Window_Margin, GadgetY(Library) + GadgetHeight(Library) + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
+		
+		CloseGadgetList()
 		;}
 		
 		;{ Menu
@@ -777,8 +779,8 @@
 	EndDataSection ;}
 EndModule
 ; IDE Options = PureBasic 6.00 LTS (Windows - x64)
-; CursorPosition = 695
-; FirstLine = 130
-; Folding = ZflA1
+; CursorPosition = 359
+; FirstLine = 15
+; Folding = ZfRAw
 ; EnableXP
 ; DPIAware

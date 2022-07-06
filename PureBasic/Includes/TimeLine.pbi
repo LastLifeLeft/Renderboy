@@ -46,12 +46,11 @@ Module TimeLine
 		Result = ContainerGadget(#PB_Any, x, y, Width, Height, #PB_Container_BorderLess)
 		SetGadgetColor(Result, #PB_Gadget_BackColor, FixColor(#Color_Gadget_BackCold))
 		
-		CloseGadgetList()
 		ProcedureReturn Result
 	EndProcedure
 EndModule
 ; IDE Options = PureBasic 6.00 LTS (Windows - x64)
-; CursorPosition = 37
+; CursorPosition = 47
 ; Folding = 8-
 ; EnableXP
 ; DPIAware
