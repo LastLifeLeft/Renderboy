@@ -2,14 +2,14 @@
 IncludeFile "UI-Toolkit.pbi"
 
 IncludePath "Includes"
-IncludeFile "TimeLine.pbi"
 IncludeFile "General.pbi"
+IncludeFile "TimeLine.pbi"
 IncludeFile "MainWindow.pbi"
 IncludeFile "Project.pbi"
 
 General::Init()
 
-Repeat 
+Repeat
 	If WaitWindowEvent() = #PB_Event_GadgetDrop
 		Select EventGadget()
 			Case MainWindow::Library	

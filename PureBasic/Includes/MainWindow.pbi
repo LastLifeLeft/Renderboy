@@ -96,6 +96,7 @@
 		
 		; From here on, custom procedures
 		*GetGadgetItemImage
+		*DropHandler
 	EndStructure
 	
 	Structure PB_Gadget
@@ -162,6 +163,8 @@
 		Enabled.b
 		
 		*DefaultEventHandler
+		
+		DropHover.i
 	EndStructure
 	
 	Structure ScrollBarData Extends GadgetData
@@ -239,11 +242,38 @@
 		*OriginalProc
 		sizeCursor.l
 	EndStructure
+	
+	Structure Tree_Item
+		Text.UITK::Text
+		Level.b
+		*Data.Project::AssetFolder
+	EndStructure
+	
+	Structure TreeData Extends GadgetData
+		InternalHeight.l
+		ItemHeight.l
+		BranchWidth.l
+		VisibleScrollbar.b
+		MaxLevel.b
+		DrawLine.l
+		*ScrollBar.ScrollBarData
+		List Items.Tree_Item()
+	EndStructure
 	;}
 	
+	Enumeration 1 ;Menu
+		#Menu_Undo
+		#Menu_Redo
+		#Menu_AddFolder
+		#Menu_RemoveFolder
+		#Menu_RenameFolder
+	EndEnumeration
+	
 	Global Window, Window_Width, Window_Height
-	Global Render, TimeLine, HorizontalContainer, HorizontalContainer_State, VerticalContainer, VerticalContainer_State
-	Global TabState, LibraryWidth, TimeLineHeight, SplitterOffset
+	Global Tree_Menu, Render, HorizontalContainer, HorizontalContainer_State, VerticalContainer, VerticalContainer_State
+	Global LibraryWidth, TimeLineHeight, SplitterOffset
+	Global ButtonNewLine, ButtonRemoveLine, ButtonLineUp, ButtonLineDown, ButtonLineRename, IconFolderOpen
+	Global IconFont = FontID(LoadFont(#PB_Any, "Font Awesome 5 Pro Regular", 20))
 	Global Dim PlusIcon(4)
 	Global *OriginalLibraryHandler, *OriginalContainterHandler
 	
@@ -262,6 +292,7 @@
 	#Appearance_Render_MinHeight = 380
 	#Appearance_Library_ButtonHeight = 70
 	#Appearance_Library_MinWidth = 560
+	#Appearance_Tree_Width = 160
 	;}
 	
 	; Private procedure declarations
@@ -271,12 +302,16 @@
 	Declare Handler_Close()
 	Declare Library_RedrawItem(*Item.UITK::Library_Item, X, Y, Width, Height, State, *Theme.UITK::Theme)
 	Declare Library_EventHandler(*GadgetData.LibraryData, *Event.Event)
+	Declare Tree_Populate(*Folder.Project::AssetFolder, Depth)
+	Declare Handler_Tree_Changer()
+	Declare Handler_Tree_RightClick()
+	Declare Handler_Tree_Drop(*GadgetData.TreeData, State, Format, Action, x, y)
 	Declare HorizontalContainer_Handler(hWnd, Msg, wParam, lParam)
 	Declare VerticalContainer_Handler(hWnd, Msg, wParam, lParam)
 	
 	; Public procedures
 	Procedure Open()
-		Protected Menu
+		Protected Menu_File
 		
 		;{ Window
 		Window = UITK::Window(#PB_Any, 0, 0, #Appearance_Window_Width, #Appearance_Window_Height, General::#AppName, UITK::#Window_CloseButton |
@@ -290,6 +325,12 @@
 		UITK::WindowSetColor(Window, UITK::#Color_WindowBorder, SetAlpha(FixColor(#Color_Window_Border), 255))
 		UITK::WindowSetColor(Window, UITK::#Color_Parent, SetAlpha(FixColor(#Color_Window_Border), 255))
 		UITK::WindowSetColor(Window, UITK::#Color_Shade_Cold, SetAlpha(FixColor(#Color_Gadget_BackCold), 255))
+		
+		UITK::WindowSetColor(Window, UITK::#Color_Back_Cold, SetAlpha(FixColor(#Color_Gadget_ButtonCold), 255))
+		UITK::WindowSetColor(Window, UITK::#Color_Back_Warm, SetAlpha(FixColor(#Color_Gadget_ButtonWarm), 255))
+		UITK::WindowSetColor(Window, UITK::#Color_Back_Hot, SetAlpha(FixColor(#Color_Gadget_ButtonWarm), 255))
+		
+		
 		UITK::SetWindowBounds(Window, #Appearance_Window_Width, #Appearance_Window_Height + 30, -1, -1)
 		BindEvent(#PB_Event_SizeWindow, @Handler_Resize(), Window)
 		
@@ -300,7 +341,7 @@
 		
 		;{ Gadgets
 		Tab = UITK::Tab(#PB_Any, #Appearance_Window_Margin * 2, 0, #Appearance_Library_MinWidth, #Appearance_Library_ButtonHeight)
-		SetGadgetColor(Tab, UITK::#Color_Shade_Warm, SetAlpha(FixColor($373A56), 255))
+		SetGadgetColor(Tab, UITK::#Color_Shade_Warm, SetAlpha(FixColor(#Color_Gadget_ButtonCold), 255))
 		SetGadgetColor(Tab, UITK::#Color_Shade_Hot, SetAlpha(FixColor(#Color_Gadget_BackCold), 255))
 		AddGadgetItem(Tab, -1, "Media", ImageID(CatchImage(#PB_Any, ?TabMedia)))
 		SetGadgetItemAttribute(tab, 0, UITK::#Tab_Color, SetAlpha(FixColor(#Color_Ressources_Media), 255))
@@ -314,17 +355,28 @@
 		SetGadgetItemAttribute(tab, 4, UITK::#Tab_Color, SetAlpha(FixColor(#Color_Ressources_Modifiers), 255))
 		SetGadgetState(Tab, 0)
 		BindGadgetEvent(Tab, @Handler_Tab(), #PB_EventType_Change)
+		IconFolder = ImageID(CatchImage(#PB_Any, ?IconFolder))
+		IconFolderOpen = ImageID(CatchImage(#PB_Any, ?IconFolderOpen))
 		
 		LibraryWidth = #Appearance_Library_MinWidth
 		TimeLineHeight = #Appearance_TimeLine_MinHeight
 		
-		Library = UITK::Library(#PB_Any, #Appearance_Window_Margin, #Appearance_Library_ButtonHeight, LibraryWidth, Window_Height - 2 * #Appearance_Window_Margin - #Appearance_TimeLine_MinHeight - #Appearance_Library_ButtonHeight, UITK::#Drag, @Library_RedrawItem())
-		SetGadgetAttribute(Library, UITK::#Attribute_CornerRadius, 5)
+		Tree = UITK::Tree(#PB_Any, #Appearance_Window_Margin, #Appearance_Library_ButtonHeight, #Appearance_Tree_Width, Window_Height - 2 * #Appearance_Window_Margin - #Appearance_TimeLine_MinHeight - #Appearance_Library_ButtonHeight)
+		EnableGadgetDrop(Tree, #PB_Drop_Private, #PB_Drag_Copy | #PB_Drag_Move, UITK::#Drag_LibraryItem)
+		SetGadgetColor(Tree, UITK::#Color_Shade_Hot, SetAlpha(FixColor(#Color_Gadget_ButtonCold), 255))
+		BindGadgetEvent(Tree, @Handler_Tree_Changer(), #PB_EventType_Change)
+		BindGadgetEvent(Tree, @Handler_Tree_RightClick(), UITK::#EventType_ItemRightClick)
+		UITK::SubClassFunction(Tree, UITK::#SubClass_DropHandler, @Handler_Tree_Drop())
+		
+		Library = UITK::Library(#PB_Any, #Appearance_Window_Margin + #Appearance_Tree_Width, #Appearance_Library_ButtonHeight, LibraryWidth - #Appearance_Tree_Width, Window_Height - 2 * #Appearance_Window_Margin - #Appearance_TimeLine_MinHeight - #Appearance_Library_ButtonHeight, UITK::#Drag, @Library_RedrawItem())
+		SetGadgetAttribute(Library, UITK::#Attribute_CornerRadius, #Appearance_CornerSize)
+		SetGadgetAttribute(Library, UITK::#Attribute_CornerType, UITK::#Corner_Right)
+		SetGadgetAttribute(Library, UITK::#Attribute_Library_SectionHeight, 9)
 		EnableGadgetDrop(Library, #PB_Drop_Files, #PB_Drag_Copy | #PB_Drag_Move)
 		*OriginalLibraryHandler = UITK::SubClassFunction(Library, UITK::#SubClass_EventHandler, @Library_EventHandler())
 		
 		Render = ContainerGadget(#PB_Any, GadgetX(Library) + LibraryWidth + #Appearance_Window_Margin, 0, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, Window_Height - 2 * #Appearance_Window_Margin - #Appearance_TimeLine_MinHeight, #PB_Container_BorderLess)
-		SetGadgetColor(Render, #PB_Gadget_BackColor, $000000)
+		SetGadgetColor(Render, #PB_Gadget_BackColor, #Black)
 		CloseGadgetList()
 		
 		HorizontalContainer = ContainerGadget(#PB_Any, #Appearance_Window_Margin, Window_Height - #Appearance_Window_Margin * 2 - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, #Appearance_Window_Margin)
@@ -337,23 +389,72 @@
 		SetWindowLongPtr_(GadgetID(VerticalContainer), #GWL_WNDPROC, @VerticalContainer_Handler())
 		CloseGadgetList()
 		
-		
 		TimeLine = TimeLine::Gadget(#Appearance_Window_Margin, GadgetY(Library) + GadgetHeight(Library) + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
+		ButtonNewLine = UITK::Button(#PB_Any, 10, 10, 40, 40, "")
+		SetGadgetAttribute(ButtonNewLine, UITK::#Attribute_CornerType, UITK::#Corner_Left)
+		SetGadgetAttribute(ButtonNewLine, #PB_Canvas_Cursor, #PB_Cursor_Hand)
+		SetGadgetColor(ButtonNewLine, UITK::#Color_Parent, SetAlpha(FixColor(#Color_Gadget_BackCold), 255))
+		SetGadgetFont(ButtonNewLine, IconFont)
+		BindGadgetEvent(ButtonNewLine, Project::@AddLine(), #PB_EventType_Change)
+		
+		ButtonRemoveLine = UITK::Button(#PB_Any, 50, 10, 40, 40, "")
+		SetGadgetAttribute(ButtonRemoveLine, UITK::#Attribute_CornerRadius, 0)
+		SetGadgetAttribute(ButtonRemoveLine, #PB_Canvas_Cursor, #PB_Cursor_Hand)
+		SetGadgetColor(ButtonRemoveLine, UITK::#Color_Back_Warm, SetAlpha(FixColor($E81123), 255))
+		SetGadgetFont(ButtonRemoveLine, IconFont)
+		BindGadgetEvent(ButtonRemoveLine, Project::@RemoveLine(), #PB_EventType_Change)
+		
+		ButtonLineRename = UITK::Button(#PB_Any, 90, 10, 40, 40, "")
+		SetGadgetAttribute(ButtonLineRename, UITK::#Attribute_CornerRadius, 0)
+		SetGadgetAttribute(ButtonLineRename, UITK::#Attribute_TextScale, 18)
+		SetGadgetAttribute(ButtonLineRename, #PB_Canvas_Cursor, #PB_Cursor_Hand)
+		SetGadgetFont(ButtonLineRename, IconFont)
+		
+		ButtonLineDown = UITK::Button(#PB_Any, 130, 10, 40, 40, "")
+		SetGadgetAttribute(ButtonLineDown, UITK::#Attribute_CornerRadius, 0)
+		SetGadgetAttribute(ButtonLineDown, #PB_Canvas_Cursor, #PB_Cursor_Hand)
+		SetGadgetFont(ButtonLineDown, IconFont)
+		
+		ButtonLineUp = UITK::Button(#PB_Any, 170, 10, 40, 40, "")
+		SetGadgetAttribute(ButtonLineUp, UITK::#Attribute_CornerType, UITK::#Corner_Right)
+		SetGadgetAttribute(ButtonLineUp, #PB_Canvas_Cursor, #PB_Cursor_Hand)
+		SetGadgetColor(ButtonLineUp, UITK::#Color_Parent, SetAlpha(FixColor(#Color_Gadget_BackCold), 255))
+		SetGadgetFont(ButtonLineUp, IconFont)
 		
 		CloseGadgetList()
 		;}
 		
 		;{ Menu
-		Menu = UITK::FlatMenu(UITK::#DarkMode)
-		UITK::AddFlatMenuItem(Menu, 0, -1, "Item 2")
-		UITK::AddFlatMenuItem(Menu, 0, -1, "Item 3")
-		UITK::AddFlatMenuItem(Menu, 0, 0, "Item 1")
-		UITK::AddFlatMenuSeparator(Menu, -1)
-		UITK::AddFlatMenuItem(Menu, 0, -1, "Variable Viewer")
-		UITK::AddFlatMenuItem(Menu, 0, -1, "Compare Files/Folder")
-		UITK::AddFlatMenuItem(Menu, 0, -1, "Procedure Browser")
+		CreatePopupMenu(0)
+		Menu_File = UITK::FlatMenu(UITK::#DarkMode)
+		UITK::AddFlatMenuItem(Menu_File, 0, -1, "Item 2")
+		UITK::AddFlatMenuItem(Menu_File, 0, -1, "Item 3")
+		UITK::AddFlatMenuItem(Menu_File, 0, 0, "Item 1")
+		UITK::AddFlatMenuSeparator(Menu_File, -1)
+		UITK::AddFlatMenuItem(Menu_File, 0, -1, "Variable Viewer")
+		UITK::AddFlatMenuItem(Menu_File, 0, -1, "Compare Files/Folder")
+		UITK::AddFlatMenuItem(Menu_File, 0, -1, "Procedure Browser")
 		
-		UITK::AddWindowMenu(Window, Menu, "File")
+		UITK::AddWindowMenu(Window, Menu_File, "File")
+		
+		AddKeyboardShortcut(Window, #PB_Shortcut_Control | #PB_Shortcut_Z, #Menu_Undo)
+		AddKeyboardShortcut(Window, #PB_Shortcut_Control | #PB_Shortcut_Y, #Menu_Redo)
+
+		BindMenuEvent(0, #Menu_Undo, Project::@Undo())
+		BindMenuEvent(0, #Menu_Redo, Project::@Redo())
+		
+		Tree_Menu = UITK::FlatMenu(UITK::#DarkMode)
+		UITK::SetFlatMenuColor(Tree_Menu, UITK::#Color_WindowBorder, SetAlpha(FixColor(#Color_Menu_Border), 255))
+		UITK::SetFlatMenuColor(Tree_Menu, UITK::#Color_Back_Cold, SetAlpha(FixColor(#Color_Gadget_ButtonCold), 255))
+		UITK::SetFlatMenuColor(Tree_Menu, UITK::#Color_Back_Warm, SetAlpha(FixColor(#Color_Gadget_ButtonWarm), 255))
+		UITK::AddFlatMenuItem(Tree_Menu, #Menu_AddFolder, -1, "Add sub folder")
+		UITK::AddFlatMenuItem(Tree_Menu, #Menu_RemoveFolder, -1, "Delete")
+		UITK::AddFlatMenuItem(Tree_Menu, #Menu_RenameFolder, -1, "Rename")
+		
+		BindMenuEvent(0, #Menu_AddFolder, Project::@AddFolder())
+		BindMenuEvent(0, #Menu_RemoveFolder, Project::@RemoveFolder())
+		BindMenuEvent(0, #Menu_RenameFolder, Project::@RenameFolder())
+		
 		;}
 		
 		Project::New()
@@ -363,46 +464,38 @@
 	
 	; Private procedures
 	Procedure Handler_Tab()
-		UITK::Freeze(Library, #True)
-		ClearGadgetItems(Library)
+		UITK::Freeze(Tree, #True)
+		ClearGadgetItems(Tree)
+		
 		Select GetGadgetState(Tab)
 			Case Project::#Media
 				TabState = Project::#Media
 				SetGadgetColor(Library, UITK::#Color_Special3_Cold, SetAlpha(FixColor(#Color_Ressources_Media), 255))
-				AddGadgetColumn(Library, 0, "Video", 0)
-				AddGadgetColumn(Library, 1, "Images", 0)
-				
-				ForEach Project::Project\Assets[Project::#Media]\List()
-					SetGadgetItemData(Library, AddGadgetItem(Library, -1, Project::Project\Assets[Project::#Media]\List()\Name, ImageID(Project::Project\Assets[Project::#Media]\List()\PreviewImage), Project::Project\Assets[Project::#Media]\List()\Type), Project::@Project\Assets[Project::#Media]\list())
-				Next
 				
 			Case Project::#Audio
 				TabState = Project::#Audio
 				SetGadgetColor(Library, UITK::#Color_Special3_Cold, SetAlpha(FixColor(#Color_Ressources_Audio), 255))
-				AddGadgetColumn(Library, 0, "Music", 0)
-				AddGadgetColumn(Library, 1, "Sound", 0)
-				AddGadgetColumn(Library, 2, "Voice clip", 0)
+				
 			Case Project::#_3D
 				TabState = Project::#_3D
 				SetGadgetColor(Library, UITK::#Color_Special3_Cold, SetAlpha(FixColor(#Color_Ressources_3D), 255))
-				AddGadgetColumn(Library, 0, "Models", 0)
-				AddGadgetColumn(Library, 1, "Particles", 0)
+				
 			Case Project::#Overlay
 				TabState = Project::#Overlay
 				SetGadgetColor(Library, UITK::#Color_Special3_Cold, SetAlpha(FixColor(#Color_Ressources_Overlay), 255))
-				AddGadgetColumn(Library, 0, "Text", 0)
-				AddGadgetColumn(Library, 1, "Shape", 0)
-				AddGadgetColumn(Library, 2, "???", 0)
+				
 			Case Project::#Modifiers
 				TabState = Project::#Modifiers
 				SetGadgetColor(Library, UITK::#Color_Special3_Cold, SetAlpha(FixColor(#Color_Ressources_Modifiers), 255))
-				AddGadgetColumn(Library, 0, "Transitions", 0)
-				AddGadgetColumn(Library, 1, "Post processing", 0)
-				AddGadgetColumn(Library, 1, "Colors", 0)
-				AddGadgetColumn(Library, 2, "Effects", 0)
 		EndSelect
-				
-		UITK::Freeze(Library, #False)
+		
+		ForEach Project::Project\FoldersStructure[TabState]\List()
+			Tree_Populate(Project::Project\FoldersStructure[TabState]\List(), 0)
+		Next
+		SetGadgetState(Tree, 0)
+		Handler_Tree_Changer()
+		
+		UITK::Freeze(Tree, #False)
 	EndProcedure
 	
 	Procedure Handler_Resize()
@@ -424,23 +517,32 @@
 		TempHeight = Window_Height - TimeLineHeight - 2 * #Appearance_Window_Margin
 		
 		SendMessage_(GadgetID(Library), #WM_SETREDRAW, #False, 0)
+		SendMessage_(GadgetID(Tree), #WM_SETREDRAW, #False, 0)
 		
 		If VerticalGrowth
-			ResizeGadget(TimeLine, #PB_Ignore, TempHeight + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
+			TimeLine::Resize(TimeLine, #Appearance_Window_Margin, TempHeight + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
+			RedrawWindow_(GadgetID(TimeLine), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 			ResizeGadget(HorizontalContainer, #PB_Ignore, Window_Height - #Appearance_Window_Margin * 2 - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, #PB_Ignore)
-			ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth, TempHeight - #Appearance_Library_ButtonHeight)
+			ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth - #Appearance_Tree_Width, TempHeight - #Appearance_Library_ButtonHeight)
+			ResizeGadget(Tree, #PB_Ignore, #PB_Ignore, #PB_Ignore, TempHeight - #Appearance_Library_ButtonHeight)
 			SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
 			RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+			SendMessage_(GadgetID(Tree), #WM_SETREDRAW, #True, 0)
+			RedrawWindow_(GadgetID(Tree), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 			ResizeGadget(VerticalContainer, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, TempHeight)
 			ResizeGadget(Render, LibraryWidth + 2 * #Appearance_Window_Margin, #PB_Ignore, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, TempHeight)
 		Else
-			ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth, TempHeight - #Appearance_Library_ButtonHeight)
+			ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth - #Appearance_Tree_Width, TempHeight - #Appearance_Library_ButtonHeight)
+			ResizeGadget(Tree, #PB_Ignore, #PB_Ignore, #PB_Ignore, TempHeight - #Appearance_Library_ButtonHeight)
 			SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
 			RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+			SendMessage_(GadgetID(Tree), #WM_SETREDRAW, #True, 0)
+			RedrawWindow_(GadgetID(Tree), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 			ResizeGadget(VerticalContainer, LibraryWidth + #Appearance_Window_Margin, 0, #Appearance_Window_Margin, TempHeight)
 			ResizeGadget(Render, LibraryWidth + 2 * #Appearance_Window_Margin, #PB_Ignore, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, TempHeight)
 			ResizeGadget(HorizontalContainer, #PB_Ignore, Window_Height - #Appearance_Window_Margin * 2 - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, #PB_Ignore)
-			ResizeGadget(TimeLine, #PB_Ignore, TempHeight + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
+			TimeLine::Resize(TimeLine, #Appearance_Window_Margin, TempHeight + #Appearance_Window_Margin, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
+			RedrawWindow_(GadgetID(TimeLine), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 		EndIf
 		
 	EndProcedure
@@ -453,37 +555,65 @@
 		Protected TextHeight = Height - *Item\Text\Height
 		
 		With *Item
-			If \Text\FontScale
-				VectorFont(\Text\FontID, \Text\FontScale)
+			If \Data
+				If \Text\FontScale
+					VectorFont(\Text\FontID, \Text\FontScale)
+				Else
+					VectorFont(\Text\FontID)
+				EndIf
+				
+				MovePathCursor(X + \ImageX, Y + \ImageY)
+				DrawVectorImage(\ImageID)
+							
+				UITK::DrawVectorTextBlock(@\Text, X, Y + TextHeight + 2)
+				
+				If \HoverState
+					UITK::AddPathRoundedBox(X, Y, 160, TextHeight, 5)
+					VectorSourceColor(SetAlpha($FFFFFF, 35))
+					FillPath()
+					VectorSourceColor(*Theme\TextColor[UITK::#Cold])
+					MovePathCursor(X + 120, Y + 50)
+					DrawVectorImage(PlusIcon(TabState))
+				EndIf
+				
+				If \Selected
+					UITK::AddPathRoundedBox(X - 0.5, Y - 0.5, 160 + 1, TextHeight + 1, 5)
+					VectorSourceColor(*Theme\Special3[UITK::#Cold])
+					StrokePath(3)
+					VectorSourceColor(*Theme\TextColor[UITK::#Cold])
+				EndIf
+				
+				MovePathCursor(X + 8, Y + 8)
+				DrawVectorImage(Project::AssetIcon(\Data\Type))
 			Else
-				VectorFont(\Text\FontID)
+				If \Text\FontScale
+					VectorFont(\Text\FontID, \Text\FontScale)
+				Else
+					VectorFont(\Text\FontID)
+				EndIf
+				
+				UITK::DrawVectorTextBlock(@\Text, X, Y + TextHeight + 2)
+				
+				If \HoverState
+					UITK::AddPathRoundedBox(X, Y, 160, TextHeight, 5)
+					VectorSourceColor(SetAlpha($FFFFFF, 35))
+					FillPath()
+					VectorSourceColor(*Theme\TextColor[UITK::#Cold])
+					
+					MovePathCursor(X + \ImageX, Y + \ImageY)
+					DrawVectorImage(IconFolderOpen)
+				Else
+					MovePathCursor(X + \ImageX, Y + \ImageY)
+					DrawVectorImage(IconFolder)
+				EndIf
+				
+				If \Selected
+					UITK::AddPathRoundedBox(X - 0.5, Y - 0.5, 160 + 1, TextHeight + 1, 5)
+					VectorSourceColor(*Theme\Special3[UITK::#Cold])
+					StrokePath(3)
+					VectorSourceColor(*Theme\TextColor[UITK::#Cold])
+				EndIf
 			EndIf
-			
-			MovePathCursor(X + \ImageX, Y + \ImageY)
-			DrawVectorImage(\ImageID)
-						
-			UITK::DrawVectorTextBlock(@\Text, X, Y + TextHeight + 2)
-			
-			If \HoverState
-				UITK::AddPathRoundedBox(X, Y, 160, TextHeight, 5)
-				VectorSourceColor(SetAlpha($FFFFFF, 35))
-				FillPath()
-				VectorSourceColor(*Theme\TextColor[UITK::#Cold])
-			EndIf
-			
-			If \Selected
-				UITK::AddPathRoundedBox(X - 0.5, Y - 0.5, 160 + 1, TextHeight + 1, 5)
-				VectorSourceColor(*Theme\Special3[UITK::#Cold])
-				StrokePath(3)
-				VectorSourceColor(*Theme\TextColor[UITK::#Cold])
-			EndIf
-			
-			MovePathCursor(X + 8, Y + 8)
-			DrawVectorImage(Project::AssetIcon(\Data\Type))
-			
-			MovePathCursor(X + 120, Y + 50)
-			DrawVectorImage(PlusIcon(TabState))
-			
 		EndWith
 	EndProcedure
 	
@@ -503,35 +633,33 @@
 						
 						If Not \ScrollBar\MouseState
 							If ListSize(\Sections())
+								*Event\MouseY + \ScrollBar\State
 								ForEach \Sections()
-									If \ScrollBar\State + *Event\MouseY> Y + \Sections()\Height
-										Y + \Sections()\Height
+									If *Event\MouseY > \Sections()\Height
+										*Event\MouseY - \Sections()\Height
 									Else
+										If *Event\MouseY > \SectionHeight
+											*Event\MouseY - \SectionHeight
+											If (*Event\MouseY % (\ItemHeight + \ItemVMargin ) < \ItemHeight - #Library_ItemTextHeight) And(*Event\MouseX % (\ItemHMargin + \ItemWidth) > \ItemHMargin)
+												If SelectElement(\Sections()\Items(), Floor(*Event\MouseY / (\ItemHeight + \ItemVMargin )) * \ItemPerLine + Floor(*Event\MouseX / (\ItemHMargin + \ItemWidth)))
+													*Event\MouseY % (\ItemHeight + \ItemVMargin )
+													*Event\MouseX % (\ItemHMargin + \ItemWidth) - \ItemHMargin
+													
+													ChangeCurrentElement(\Items(), \Sections()\Items())
+													
+													If *Event\MouseX > 120 And *Event\MouseY > 50 And *Event\MouseX < 148 And *Event\MouseY < 78
+														Cursor = #True
+													ElseIf \Items()\Data = 0
+														Cursor = #True
+													EndIf
+													
+													NewItem = ListIndex(\Items())
+												EndIf
+											EndIf
+										EndIf
 										Break
 									EndIf
 								Next
-								
-								*Event\MouseY - Y + \ScrollBar\State
-								
-								If *Event\MouseY > \SectionHeight
-									*Event\MouseY - \SectionHeight
-									If *Event\MouseY % (\ItemHeight + \ItemVMargin ) < \ItemHeight - #Library_ItemTextHeight
-										If (*Event\MouseX % (\ItemHMargin + \ItemWidth)) > \ItemHMargin
-											If SelectElement(\Sections()\Items(), Floor(*Event\MouseY / (\ItemHeight + \ItemVMargin )) * \ItemPerLine + Floor(*Event\MouseX / (\ItemHMargin + \ItemWidth)))
-												*Event\MouseY % (\ItemHeight + \ItemVMargin )
-												*Event\MouseX % (\ItemHMargin + \ItemWidth) - \ItemHMargin
-												
-												If *Event\MouseX > 122 And *Event\MouseY > 52 And *Event\MouseX < 150 And *Event\MouseY < 80
-													Cursor = #True
-												EndIf
-												
-												ChangeCurrentElement(\Items(), \Sections()\Items())
-												NewItem = ListIndex(\Items())
-											EndIf
-										EndIf
-									EndIf
-								EndIf
-								
 							EndIf
 						EndIf
 						
@@ -566,7 +694,15 @@
 						Redraw = \ScrollBar\EventHandler(\ScrollBar, *Event)
 					ElseIf \ItemState > -1
 						If GetGadgetAttribute(\Gadget, #PB_Canvas_Cursor)
+							SelectElement(\Items(), \ItemState)
 							
+							If \Items()\Data
+								
+							Else
+								SetGadgetState(Tree, GetGadgetState(Tree) + \ItemState + 1)
+								\ItemState = -1
+								Handler_Tree_Changer()
+							EndIf
 						Else
 							If \State > -1
 								SelectElement(\Items(), \State)
@@ -588,6 +724,15 @@
 					;}
 				Case UITK::#LeftDoubleClick ;{
 					;}
+				Case UITK::#KeyDown ;{
+					If GetGadgetAttribute(\Gadget, #PB_Canvas_Key) = #PB_Shortcut_Delete
+						If \State > -1
+							Project::RemoveAsset()
+						EndIf
+					Else
+						CallFunctionFast(*OriginalLibraryHandler, *GadgetData, *Event)
+					EndIf
+					;}
 				Default ;{
 					CallFunctionFast(*OriginalLibraryHandler, *GadgetData, *Event)
 					;}
@@ -607,6 +752,99 @@
 		ProcedureReturn Redraw
 	EndProcedure
 	
+	Procedure Tree_Populate(*Folder.Project::AssetFolder, Depth)
+		SetGadgetItemData(Tree, AddGadgetItem(Tree, -1, *Folder\Name, 0, Depth), *Folder)
+		
+		ForEach *Folder\Childrens()
+			Tree_Populate(*Folder\Childrens(), Depth + 1)
+		Next
+	EndProcedure
+	
+	Procedure Handler_Tree_Changer()
+		*CurrentFolder = GetGadgetItemData(Tree, GetGadgetState(Tree))
+		
+		UITK::Freeze(Library, #True)
+		ClearGadgetItems(Library)
+		AddGadgetColumn(Library, 0, "", 0)
+		
+		ForEach *CurrentFolder\Childrens()
+			AddGadgetItem(Library, -1, *CurrentFolder\Childrens()\Name, IconFolder, 0)
+		Next
+		
+		ForEach Project::Project\Assets[TabState]\Map()
+			If Project::Project\Assets[TabState]\Map()\Folder = *CurrentFolder
+				SetGadgetItemData(Library, AddGadgetItem(Library, -1, Project::Project\Assets[TabState]\Map()\Name, ImageID(Project::Project\Assets[TabState]\Map()\PreviewImage), 0), Project::@Project\Assets[TabState]\Map())
+			EndIf
+		Next
+		
+		UITK::Freeze(Library, #False)
+	EndProcedure
+	
+	Procedure Handler_Tree_RightClick()
+		Protected *Folder.Project::AssetFolder = GetGadgetItemData(Tree, GetGadgetState(Tree))
+		
+		If *Folder\Parent
+			UITK::DisableFlatMenuItem(Tree_Menu, 1, #False)
+			UITK::DisableFlatMenuItem(Tree_Menu, 2, #False)
+		Else
+			UITK::DisableFlatMenuItem(Tree_Menu, 1, #True)
+			UITK::DisableFlatMenuItem(Tree_Menu, 2, #True)
+		EndIf
+		
+		UITK::ShowFlatMenu(Tree_Menu)
+	EndProcedure
+	
+	Procedure Handler_Tree_Drop(*GadgetData.TreeData, State, Format, Action, x, y)
+		Protected Hover = -1, *Asset.Project::Asset, LibraryState
+		With *GadgetData
+			Select State
+				Case #PB_Drag_Enter, #PB_Drag_Update
+					If SelectElement(\Items(), Floor((y + \ScrollBar\State) / \ItemHeight))
+						If (x > \Border + \BranchWidth * (\Items()\Level + 1)) And (x < \Border + \BranchWidth * (\Items()\Level + 1) + \Items()\Text\RequieredWidth)
+							LibraryState = GetGadgetState(Library)
+							If LibraryState > -1
+								*Asset = GetGadgetItemData(Library, LibraryState)
+								If \Items()\Data\Type = *Asset\Type And \Items()\Data <> *Asset\Folder
+									Hover = ListIndex(\Items())
+								EndIf
+							EndIf
+						EndIf
+					EndIf
+					
+					If Hover <> \DropHover
+						\DropHover = Hover
+						StartVectorDrawing(CanvasVectorOutput(*GadgetData\Gadget))
+						AddPathBox(*GadgetData\OriginX, *GadgetData\OriginY, *GadgetData\Width, *GadgetData\Height, #PB_Path_Default)
+						ClipPath(#PB_Path_Preserve)
+						VectorSourceColor(*GadgetData\ThemeData\WindowColor)
+						FillPath()
+						*GadgetData\Redraw(*GadgetData)
+						StopVectorDrawing()
+					EndIf
+					
+					If \DropHover > -1
+						ProcedureReturn #True
+					EndIf
+				Case #PB_Drag_Leave, #PB_Drag_Finish
+					If \DropHover > -1
+						If State = #PB_Drag_Finish
+							SelectElement(\Items(), \DropHover)
+							Project::MoveAsset(GetGadgetItemData(Library, GetGadgetState(Library)), \Items()\Data)
+						EndIf
+						
+						\DropHover = -1
+						StartVectorDrawing(CanvasVectorOutput(*GadgetData\Gadget))
+						AddPathBox(*GadgetData\OriginX, *GadgetData\OriginY, *GadgetData\Width, *GadgetData\Height, #PB_Path_Default)
+						ClipPath(#PB_Path_Preserve)
+						VectorSourceColor(*GadgetData\ThemeData\WindowColor)
+						FillPath()
+						*GadgetData\Redraw(*GadgetData)
+						StopVectorDrawing()
+					EndIf
+			EndSelect
+		EndWith
+	EndProcedure
+	
 	Procedure HorizontalContainer_Handler(hWnd, Msg, wParam, lParam)
 		Protected PosY
 		
@@ -622,7 +860,7 @@
 						PosY = General::Min(GadgetY(HorizontalContainer) + PosY, Window_Height - #Appearance_TimeLine_MinHeight - 2 * #Appearance_Window_Margin)
 						TimeLineHeight = Window_Height - posy - 2 * #Appearance_Window_Margin
 						
-						SetWindowPos_(GadgetID(TimeLine), 0, #Appearance_Window_Margin, Window_Height - #Appearance_Window_Margin - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight, #SWP_NOZORDER | #SWP_NOREDRAW)
+						TimeLine::Resize(TimeLine, #Appearance_Window_Margin, Window_Height - #Appearance_Window_Margin - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
 						
 						SetWindowPos_(hWnd, 0, #Appearance_Window_Margin, PosY, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER)
 						
@@ -634,8 +872,12 @@
 						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, #PB_Ignore, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight - #Appearance_Library_ButtonHeight)
 						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
 						
+						SendMessage_(GadgetID(Tree), #WM_SETREDRAW, #False, 0)
+						ResizeGadget(Tree, #PB_Ignore, #PB_Ignore, #PB_Ignore, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight - #Appearance_Library_ButtonHeight)
+						SendMessage_(GadgetID(Tree), #WM_SETREDRAW, #True, 0)
+						
+						RedrawWindow_(GadgetID(Tree), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 						RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
-						RedrawWindow_(GadgetID(TimeLine), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 						RedrawWindow_(GadgetID(Render), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 					Else
 						PosY = General::Max(GadgetY(HorizontalContainer) + PosY, #Appearance_Render_MinHeight)
@@ -649,12 +891,16 @@
 						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, #PB_Ignore, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight - #Appearance_Library_ButtonHeight)
 						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
 						
+						SendMessage_(GadgetID(Tree), #WM_SETREDRAW, #False, 0)
+						ResizeGadget(Tree, #PB_Ignore, #PB_Ignore, #PB_Ignore, Window_Height - 2 * #Appearance_Window_Margin - TimeLineHeight - #Appearance_Library_ButtonHeight)
+						SendMessage_(GadgetID(Tree), #WM_SETREDRAW, #True, 0)
+						
 						SetWindowPos_(hWnd, 0, #Appearance_Window_Margin, PosY, 0, 0, #SWP_NOSIZE | #SWP_NOZORDER)
 						
-						SetWindowPos_(GadgetID(TimeLine), 0, #Appearance_Window_Margin, Window_Height - #Appearance_Window_Margin - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight, #SWP_NOZORDER | #SWP_NOREDRAW)
+						TimeLine::Resize(TimeLine, #Appearance_Window_Margin, Window_Height - #Appearance_Window_Margin - TimeLineHeight, Window_Width - 2 * #Appearance_Window_Margin, TimeLineHeight)
 						
 						RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
-						RedrawWindow_(GadgetID(TimeLine), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
+						RedrawWindow_(GadgetID(Tree), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 						RedrawWindow_(GadgetID(Render), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
 					EndIf
 				EndIf
@@ -698,8 +944,7 @@
 						SetWindowPos_(GadgetID(Render), 0, LibraryWidth + #Appearance_Window_Margin * 2, 0, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, Height, #SWP_NOZORDER | #SWP_NOREDRAW)
 						
 						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #False, 0)
-; 						SetWindowPos_(GadgetID(Library), 0, 0, 0, LibraryWidth, Height - #Appearance_Library_ButtonHeight, #SWP_NOZORDER | #SWP_NOREDRAW | #SWP_NOMOVE)
-						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth, #PB_Ignore)
+						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth - #Appearance_Tree_Width, #PB_Ignore)
 						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
 						
 						RedrawWindow_(GadgetID(Library), 0, 0, #RDW_ERASE | #RDW_INVALIDATE)
@@ -712,7 +957,7 @@
 						LibraryWidth = PosX - #Appearance_Window_Margin
 						
 						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #False, 0)
-						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth, #PB_Ignore)
+						ResizeGadget(Library, #PB_Ignore, #PB_Ignore, LibraryWidth - #Appearance_Tree_Width, #PB_Ignore)
 						SendMessage_(GadgetID(Library), #WM_SETREDRAW, #True, 0)
 						
 						SetWindowPos_(GadgetID(Render), 0, LibraryWidth + #Appearance_Window_Margin * 2, 0, Window_Width - 3 * #Appearance_Window_Margin - LibraryWidth, Height, #SWP_NOZORDER | #SWP_NOREDRAW)
@@ -776,11 +1021,17 @@
 		
 		PlusOverlay:
 		IncludeBinary "../Media/Plus-Overlay.png"
+		
+		IconFolder:
+		IncludeBinary "../Media/Icon-Folder.png"
+		
+		IconFolderOpen:
+		IncludeBinary "../Media/Icon-FolderOpen.png"
 	EndDataSection ;}
 EndModule
 ; IDE Options = PureBasic 6.00 LTS (Windows - x64)
-; CursorPosition = 359
-; FirstLine = 15
-; Folding = ZfRAw
+; CursorPosition = 833
+; FirstLine = 317
+; Folding = Z-DAg5
 ; EnableXP
 ; DPIAware
